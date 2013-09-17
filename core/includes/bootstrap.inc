@@ -767,7 +767,7 @@ function backdrop_settings_initialize() {
   // Load Drupal settings specified by the server, if present
   if (isset($_SERVER['DRUPAL_SETTINGS'])) {
     $drupal_settings = json_decode($_SERVER['DRUPAL_SETTINGS'], TRUE);
-    foreach ($server_drupal_settings as $key => $value) {
+    foreach ($drupal_settings as $key => $value) {
       // One level of depth should be enough for $conf and $databases.
       if ($key == 'conf') {
         foreach($value as $conf_key => $conf_value) {
