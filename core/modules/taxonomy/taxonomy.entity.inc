@@ -77,6 +77,24 @@ class TaxonomyTerm extends Entity {
   public $vocabulary_machine_name;
 
   /**
+   * Constructs new taxonomy term entities.
+   */
+  public function __construct(array $values = array()) {
+    parent::__construct($values);
+
+    // Ensure the vocabulary machine name is initialized as it is used as bundle
+    // key.
+    if (!isset($this->vocabulary_machine_name)) {
+      $vocabulary = taxonomy_vocabulary_load($this->vid);
+      $this->vocabulary_machine_name = $vocabulary->machine_name;
+    }
+    // Save new terms with no parents by default.
+    if (!isset($this->parent)) {
+      $this->parent = array(0);
+    }
+  }
+
+  /**
    * Implements EntityInterface::id().
    */
   public function id() {
@@ -112,29 +130,23 @@ class TaxonomyTerm extends Entity {
  * Controller class for taxonomy terms.
  */
 class TaxonomyTermController extends EntityDatabaseStorageController {
-
   /**
-   * Overrides EntityDatabaseStorageController::create().
+   * Overrides DrupalDefaultEntityController::load().
    *
-   * @param array $values
-   *   An array of values to set, keyed by property name. A value for the
-   *   vocabulary ID ('vid') is required.
+   * Taxonomy terms are loaded without their "parent" property populated, but
+   * the constructor for terms will populate it with the default of an array
+   * with a 0, meaning "no parents". This custom load method removes the
+   * content of the "parent" property from loaded terms to prevent parents from
+   * being lost on save.
    */
-  public function create(array $values) {
-    $entity = parent::create($values);
-    // Ensure the vocabulary machine name is initialized as it is used as bundle
-    // key.
-    // @todo Move to TaxonomyTerm::bundle() once field API has been converted
-    // to make use of it.
-    if (!isset($entity->vocabulary_machine_name)) {
-      $vocabulary = taxonomy_vocabulary_load($entity->vid);
-      $entity->vocabulary_machine_name = $vocabulary->machine_name;
+  public function load($ids = array(), $conditions = array()) {
+    $terms = parent::load($ids, $conditions);
+    foreach ($terms as $term) {
+      if ($term->parent[0] === 0) {
+        $term->parent = NULL;
+      }
     }
-    // Save new terms with no parents by default.
-    if (!isset($entity->parent)) {
-      $entity->parent = array(0);
-    }
-    return $entity;
+    return $terms;
   }
 
   /**

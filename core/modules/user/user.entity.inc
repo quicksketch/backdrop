@@ -132,6 +132,22 @@ class User extends Entity {
   public $roles = array();
 
   /**
+   * Constructs new user entities.
+   */
+  public function __construct(array $values = array()) {
+    if (!isset($values['created'])) {
+      $values['created'] = REQUEST_TIME;
+    }
+    // Automatically add the authenticated user role to new users unless they
+    // have the anonymous role specified.
+    if (!isset($values['roles']) || !array_key_exists(DRUPAL_ANONYMOUS_RID, $values['roles'])) {
+      $values['roles'][DRUPAL_AUTHENTICATED_RID] = 'authenticated user';
+    }
+
+    parent::__construct($values);
+  }
+
+  /**
    * Implements EntityInterface::id().
    */
   public function id() {
@@ -215,19 +231,6 @@ class UserStorageController extends EntityDatabaseStorageController {
     // Call the default attachLoad() method. This will add fields and call
     // hook_user_load().
     parent::attachLoad($queried_users, $revision_id);
-  }
-
-  /**
-   * Overrides EntityDatabaseStorageController::create().
-   */
-  public function create(array $values) {
-    if (!isset($values['created'])) {
-      $values['created'] = REQUEST_TIME;
-    }
-    // Users always have the authenticated user role.
-    $values['roles'][DRUPAL_AUTHENTICATED_RID] = 'authenticated user';
-
-    return parent::create($values);
   }
 
   /**

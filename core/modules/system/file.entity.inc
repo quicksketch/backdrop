@@ -81,6 +81,23 @@ class File extends Entity {
   public $timestamp;
 
   /**
+   * Constructor for new file entities.
+   */
+  public function __construct(array $values = array()) {
+    // Automatically detect filename if not set.
+    if (!isset($values['filename']) && isset($values['uri'])) {
+      $values['filename'] = drupal_basename($values['uri']);
+    }
+
+    // Automatically detect filemime if not set.
+    if (!isset($values['filemime']) && isset($values['uri'])) {
+      $values['filemime'] = file_get_mimetype($values['uri']);
+    }
+
+    parent::__construct($values);
+  }
+
+  /**
    * Implements EntityInterface::id().
    */
   public function id() {
@@ -115,23 +132,6 @@ class File extends Entity {
  * File storage controller for files.
  */
 class FileStorageController extends EntityDatabaseStorageController {
-
-  /**
-   * Overrides Drupal\entity\EntityDatabaseStorageController::create().
-   */
-  public function create(array $values) {
-    // Automatically detect filename if not set.
-    if (!isset($values['filename']) && isset($values['uri'])) {
-      $values['filename'] = drupal_basename($values['uri']);
-    }
-
-    // Automatically detect filemime if not set.
-    if (!isset($values['filemime']) && isset($values['uri'])) {
-      $values['filemime'] = file_get_mimetype($values['uri']);
-    }
-    return parent::create($values);
-  }
-
   /**
    * Overrides Drupal\entity\EntityDatabaseStorageController::presave().
    */
