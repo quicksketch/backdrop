@@ -268,7 +268,9 @@ function entity_delete_multiple($entity_type, $ids) {
  *   A new entity object.
  */
 function entity_create($entity_type, array $values) {
-  return entity_get_controller($entity_type)->create($values);
+  $entity_info = entity_get_info($entity_type);
+  $class = $entity_info['entity class'];
+  return new $class($values);
 }
 
 /**

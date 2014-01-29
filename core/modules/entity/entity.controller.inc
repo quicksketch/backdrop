@@ -404,18 +404,6 @@ class DrupalDefaultEntityController implements DrupalEntityControllerInterface {
 interface EntityStorageControllerInterface extends DrupalEntityControllerInterface {
 
   /**
-   * Constructs a new entity object, without permanently saving it.
-   *
-   * @param $values
-   *   An array of values to set, keyed by property name. If the entity type has
-   *   bundles the bundle key has to be specified.
-   *
-   * @return EntityInterface
-   *   A new entity object.
-   */
-  public function create(array $values);
-
-  /**
    * Deletes permanently saved entities.
    *
    * @param $ids
@@ -452,15 +440,6 @@ class EntityStorageException extends Exception { }
  * Implements the entity storage controller interface for the database.
  */
 class EntityDatabaseStorageController extends DrupalDefaultEntityController implements EntityStorageControllerInterface {
-
-  /**
-   * Implements EntityStorageControllerInterface::create().
-   */
-  public function create(array $values) {
-    $class = isset($this->entityInfo['entity class']) ? $this->entityInfo['entity class'] : 'Entity';
-    return new $class($values);
-  }
-
   /**
    * Implements EntityStorageControllerInterface::delete().
    */
