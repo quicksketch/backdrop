@@ -8,15 +8,9 @@
 /**
  * Preprocess the page manager edit page.
  */
-function template_preprocess_page_manager_edit_page(&$vars) {
-  ctools_include('ajax');
-  ctools_include('modal');
-  ctools_modal_add_js();
-  ctools_add_js('dependent');
+function template_preprocess_layout_edit_page(&$vars) {
 
-  ctools_add_css('page-manager', 'page_manager');
-  ctools_add_css('wizard');
-
+  return;
   $task = $vars['page']->task;
 
   $page = &$vars['page'];
@@ -85,34 +79,49 @@ function theme_page_manager_handler_rearrange($vars) {
 }
 
 /**
- * Draw the "this task is locked from editing" box.
+ * Outputs information about a layout. Used in the layout listing page.
+ *
+ * @param $variables
+ *   An array with a single value: "layout", which contains the layout object.
+ *
+ * @return string
  */
-function theme_page_manager_lock($vars) {
-  $page = $vars['page'];
+function theme_layout_info($variables) {
+  $layout = $variables['layout'];
 
-  $account  = user_load($page->locked->uid);
-  $name     = theme('username', array('account' => $account));
-  $lock_age = format_interval(REQUEST_TIME - $page->locked->updated);
-  $break    = url(page_manager_edit_url($page->task_name, array('actions', 'break-lock')));
+  if ($layout->storage === LAYOUT_STORAGE_DEFAULT) {
+    $storage = t('Module-provided default');
+  }
+  elseif ($layout->storage === LAYOUT_STORAGE_OVERRIDE) {
+    $storage = t('User overriding default');
+  }
+  else {
+    $storage = t('User-created');
+  }
 
-  ctools_add_css('ctools');
-  $output = '<div class="ctools-locked">';
-  $output .= t('This page is being edited by user !user, and is therefore locked from editing by others. This lock is !age old. Click here to <a href="!break">break this lock</a>.', array('!user' => $name, '!age' => $lock_age, '!break' => $break));
-  $output .= '</div>';
+  $output = '';
+  $output .= '<div class="layout-title">' . check_plain($layout->label) . '</div>';
+  $output .= '<div class="layout-name">' . check_plain($layout->name) . '</div>';
+  $output .= '<div class="layout-storage">' . $storage . '</div>';
   return $output;
 }
 
 /**
- * Draw the "you have unsaved changes and this task is locked." message.
+ * Outputs an individual option label for selecting a layout.
  */
-function theme_page_manager_changed($vars) {
-  $text = $vars['text'];
-  $description = $vars['description'];
+function theme_layout_option($variables) {
+  $layout_info = $variables['layout_info'];
+  $icon_path = drupal_get_path('module', $layout_info['module']);
+  $icon_path .= (isset($layout_info['file path']) ? '/' . $layout_info['file path'] : '');
+  $icon_path .= '/' . $layout_info['icon'];
 
-  ctools_add_css('ctools');
-  $output = '<div class="page-manager-changed" title="' . $description . '">';
-  $output .= $text;
+  $output = '';
+  $output .= '<div class="layout-icon">';
+  $output .= theme('image', array(
+    'uri' => $icon_path,
+    'attributes' => array('title' => $layout_info['title']),
+  ));
+  $output .= '<div class="caption">' . check_plain($layout_info['title']) . '</div>';
   $output .= '</div>';
-
   return $output;
 }

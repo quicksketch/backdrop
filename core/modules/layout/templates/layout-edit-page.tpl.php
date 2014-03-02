@@ -1,7 +1,7 @@
 <?php
 /**
  * @file
- * Template for the page manager page editor.
+ * Template for the layout editor.
  *
  * Variables available:
  * -
@@ -9,21 +9,21 @@
  * For javascript purposes the id must not change.
  */
 ?>
-<div id="page-manager-edit">
+<div id="layout-edit">
   <?php print $locked; ?>
-  <div class="page-manager-wrapper">
+  <div class="layout-wrapper">
     <?php if (isset($operations['primary'])): ?>
       <div class="primary-actions clearfix actions">
         <?php print $operations['primary']; ?>
       </div>
     <?php endif; ?>
-    <div class="page-manager-tabs clearfix">
-      <div class="page-manager-edit-operations">
+    <div class="layout-tabs clearfix">
+      <div class="layout-edit-operations">
         <div class="inside">
           <?php print $operations['nav']; ?>
         </div>
       </div>
-      <div class="page-manager-ajax-pad">
+      <div class="layout-ajax-pad">
         <div class="inside">
           <div class="content-header">
             <div class="content-title">

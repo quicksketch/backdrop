@@ -1,5 +1,8 @@
 name = Layout
-description = Provides drag and drop page building tool.
+description = Provides a drag and drop page building tool.
 package = Core
 version = VERSION
 core = 8.x
+
+; Files that contain classes.
+files[] = includes/layout.class.inc
