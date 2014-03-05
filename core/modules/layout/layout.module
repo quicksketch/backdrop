@@ -62,28 +62,28 @@ function layout_menu() {
     'weight' => -10,
   );
 
-  $items['admin/structure/layouts/edit/%layout_cache'] = array(
+  $items['admin/structure/layouts/manage/%layout_cache'] = array(
     'title' => 'Edit',
-    'page callback' => 'layout_edit_layout',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('layout_settings_form', 4),
+    'type' => MENU_NORMAL_ITEM,
+  ) + $base;
+
+  $items['admin/structure/layouts/manage/%layout_cache/operation'] = array(
+    'page callback' => 'layout_edit_layout_operation',
     'page arguments' => array(4),
     'type' => MENU_NORMAL_ITEM,
   ) + $base;
 
-  $items['admin/structure/layouts/%layout_js/operation/%layout_cache'] = array(
-    'page callback' => 'layout_edit_layout_operation',
-    'page arguments' => array(3, 5),
-    'type' => MENU_NORMAL_ITEM,
-  ) + $base;
-
-  $items['admin/structure/layouts/%layout_js/enable/%layout_cache'] = array(
+  $items['admin/structure/layouts/manage/%layout_cache/enable'] = array(
     'page callback' => 'layout_enable_layout',
-    'page arguments' => array(FALSE, 3, 5),
+    'page arguments' => array(FALSE, 4),
     'type' => MENU_CALLBACK,
   ) + $base;
 
-  $items['admin/structure/layouts/%layout_js/disable/%layout_cache'] = array(
+  $items['admin/structure/layouts/manage/%layout_cache/disable'] = array(
     'page callback' => 'layout_enable_layout',
-    'page arguments' => array(TRUE, 3, 5),
+    'page arguments' => array(TRUE, 4),
     'type' => MENU_CALLBACK,
   ) + $base;
 
@@ -105,6 +105,9 @@ function layout_menu() {
     if (!empty($layout->disabled)) {
       continue;
     }
+
+    // TODO: revise page manager code below.
+    continue;
 
     if (!isset($layout->access['type'])) {
       $layout->access['type'] = 'none';
@@ -245,9 +248,26 @@ function layout_get_all_layouts() {
 }
 
 /**
+ * Load an individual layout.
+ */
+function layout_load($layout_name) {
+  $layouts = &drupal_static(__FUNCTION__, array());
+  if (!isset($layouts[$layout_name])) {
+    $config = config('layout.layout.' . $layout_name);
+    if (!$config->isNew()) {
+      $layouts[$layout_name] = new Layout($config->get());
+    }
+    else {
+      $layouts[$layout_name] = FALSE;
+    }
+  }
+  return $layouts[$layout_name];
+}
+
+/**
  * Load all include files for modules that implement hook_layout_api().
  */
-function _layout_include_module_files() {
+function _layout_include_files() {
   $included = &drupal_static(__FUNCTION__, FALSE);
   if (!$included) {
     foreach (module_implements('layout_api') as $module) {
@@ -266,25 +286,26 @@ function _layout_include_module_files() {
  */
 function _layout_get_all_info($data_type) {
   $all_info = &drupal_static(__FUNCTION__);
-  if (!isset($all_info)) {
-    _layout_include_module_files();
+  if (!isset($all_info[$data_type])) {
+    _layout_include_files();
     if ($cached_info = cache()->get($data_type . '_info')) {
-      $all_info = $cached_info->data;
+      $all_info[$data_type] = $cached_info->data;
     }
     else {
-      $all_info = array();
+      $all_info[$data_type] = array();
       foreach (module_implements($data_type . '_info') as $module) {
         $function = $module . '_' . $data_type . '_info';
         $data = $function();
         foreach ($data as $key => $info) {
           $info['module'] = $module;
-          $all_info[$key] = $info;
+          $info['name'] = $key;
+          $all_info[$data_type][$key] = $info;
         }
       }
-      cache()->set($data_type . '_info', $all_info);
+      cache()->set($data_type . '_info', $all_info[$data_type]);
     }
   }
-  return $all_info;
+  return $all_info[$data_type];
 }
 
 /**
@@ -298,7 +319,7 @@ function layout_get_layout_info() {
  * Load all layout information from modules.
  */
 function layout_get_context_info() {
-  return _layout_get_all_info('context');
+  return _layout_get_all_info('layout_context');
 }
 
 /**
@@ -311,7 +332,12 @@ function layout_get_context_info() {
  */
 function layout_create_handler($handler, array $config = array()) {
   if (!class_exists($handler)) {
-    $handler = 'LayoutBrokenHandler';
+    if (class_exists($handler . 'Broken')) {
+      $handler = $handler . 'Broken';
+    }
+    else {
+      $handler = 'LayoutHandlerBroken';
+    }
   }
   return new $handler($config);
 }
@@ -327,31 +353,12 @@ function layout_create_handler($handler, array $config = array()) {
 function layout_get_layout_cache($layout_name) {
   $caches = &drupal_static(__FUNCTION__, array());
   if (!isset($caches[$layout_name])) {
-    $cache = tempstore_get('layout', $layout_name);
-    if (!$cache) {
-      $cache = new stdClass();
-      $cache->name = $layout_name;
-      $cache->task = page_manager_get_task($cache->task_id);
-      if (empty($cache->task)) {
-        return FALSE;
-      }
-
-      $cache->handlers = page_manager_load_sorted_handlers($cache->task, $cache->subtask_id);
-      $cache->handler_info = array();
-      foreach ($cache->handlers as $id => $handler) {
-        $cache->handler_info[$id] = array(
-          'weight' => $handler->weight,
-          'changed' => FALSE,
-          'name' => $id,
-        );
-      }
+    // Try loading from tempstore first to get in-progress changes.
+    $layout = tempstore_get('layout.layout', $layout_name);
+    if (!$layout) {
+      $layout = layout_load($layout_name);
     }
-    else {
-      // ensure the task is loaded.
-      $cache = layout_get_layout($layout_name);
-    }
-
-    $caches[$layout_name] = $cache;
+    $caches[$layout_name] = $layout;
   }
 
   return $caches[$layout_name];
@@ -370,14 +377,14 @@ function layout_set_layout_cache($layout) {
   }
 
   $layout->changed = TRUE;
-  tempstore('layout.layout', $layout->name, $page);
+  tempstore_set('layout.layout', $layout->name, $layout, 604800);
 }
 
 /**
  * Remove an item from the object cache.
  */
 function layout_clear_layout_cache($name) {
-  ctools_object_cache_clear('page_manager_page', $name);
+  tempstore_clear('layout.layout', $name);
 }
 
 /**

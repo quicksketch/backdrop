@@ -1,6 +1,10 @@
 
-#layout-settings-form .form-item-layout {
+#layout-settings-form .layout-options {
+  width: 100%;
+}
+#layout-settings-form .layout-options .form-type-radio {
   float: left;
+  text-align: center;
 }
 #layout-settings-form .layout-icon .caption {
   width: 90px;

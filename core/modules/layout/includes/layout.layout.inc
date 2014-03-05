@@ -29,3 +29,56 @@ function layout_layout_info() {
   );
   return $layouts;
 }
+
+/**
+ * Implements hook_layout_context_info().
+ */
+function layout_layout_context_info() {
+  $info['node'] = array(
+    'title' => t('Node'),
+    'description' => t('A node object.'),
+    // Define the class which is used to handle this context.
+    'context class' => 'NodeLayoutContext',
+    // Define menu paths where the node ID is a "known" context.
+    'menu paths' => array(
+      'node/%node',
+      'node/%node/view',
+    ),
+    // Given the menu paths defined above, identify the parts of the path that
+    // are needed to generate this context. These values will be passed in as
+    // $args to the context class.
+    'menu loaders' => array(
+      '%node' => 'nid',
+    ),
+  );
+  $info['node_add'] = array(
+    'title' => t('Node add form'),
+    'description' => t('Form for adding a new node.'),
+    'context class' => 'NodeAddLayoutContext',
+    'menu parts' => array(
+      '%type' => 'type',
+    ),
+    'menu paths' => array(
+      'node/add/%type',
+    ),
+  );
+  $info['node_edit'] = array(
+    'title' => t('Node edit form'),
+    'description' => t('Form for editing an existing node.'),
+    'context class' => 'NodeEditLayoutContext',
+    'menu loaders' => array(
+      '%node' => 'nid',
+    ),
+    'menu paths' => array(
+      'node/%node/edit',
+    ),
+  );
+  $info['string'] = array(
+    'title' => t('String pass-through'),
+    'description' => t('A pass-through context which allows a string to be passed from the URL to a block.'),
+    'context class' => 'LayoutStringContext',
+    'menu loaders' => array(),
+    'menu paths' => array(),
+  );
+  return $info;
+}

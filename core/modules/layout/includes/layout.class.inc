@@ -60,6 +60,13 @@ class Layout {
   var $layout;
 
   /**
+   * Whether this layout is disabled.
+   *
+   * @var boolean
+   */
+  var $disabled = FALSE;
+
+  /**
    * An array of all contexts used by this layout.
    *
    * @var array
@@ -113,4 +120,58 @@ class Layout {
     }
   }
 
+  /**
+   * Save a layout to config.
+   */
+  function save() {
+    // Convert all properties to an array.
+    $data = (array) $this;
+
+    // Remove unnecessary properties.
+    if (isset($data['is_new'])) {
+      unset($data['is_new']);
+    }
+    if (isset($data['changed'])) {
+      unset($data['changed']);
+    }
+
+    // Convert all stored contexts, access, and relationships to arrays.
+    foreach (array('context', 'access', 'relationship') as $config_type) {
+      foreach ($data[$config_type] as $config_type_key => $config_type_data) {
+        unset($config_type_data->is_new);
+        $data[$config_type][$config_type_key] = array(
+          'handler' => get_class($config_type_data),
+          'data' => $config_type_data->toArray(),
+        );
+      }
+    }
+
+    if (isset($this->original_name) && $this->original_name != $this->name) {
+      config('layout.layout.' . $this->original_name)->delete();
+    }
+    config('layout.layout.' . $this->name)
+      ->setData($data)
+      ->save();
+  }
+
+  /**
+   * Delete this layout.
+   */
+  function delete() {
+    config('layout.layout.' . $this->name)->delete();
+    menu_rebuild();
+  }
+
+  /**
+   * Check if this layout overrides a path provided by another module.
+   */
+  function isOverridingPath() {
+    $result = db_query('SELECT * FROM {menu_router} WHERE path = :path', array(':path' => $this->path));
+    foreach ($result as $router) {
+      if ($router->page_callback != 'layout_page') {
+        return TRUE;
+      }
+    }
+    return FALSE;
+  }
 }

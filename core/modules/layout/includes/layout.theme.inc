@@ -100,7 +100,7 @@ function theme_layout_info($variables) {
   }
 
   $output = '';
-  $output .= '<div class="layout-title">' . check_plain($layout->label) . '</div>';
+  $output .= '<div class="layout-title">' . check_plain($layout->title) . '</div>';
   $output .= '<div class="layout-name">' . check_plain($layout->name) . '</div>';
   $output .= '<div class="layout-storage">' . $storage . '</div>';
   return $output;

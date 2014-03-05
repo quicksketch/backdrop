@@ -5,4 +5,9 @@ version = VERSION
 core = 8.x
 
 ; Files that contain classes.
+files[] = includes/layout.handler.inc
 files[] = includes/layout.class.inc
+files[] = includes/layout.context.inc
+
+; Temporarily included in Layout until it can be moved.
+files[] = node_layout_context_handler.inc
