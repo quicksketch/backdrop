@@ -27,7 +27,7 @@ class Layout {
   var $description;
 
   /**
-   * The module that originally provided this view (if any).
+   * The module that originally provided this layout (if any).
    *
    * @var string
    */
@@ -36,9 +36,18 @@ class Layout {
   /**
    * The internal path of a layout.
    *
+   * The layout path must match the provided menu item path.
+   *
    * @var string
    */
   var $path;
+
+  /**
+   * The weight of this layout compared with other layouts at the same path.
+   *
+   * @var int
+   */
+  var $weight = 0;
 
   /**
    * The storage state of the layout.
@@ -88,6 +97,16 @@ class Layout {
   var $relationship = array();
 
   /**
+   * A LayoutMenuItem containing menu properties for this layout.
+   *
+   * Layouts that are at user-defined paths (not overriding a module) must have
+   * a menu item specified. Multiple layouts may share the same menu item.
+   *
+   * @var LayoutMenuItem
+   */
+  var $menu_item = NULL;
+
+  /**
    * Constructor for a Layout class.
    *
    * @param array $config
@@ -128,11 +147,15 @@ class Layout {
     $data = (array) $this;
 
     // Remove unnecessary properties.
-    if (isset($data['is_new'])) {
-      unset($data['is_new']);
-    }
-    if (isset($data['changed'])) {
-      unset($data['changed']);
+    $remove_properties = array(
+      'is_new',
+      'changed',
+      'menu_item',
+    );
+    foreach ($remove_properties as $property) {
+      if (array_key_exists($property, $data)) {
+        unset($data[$property]);
+      }
     }
 
     // Convert all stored contexts, access, and relationships to arrays.
@@ -152,26 +175,100 @@ class Layout {
     config('layout.layout.' . $this->name)
       ->setData($data)
       ->save();
+
+    // If this layout overrides an existing module path, reassign or delete
+    // the layout menu item.
+    if (menu_get_item($this->path) && !layout_provides_path($this->path)) {
+      if ($this->menu_item) {
+        $this->menu_item->reassign();
+      }
+    }
+    // If not overriding an existing module path, ensure that the layout always
+    // has a layout menu item at the same path.
+    else {
+      if ($this->menu_item) {
+        // If an existing menu item exists but this layout's path has changed,
+        // reassign/delete the existing menu item, then create a new one.
+        if ($this->menu_item->path !== $this->path) {
+          $new_menu_item = clone($this->menu_item);
+          $new_menu_item->path = $this->path;
+          $new_menu_item->name = $this->name;
+          $new_menu_item->is_new = TRUE;
+          $this->menu_item->reassign();
+          $this->menu_item = $new_menu_item;
+          $this->menu_item->save();
+        }
+      }
+      else {
+        // If this layout doesn't have a menu item, make one.
+        $menu_item_settings = array(
+          'path' => $this->path,
+          'name' => $this->name,
+        );
+        $this->menu_item = new LayoutMenuItem($menu_item_settings);
+        $this->menu_item->save();
+      }
+    }
+    layout_reset_caches();
   }
 
   /**
    * Delete this layout.
    */
   function delete() {
-    config('layout.layout.' . $this->name)->delete();
-    menu_rebuild();
+    if ($this->storage === LAYOUT_STORAGE_NORMAL) {
+      config('layout.layout.' . $this->name)->delete();
+      // Reassign the menu item to a still-enabled layout (if any).
+      if ($this->menu_item && $this->menu_item->name === $this->name) {
+        $this->menu_item->reassign();
+      }
+      layout_reset_caches();
+    }
+    else {
+      $this->disable();
+    }
   }
 
   /**
-   * Check if this layout overrides a path provided by another module.
+   * Revert a layout to a module-provided default.
    */
-  function isOverridingPath() {
-    $result = db_query('SELECT * FROM {menu_router} WHERE path = :path', array(':path' => $this->path));
-    foreach ($result as $router) {
-      if ($router->page_callback != 'layout_page') {
-        return TRUE;
+  function revert() {
+    if (!empty($this->module)) {
+      // Restore the module-provided layout config.
+      config_install_default_config($this->module, 'layout.layout.' . $this->name);
+
+      // Restore the module-provided menu settings if this layout provides the
+      // active menu item.
+      if ($this->menu_item && $this->menu_item->name === $this->name) {
+        $this->menu_item->revert();
       }
     }
-    return FALSE;
+  }
+
+  /**
+   * Disable a layout.
+   */
+  function disable() {
+    $this->disabled = TRUE;
+    $this->save();
+
+    // Reassign the menu item to a still-enabled layout (if any).
+    if ($this->menu_item && $this->menu_item->name === $this->name) {
+      $this->menu_item->reassign();
+    }
+  }
+
+  /**
+   * Enable a layout.
+   */
+  function enable() {
+    $this->disabled = FALSE;
+    $this->save();
+
+    // Check if the menu item needs to be assigned to this layout.
+    if ($this->menu_item->name === $this->name) {
+      $this->menu_item->reassign();
+    }
   }
 }
+

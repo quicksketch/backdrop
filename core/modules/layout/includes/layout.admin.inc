@@ -15,27 +15,22 @@ function layout_list_page() {
 
   // Group layouts by path.
   foreach ($layouts as $layout) {
-    $path_groups[$layout->path][] = $layout;
+    $path_groups[$layout->path][$layout->name] = $layout;
   }
 
   // Assmeble the rows of the table.
   $rows = array();
-  foreach ($path_groups as $group) {
+  foreach ($path_groups as $path => $group) {
     // Print a row for rearranging a group of layouts.
-    if (count($group) > 1) {
-      $operations = array(
-        '#type' => 'dropbutton',
-        '#links' => array(
-          'title' => t('Rearrange'),
-          'href' => 'admin/structure/manage/layout/' . $layout->path . '/rearrange',
-        ),
-      );
-      $row = array();
-      $row[] = theme('layout_info', array('layout' => $layout));
-      $row[] = check_plain($layout->path);
-      $row[] = drupal_render($operations);
-      $rows[] = $row;
-    }
+    $operations = array(
+      '#type' => 'dropbutton',
+      '#links' => _layout_get_group_operations($path, $group),
+    );
+    $row = array();
+    $row[] = array('data' => check_plain($path), 'colspan' => 2);
+    $row[] = drupal_render($operations);
+    $rows[] = array('data' => $row, 'class' => array('layout-group'));
+
     foreach ($group as $layout) {
       $operations = array(
         '#type' => 'dropbutton',
@@ -45,7 +40,7 @@ function layout_list_page() {
       $row[] = theme('layout_info', array('layout' => $layout));
       $row[] = strpos($layout->path, '%') === FALSE ? l($layout->path, $layout->path) : check_plain($layout->path);
       $row[] = drupal_render($operations);
-      $rows[] = $row;
+      $rows[] = array('data' => $row, 'class' => array('layout-row'));
     }
   }
 
@@ -55,11 +50,15 @@ function layout_list_page() {
     array('data' => t('Operations'), 'class' => array('layout-operations')),
   );
 
-  return theme('table', array(
-    'header' => $header,
-    'rows' => $rows,
-    'attributes' => array('id' => 'layout-list'),
-  ));
+  $page = array();
+  $page['#attached']['css'][] = drupal_get_path('module', 'layout') . '/css/layout-admin.css';
+  $page['table'] = array(
+    '#theme' => 'table',
+    '#header' => $header,
+    '#rows' => $rows,
+    '#attributes' => array('id' => 'layout-list'),
+  );
+  return $page;
 }
 
 /**
@@ -99,6 +98,38 @@ function _layout_get_operations(Layout $layout) {
     $links['revert'] = array(
       'title' => t('Revert'),
       'href' => 'admin/structure/layouts/manage/' . $layout->name . '/revert',
+    );
+  }
+  return $links;
+}
+
+/**
+ * Given a path, return a list of operations for a group of layouts.
+ */
+function _layout_get_group_operations($path, array $group) {
+  $links = array();
+  $last_layout = array_pop($group);
+  if (layout_provides_path($path)) {
+    $links['menu_settings'] = array(
+      'title' => t('Menu settings'),
+      'href' => 'admin/structure/layouts/menu/' . $last_layout->menu_item->name,
+    );
+    if (strpos($path, '%')) {
+      $links['arguments'] = array(
+        'title' => t('Arguments'),
+        'href' => 'admin/structure/layouts/menu/' . $last_layout->menu_item->name . '/arguments',
+      );
+    }
+    $links['access'] = array(
+      'title' => t('Access control'),
+      'href' => 'admin/structure/layouts/menu/' . $last_layout->menu_item->name . '/access',
+    );
+  }
+  if (count($group)) {
+    $links['reorder'] = array(
+      'title' => t('Reorder'),
+      'href' => 'admin/structure/layouts/reorder',
+      'query' => array('layouts' => array_keys($group)),
     );
   }
   return $links;
@@ -292,6 +323,7 @@ function layout_settings_form($form, &$form_state, Layout $layout) {
       'layout_settings_form_validate',
     ),
     '#submit' => array(
+      'layout_settings_form_update_layout',
       'layout_settings_form_save_submit',
     ),
   );
@@ -354,7 +386,7 @@ function layout_settings_form_validate(&$form, &$form_state) {
   $parts = explode('/', $path);
   foreach ($parts as $part) {
     $wildcard_position = strpos($part, '%');
-    if ($wildcard_position !== FALSE && ($wildcard_position > 0 || strlen($part))) {
+    if ($wildcard_position !== FALSE && ($wildcard_position > 0 || strlen($part) > 1)) {
       form_error($form['path'], t('Wildcard placeholders must be the only character in their part of the path i.e. "@part" should be "%".', array('@part' => $part)));
     }
   }
@@ -520,309 +552,6 @@ function layout_edit_page_operation() {
 
   drupal_set_title($page->subtask['admin title']);
   return $output;
-}
-
-/**
- * Take the operations array from a task and expand it.
- *
- * This allows some of the operations to be dynamic, based upon settings
- * on the task or the task's handlers. Each operation should have a type. In
- * addition to all the types allowed in layout_render_operations, these
- * types will be dynamically replaced with something else:
- * - 'handlers': An automatically created group that contains all the task's
- *   handlers and appropriate links.
- * - 'function': A callback (which will be placed in the 'function' parameter
- *   that should return an array of operations. This can be used to provide
- *   additional, dynamic links if needed.
- */
-function layout_get_operations($page, $operations = NULL) {
-  if (!isset($operations)) {
-    // All tasks have at least these 2 ops:
-    $operations = array(
-      'summary' => array(
-        'title' => t('Summary'),
-        'description' => t('Get a summary of the information about this page.'),
-        'path' => 'admin/structure/pages/edit',
-        'ajax' => FALSE,
-        'no operations' => TRUE,
-        'form info' => array(
-          'no buttons' => TRUE,
-        ),
-        'form' => 'layout_page_summary',
-      ),
-      'actions' => array(
-        'type' => 'group',
-        'title' => '',
-        'class' => array('operations-actions'),
-        'location' => 'primary',
-        'children' => array(),
-      ),
-    );
-
-    if (isset($page->subtask['operations'])) {
-      $operations += $page->subtask['operations'];
-      // add actions separately.
-      if (!empty($page->subtask['operations']['actions'])) {
-        $operations['actions']['children'] += $page->subtask['operations']['actions']['children'];
-      }
-    }
-    $operations['handlers'] = array('type' => 'handlers');
-  }
-
-  $result = array();
-  foreach ($operations as $id => $operation) {
-    if (empty($operation['type'])) {
-      $operation['type'] = 'operation';
-    }
-    switch ($operation['type']) {
-      case 'handlers':
-        $result[$id] = layout_get_handler_operations($page);
-        break;
-      case 'function':
-        if (function_exists($operation['function'])) {
-          $retval = $function($page, $operation);
-          if (is_array($retval)) {
-            $result[$id] = $retval;
-          }
-        }
-        break;
-      default:
-        $result[$id] = $operation;
-    }
-  }
-
-  if (!empty($page->subtask['enable callback']) && !empty($page->subtask['disabled']) && empty($result['actions']['children']['enable'])) {
-    $result['actions']['children']['enable'] = array(
-      'title' => t('Enable'),
-      'description' => t('Activate this page so that it will be in use in your system.'),
-      'form' => 'layout_enable_form',
-      'ajax' => FALSE,
-      'silent' => TRUE,
-      'no update and save' => TRUE,
-      'form info' => array(
-        'finish text' => t('Enable'),
-      ),
-    );
-  }
-
-  if (!empty($page->subtask['enable callback']) && empty($page->subtask['disabled']) && empty($result['actions']['children']['disable'])) {
-    $result['actions']['children']['disable'] = array(
-      'title' => t('Disable'),
-      'description' => t('De-activate this page. The data will remain but the page will not be in use on your system.'),
-      'form' => 'layout_disable_form',
-      'ajax' => FALSE,
-      'silent' => TRUE,
-      'no update and save' => TRUE,
-      'form info' => array(
-        'finish text' => t('Disable'),
-      ),
-    );
-  }
-
-  $result['actions']['children']['add'] = array(
-    'title' => t('Add variant'),
-    'description' => t('Add a new variant to this page.'),
-    'form' => 'layout_handler_add',
-    'ajax' => FALSE,
-    'silent' => TRUE, // prevents a message about updating and prevents this item from showing as changed.
-    'no update and save' => TRUE, // get rid of update and save button which is bad here.
-    'form info' => array(
-      'finish text' => t('Create variant'),
-    ),
-  );
-
-  // Restrict variant import to users who can already execute arbitrary PHP
-  if (user_access('use PHP for settings')) {
-    $result['actions']['children']['import'] = array(
-      'title' => t('Import variant'),
-      'description' => t('Add a new variant to this page from code exported from another page.'),
-      'form' => 'layout_handler_import',
-    );
-  }
-
-  if (count($page->handlers) > 1) {
-    $result['actions']['children']['rearrange'] = array(
-      'title' => t('Reorder variants'),
-      'ajax' => FALSE,
-      'description' => t('Change the priority of the variants to ensure that the right one gets selected.'),
-      'form' => 'layout_handler_rearrange',
-    );
-  }
-
-  // This is a special operation used to configure a new task handler before
-  // it is added.
-  if (isset($page->new_handler)) {
-    $plugin = layout_get_task_handler($page->new_handler->handler);
-    $result['actions']['children']['configure'] = array(
-      'title' => t('Configure'),
-      'description' => t('Configure a newly created variant prior to actually adding it to the page.'),
-      'ajax' => FALSE,
-      'no update and save' => TRUE, // get rid of update and save button which is bad here.
-      'form info' => array(
-        // We use our own cancel and finish callback to handle the fun stuff.
-        'finish callback' => 'layout_handler_add_finish',
-        'cancel callback' => 'layout_handler_add_cancel',
-        'show trail' => TRUE,
-        'show back' => TRUE,
-        'finish text' => t('Create variant'),
-      ),
-      'form' => array(
-        'forms' => $plugin['forms'],
-      ),
-    );
-
-    foreach ($page->forms as $id) {
-      if (isset($plugin['add features'][$id])) {
-        $result['actions']['children']['configure']['form']['order'][$id] = $plugin['add features'][$id];
-      }
-      else if (isset($plugin['required forms'][$id])) {
-        $result['actions']['children']['configure']['form']['order'][$id] = $plugin['required forms'][$id];
-      }
-    }
-  }
-
-  if ($page->locked) {
-    $result['actions']['children']['break-lock'] = array(
-      'title' => t('Break lock'),
-      'description' => t('Break the lock on this page so that you can edit it.'),
-      'form' => 'layout_break_lock',
-      'ajax' => FALSE,
-      'no update and save' => TRUE, // get rid of update and save button which is bad here.
-      'form info' => array(
-        'finish text' => t('Break lock'),
-      ),
-      'even locked' => TRUE, // show button even if locked
-      'silent' => TRUE,
-    );
-  }
-
-  drupal_alter('layout_operations', $result, $page);
-  return $result;
-}
-
-/**
- * Collect all the operations related to task handlers (variants) and
- * build a menu.
- */
-function layout_get_handler_operations(&$page) {
-  ctools_include('export');
-  $group = array(
-    'type' => 'group',
-    'class' => array('operations-handlers'),
-    'title' => t('Variants'),
-  );
-
-  $operations = array();
-
-  // If there is only one variant, let's not have it collapsible.
-  $collapsible = count($page->handler_info) != 1;
-  foreach ($page->handler_info as $id => $info) {
-    if ($info['changed'] & layout_CHANGED_DELETED) {
-      continue;
-    }
-    $handler = $page->handlers[$id];
-    $plugin = layout_get_task_handler($handler->handler);
-
-    $operations[$id] = array(
-      'type' => 'group',
-      'class' => array('operations-handlers-' . $id),
-      'title' => layout_get_handler_title($plugin, $handler, $page->task, $page->subtask_id),
-      'collapsible' => $collapsible,
-      'children' => array(),
-    );
-
-    $operations[$id]['children']['actions'] = array(
-      'type' => 'group',
-      'class' => array('operations-handlers-actions-' . $id),
-      'title' => t('Variant operations'),
-      'children' => array(),
-      'location' => $id,
-    );
-
-    // There needs to be a 'summary' item here for variants.
-    $operations[$id]['children']['summary'] = array(
-      'title' => t('Summary'),
-      'description' => t('Get a summary of the information about this variant.'),
-      'form info' => array(
-        'no buttons' => TRUE,
-      ),
-      'form' => 'layout_handler_summary',
-    );
-
-    if ($plugin && isset($plugin['operations'])) {
-      $operations[$id]['children'] += $plugin['operations'];
-    }
-
-    $actions = &$operations[$id]['children']['actions']['children'];
-
-    $actions['clone'] = array(
-      'title' => t('Clone'),
-      'description' => t('Make an exact copy of this variant.'),
-      'form' => 'layout_handler_clone',
-    );
-    $actions['export'] = array(
-      'title' => t('Export'),
-      'description' => t('Export this variant into code to import into another page.'),
-      'form' => 'layout_handler_export',
-    );
-    if ($handler->export_type == (EXPORT_IN_CODE | EXPORT_IN_DATABASE)) {
-      $actions['delete'] = array(
-        'title' => t('Revert'),
-        'description' => t('Remove all changes to this variant and revert to the version in code.'),
-        'form' => 'layout_handler_delete',
-        'no update and save' => TRUE,
-        'form info' => array(
-          'finish text' => t('Revert'),
-        ),
-      );
-    }
-    else if ($handler->export_type != EXPORT_IN_CODE) {
-      $actions['delete'] = array(
-        'title' => t('Delete'),
-        'description' => t('Remove this variant from the page completely.'),
-        'form' => 'layout_handler_delete',
-        'form info' => array(
-          'finish text' => t('Delete'),
-          'save text' => t('Delete and save'),
-        ),
-      );
-    }
-    if (!empty($handler->disabled)) {
-      $actions['enable'] = array(
-        'title' => t('Enable'),
-        'description' => t('Activate this variant so that it will be in use in your system.'),
-        'form' => 'layout_handler_enable',
-        'silent' => TRUE,
-        'form info' => array(
-          'finish text' => t('Enable'),
-          'save text' => t('Enable and save'),
-        ),
-      );
-    }
-    else {
-      $actions['disable'] = array(
-        'title' => t('Disable'),
-        'description' => t('De-activate this variant. The data will remain but the variant will not be in use on your system.'),
-        'form' => 'layout_handler_disable',
-        'silent' => TRUE,
-        'form info' => array(
-          'finish text' => t('Disable'),
-          'save text' => t('Disable and save'),
-        ),
-      );
-    }
-
-    drupal_alter('layout_variant_operations', $operations[$id], $handler);
-  }
-  if (empty($operations)) {
-    $operations['empty'] = array(
-      'type' => 'text',
-      'title' => t('No variants'),
-    );
-  }
-
-  $group['children'] = $operations;
-  return $group;
 }
 
 /**
@@ -994,7 +723,7 @@ function layout_handler_add_finish(&$form_state) {
 }
 
 /**
- * Rearrange the order of variants.
+ * Reorder the order of variants.
  */
 function layout_handler_import($form, &$form_state) {
   $form['title'] = array(
@@ -1060,47 +789,59 @@ function layout_handler_import_submit(&$form, &$form_state) {
 }
 
 /**
- * Rearrange the order of variants.
+ * Reorder the order of layouts at the same path.
  */
-function layout_handler_rearrange($form, &$form_state) {
-  $page = $form_state['page'];
-
-  $form['handlers'] = array('#tree' => TRUE);
-
-  foreach ($page->handler_info as $id => $info) {
-    if ($info['changed'] & layout_CHANGED_DELETED) {
-      continue;
+function layout_reorder_form($form, &$form_state) {
+  if (!isset($form_state['layouts'])) {
+    $layout_list = isset($_GET['layouts']) ? $_GET['layouts'] : array();
+    $all_layouts = layout_get_all_layouts();
+    $layouts = array();
+    foreach ($layout_list as $layout_name) {
+      $layouts[$layout_name] = $all_layouts[$layout_name];
     }
-    $handler = $page->handlers[$id];
-    $plugin = layout_get_task_handler($handler->handler);
+    $form_state['layouts'] = $layouts;
+  }
 
-    $form['handlers'][$id]['title'] = array(
-      '#markup' => layout_get_handler_title($plugin, $handler, $page->task, $page->subtask_id),
+  $layouts = $form_state['layouts'];
+  $form['#tree'] = TRUE;
+
+  // Sanity check.
+  if (empty($layouts)) {
+    drupal_set_message(t('No layouts specified to reorder.'));
+    return $form;
+  }
+
+  $layout_count = count($layouts);
+  foreach ($layouts as $layout) {
+    $form['layouts'][$layout->name]['title'] = array(
+      '#markup' => check_plain($layout->title),
     );
-
-    $form['handlers'][$id]['weight'] = array(
+    $form['layouts'][$layout->name]['weight'] = array(
       '#type' => 'weight',
-      '#default_value' => $info['weight'],
-      '#delta' => 30,
+      '#delta' => $layout_count,
+      '#default_value' => $layout->weight,
     );
   }
+
+  $form['actions'] = array('#type' => 'actions');
+  $form['actions']['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Save order'),
+  );
 
   return $form;
 }
 
-function layout_handler_rearrange_submit(&$form, &$form_state) {
-  $handler_info = &$form_state['page']->handler_info;
-
-  foreach ($form_state['values']['handlers'] as $id => $info) {
-    if ($handler_info[$id]['weight'] = $info['weight']) {
-      $handler_info[$id]['weight'] = $info['weight'];
-      $handler_info[$id]['changed'] |= layout_CHANGED_MOVED;
-    }
+/**
+ * Submit handler for layout_reorder_form().
+ */
+function layout_reorder_form_submit(&$form, &$form_state) {
+  foreach ($form_state['layouts'] as $name => $layout) {
+    $layout->weight = (int) $form_state['values']['layouts'][$name]['weight'];
+    $layout->save();
   }
-
-  // Sort the new cache.
-  uasort($handler_info, '_layout_handler_sort');
-
+  drupal_set_message(t('Layout order saved.'));
+  $form_state['redirect'] = 'admin/structure/layouts';
 }
 
 /**
@@ -1123,136 +864,6 @@ function _layout_handler_sort($a, $b) {
   elseif ($a['name'] > $b['name']) {
     return 1;
   }
-}
-
-/**
- * Rearrange the order of variants.
- */
-function layout_handler_delete($form, &$form_state) {
-  if ($form_state['handler']->type == t('Overridden')) {
-    $text = t('Reverting the variant will delete the variant that is in the database, reverting it to the original default variant. This deletion will not be made permanent until you click Save.');
-  }
-  else {
-    $text = t('Are you sure you want to delete this variant? This deletion will not be made permanent until you click Save.');
-  }
-  $form['markup'] = array(
-    '#markup' => '<p>' . $text . '</p>',
-  );
-
-  return $form;
-}
-
-/**
- * Submit handler to delete a view.
- */
-function layout_handler_delete_submit(&$form, &$form_state) {
-  $form_state['page']->handler_info[$form_state['handler_id']]['changed'] |= layout_CHANGED_DELETED;
-  $form_state['new trail'] = array('summary');
-}
-
-/**
- * Entry point to export a page.
- */
-function layout_handler_export($form, &$form_state) {
-  $export = layout_export_task_handler($form_state['handler']);
-
-  $lines = substr_count($export, "\n");
-  $form['code'] = array(
-    '#type' => 'textarea',
-    '#default_value' => $export,
-    '#rows' => $lines,
-  );
-
-  unset($form['buttons']);
-  return $form;
-}
-
-/**
- * Rearrange the order of variants.
- */
-function layout_handler_clone($form, &$form_state) {
-  // This provides its own button because it does something totally different.
-  $form['title'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Variant name'),
-    '#description' => t('Enter the name of the new variant.'),
-  );
-
-  return $form;
-}
-
-/**
- * Clone an existing task handler into a new handler.
- */
-function layout_handler_clone_submit(&$form, &$form_state) {
-  $export = layout_export_task_handler($form_state['handler']);
-  ob_start();
-  eval($export);
-  ob_end_clean();
-
-  layout_handler_add_to_page($form_state['page'], $handler, $form_state['values']['title']);
-
-  $plugin = layout_get_task_handler($handler->handler);
-  // It has no forms at all. Add the variant and go to its first operation.
-  $keys = array_keys($plugin['operations']);
-  $form_state['new trail'] = array('handlers', $handler->name, reset($keys));
-}
-
-/**
- * Form to enable a handler.
- */
-function layout_handler_enable($form, &$form_state) {
-  $form['markup'] = array(
-    '#markup' => t('This variant is currently disabled. Enabling it will make it available in your system. This will not take effect until you save this page.'),
-  );
-
-  return $form;
-}
-
-/**
- * Enable the page after it has been confirmed.
- */
-function layout_handler_enable_submit(&$form, &$form_state) {
-  $form_state['handler']->disabled = FALSE;
-  $form_state['page']->handler_info[$form_state['handler_id']]['disabled'] = FALSE;
-  $form_state['page']->handler_info[$form_state['handler_id']]['changed'] |= layout_CHANGED_STATUS;
-  $form_state['new trail'] = array('handlers', $form_state['handler_id'], 'actions', 'disable');
-}
-
-/**
- * Form to disable a page.
- */
-function layout_handler_disable($form, &$form_state) {
-  $form['markup'] = array(
-    '#markup' => t('This variant is currently enabled. Disabling it will make it unavailable in your system, and it will not be used. This will not take effect until you save this page.'),
-  );
-
-  return $form;
-}
-
-/**
- * Form to disable a page.
- */
-function layout_handler_summary($form, &$form_state) {
-  $handler = $form_state['handler'];
-  $page = $form_state['page'];
-  $plugin = layout_get_task_handler($handler->handler);
-
-  $form['markup'] = array(
-    '#markup' => layout_get_handler_summary($plugin, $handler, $page, FALSE),
-  );
-
-  return $form;
-}
-
-/**
- * Disable the page after it has been confirmed.
- */
-function layout_handler_disable_submit(&$form, &$form_state) {
-  $form_state['handler']->disabled = TRUE;
-  $form_state['page']->handler_info[$form_state['handler_id']]['disabled'] = TRUE;
-  $form_state['page']->handler_info[$form_state['handler_id']]['changed'] |= layout_CHANGED_STATUS;
-  $form_state['new trail'] = array('handlers', $form_state['handler_id'], 'actions', 'enable');
 }
 
 /**
@@ -1492,258 +1103,6 @@ function layout_custom_page_menu_item($menu, $access_arguments, $page_arguments,
 }
 
 /**
- * Page callback to add a subtask.
- */
-function layout_page_add_subtask($task_name = NULL, $step = NULL) {
-  ctools_include('context');
-  $task = layout_get_task('page');
-  $task_handler_plugins = layout_get_task_handler_plugins($task);
-  if (empty($task_handler_plugins)) {
-    drupal_set_message(t('There are currently no variants available and a page may not be added. Perhaps you need to install the Panels module to get a variant?'), 'error');
-    return ' ';
-  }
-
-  $form_info = array(
-    'id' => 'layout_add_page',
-    'show trail' => TRUE,
-    'show back' => TRUE,
-    'show return' => FALSE,
-    'next callback' => 'layout_page_add_subtask_next',
-    'finish callback' => 'layout_page_add_subtask_finish',
-    'return callback' => 'layout_page_add_subtask_finish',
-    'cancel callback' => 'layout_page_add_subtask_cancel',
-    'add order' => array(
-      'basic' => t('Basic settings'),
-      'argument' => t('Argument settings'),
-      'access' => t('Access control'),
-      'menu' => t('Menu settings'),
-    ),
-    'forms' => array(
-      'basic' => array(
-        'form id' => 'layout_page_form_basic',
-      ),
-      'access' => array(
-        'form id' => 'layout_page_form_access',
-      ),
-      'menu' => array(
-        'form id' => 'layout_page_form_menu',
-      ),
-      'argument' => array(
-        'form id' => 'layout_page_form_argument',
-      ),
-    ),
-  );
-
-  if ($task_name) {
-    $page = layout_get_page_cache($task_name);
-    if (empty($page)) {
-      return drupal_not_found();
-    }
-
-    $form_info['path'] = "admin/structure/pages/add/$task_name/%step";
-  }
-  else {
-    $new_page = layout_page_new();
-    $new_page->name = NULL;
-
-    $page = new stdClass();
-    layout_page_new_page_cache($new_page, $page);
-    $form_info['path'] = 'admin/structure/pages/add/%task_name/%step';
-  }
-
-  if ($step && $step != 'basic') {
-    $handler_plugin = layout_get_task_handler($page->handler);
-
-    $form_info['forms'] += $handler_plugin['forms'];
-
-    if (isset($page->forms)) {
-      foreach ($page->forms as $id) {
-        if (isset($form_info['add order'][$id])) {
-          $form_info['order'][$id] = $form_info['add order'][$id];
-        }
-        else if (isset($handler_plugin['add features'][$id])) {
-          $form_info['order'][$id] = $handler_plugin['add features'][$id];
-        }
-        else if (isset($handler_plugin['required forms'][$id])) {
-          $form_info['order'][$id] = $handler_plugin['required forms'][$id];
-        }
-      }
-    }
-    else {
-      $form_info['order'] = $form_info['add order'];
-    }
-
-    // This means we just submitted our form from the default list
-    // of steps, which we've traded in for a newly generated list of
-    // steps above. We need to translate this 'next' step into what
-    // our questions determined would be next.
-    if ($step == 'next') {
-      $keys = array_keys($form_info['order']);
-      // get rid of 'basic' from the list of forms.
-      array_shift($keys);
-      $step = array_shift($keys);
-
-      // If $step == 'basic' at this point, we were not presented with any
-      // additional forms at all. Let's just save and go!
-      if ($step == 'basic') {
-        layout_save_page_cache($page);
-        // Redirect to the new page's task handler editor.
-        drupal_goto(layout_edit_url($page->task_name));
-      }
-    }
-  }
-  else {
-    $form_info['show trail'] = FALSE;
-    $form_info['order'] = array(
-      'basic' => t('Basic settings'),
-      'next' => t('A meaningless second page'),
-    );
-  }
-
-  ctools_include('wizard');
-  $form_state = array(
-    'task' => $task,
-    'subtask' => $page->subtask,
-    'page' => &$page,
-    'type' => 'add',
-    'task_id' => 'page',
-    'task_name' => $page->task_name,
-    'creating' => TRUE,
-  );
-
-  if (!empty($page->handlers)) {
-    $keys = array_keys($page->handlers);
-    $key = array_shift($keys);
-    $form_state['handler'] = &$page->handlers[$key];
-    $form_state['handler_id'] = $key;
-  }
-
-  $output = ctools_wizard_multistep_form($form_info, $step, $form_state);
-
-  if (!$output) {
-    // redirect.
-    drupal_redirect_form(array(), $form_state['redirect']);
-  }
-
-  return $output;
-}
-
-/**
- * Callback generated when the add page process is finished.
- */
-function layout_page_add_subtask_finish(&$form_state) {
-  $page = &$form_state['page'];
-  // Update the cache with changes.
-  layout_set_page_cache($page);
-
-  $handler = $form_state['handler'];
-  $handler_plugin = layout_get_task_handler($handler->handler);
-
-  // Redirect to the new page's task handler editor.
-  if (isset($handler_plugin['add finish'])) {
-    $form_state['redirect'] = layout_edit_url($page->task_name, array('handlers', $handler->name, $handler_plugin['add finish']));
-  }
-  else {
-    $form_state['redirect'] = layout_edit_url($page->task_name);
-  }
-  return;
-}
-
-/**
- * Callback generated when the 'next' button is clicked.
- *
- * All we do here is store the cache.
- */
-function layout_page_add_subtask_next(&$form_state) {
-  if (empty($form_state['task_name']) || $form_state['task_name'] == 'page') {
-    // We may not have known the path to go next, because we didn't yet know the
-    // task name. This fixes that.
-    $form_state['form_info']['path'] = str_replace('%task_name', $form_state['page']->task_name, $form_state['form_info']['path']);
-
-    $form_state['redirect'] = ctools_wizard_get_path($form_state['form_info'], $form_state['clicked_button']['#next']);
-  }
-
-  // Update the cache with changes.
-  layout_set_page_cache($form_state['page']);
-}
-
-/**
- * Callback generated when the 'cancel' button is clicked.
- *
- * All we do here is clear the cache.
- */
-function layout_page_add_subtask_cancel(&$form_state) {
-  // Wipe all our stored changes.
-  if (isset($form_state['page']->task_name)) {
-    layout_clear_page_cache($form_state['page']->task_name);
-  }
-}
-
-/**
- * Store the values from the basic settings form.
- */
-function layout_page_form_basic_submit(&$form, &$form_state) {
-  $page = &$form_state['page']->subtask['subtask'];
-  $cache = &$form_state['page'];
-
-  // If this is a new thing, then we have to do a bunch of setup to create
-  // the cache record with the right ID and some basic data that we could
-  // not know until we asked the user some questions.
-  if (!isset($page->pid) && !empty($form_state['creating'])) {
-    // Update the data with our new name.
-    $page->name = $form_state['values']['name'];
-    $form_state['page']->task_name = layout_make_task_name($form_state['task_id'], $page->name);
-    $cache->handler = $form_state['values']['handler'];
-    $cache->subtask_id = $page->name;
-    $plugin = layout_get_task_handler($cache->handler);
-
-    // If they created and went back, there might be old, dead handlers
-    // that are not going to be added.
-    //
-    // Remove them:
-    $cache->handlers = array();
-    $cache->handler_info = array();
-
-    // Create a new handler.
-    $handler = layout_new_task_handler($plugin);
-    $title = !empty($form_state['values']['title']) ? $form_state['values']['title'] : $plugin['title'];
-    layout_handler_add_to_page($cache, $handler, $title);
-
-    // Figure out which forms to present them with
-    $cache->forms = array();
-    $cache->forms[] = 'basic'; // This one is always there.
-    if (!empty($form_state['arguments'])) {
-      $cache->forms[] = 'argument';
-    }
-
-    $features = $form_state['values']['features'];
-    $cache->forms = array_merge($cache->forms, array_keys(array_filter($features['default'])));
-    if (isset($features[$form_state['values']['handler']])) {
-      $cache->forms = array_merge($cache->forms, array_keys(array_filter($features[$form_state['values']['handler']])));
-    }
-
-    if (isset($plugin['required forms'])) {
-      $cache->forms = array_merge($cache->forms, array_keys($plugin['required forms']));
-    }
-  }
-
-  $page->admin_title = $form_state['values']['admin_title'];
-  $cache->subtask['admin title'] = check_plain($form_state['values']['admin_title']);
-
-  $page->admin_description = $form_state['values']['admin_description'];
-  $cache->subtask['admin description'] = filter_xss_admin($form_state['values']['admin_description']);
-
-  if ($page->path != $form_state['values']['path']) {
-    $page->path = $form_state['values']['path'];
-    layout_page_recalculate_arguments($page);
-    $cache->path_changed = TRUE;
-  }
-
-  $page->make_frontpage = !empty($form_state['values']['frontpage']);
-  $page->conf['admin_paths'] = !empty($form_state['values']['admin_paths']);
-}
-
-/**
  * Form to handle menu item controls.
  */
 function layout_page_form_menu($form, &$form_state) {
@@ -1871,49 +1230,6 @@ function layout_page_form_menu($form, &$form_state) {
 }
 
 /**
- * Validate handler for the menu form for add/edit page task.
- */
-function layout_page_form_menu_validate(&$form, &$form_state) {
-  // If setting a 'normal' menu entry, make sure that any placeholders
-  // support the to_arg stuff.
-
-  if ($form_state['values']['menu']['type'] == 'normal') {
-    $page = $form_state['page']->subtask['subtask'];
-
-    foreach (explode('/', $page->path) as $bit) {
-      if (!isset($bit) || $bit === '') {
-        continue;
-      }
-
-      if ($bit[0] == '%') {
-        // Chop off that %.
-        $name = substr($bit, 1);
-
-        // Check to see if the argument plugin allows to arg:
-        if (!empty($page->arguments[$name])) {
-          ctools_include('context');
-          $plugin = ctools_get_argument($page->arguments[$name]['name']);
-          if (!empty($plugin['path placeholder to_arg'])) {
-            continue;
-          }
-        }
-
-        form_error($form['menu']['type'], t('Paths with non optional placeholders cannot be used as normal menu items unless the selected argument handler provides a default argument to use for the menu item.'));
-        return;
-      }
-    }
-  }
-}
-
-/**
- * Submit handler for the menu form for add/edit page task.
- */
-function layout_page_form_menu_submit(&$form, &$form_state) {
-  $form_state['page']->subtask['subtask']->menu = $form_state['values']['menu'];
-  $form_state['page']->path_changed = TRUE;
-}
-
-/**
  * Form to handle menu item controls.
  */
 function layout_page_form_access($form, &$form_state) {
@@ -2025,131 +1341,78 @@ function layout_page_argument_form_settings_submit(&$form, &$form_state) {
 /**
  * Entry point to clone a page.
  */
-function layout_page_form_clone($form, &$form_state) {
-  $page = &$form_state['page']->subtask['subtask'];
+function layout_clone_form($form, &$form_state, $layout) {
+  if (!isset($form_state['layout'])) {
+    $layout = clone($layout);
+    $layout->name = NULL;
+    $layout->is_new = TRUE;
+    $layout->module = NULL;
+    $layout->storage = LAYOUT_STORAGE_NORMAL;
+  }
+  else {
+    $layout = $form_state['layout'];
+  }
 
-  // This provides its own button because it does something totally different.
-  unset($form['buttons']);
-
-  $form['admin_title'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Administrative title'),
-    '#description' => t('The name of this page. This will appear in the administrative interface to easily identify it.'),
-    '#default_value' => $page->admin_title,
-  );
-
-  $form['name'] = array(
-    '#type' => 'machine_name',
-    '#title' => t('Page name'),
-    '#machine_name' => array(
-      'exists' => 'layout_page_load',
-      'source' => array('admin_title'),
-    ),
-    '#description' => t('Enter the name to the new page It must be unique and contain only alphanumeric characters and underscores.'),
-  );
-
-  // path
-  $form['path'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Path'),
-    '#description' => t('The URL path to get to this page. You may create named placeholders for variable parts of the path by using %name for required elements and !name for optional elements. For example: "node/%node/foo", "forum/%forum" or "dashboard/!input". These named placeholders can be turned into contexts on the arguments form. You cannot use the same path as the original page.'),
-    '#default_value' => $page->path,
-  );
-
-  $form['handlers'] = array(
-    '#type' => 'checkbox',
-    '#title' => t('Clone variants'),
-    '#description' => t('If checked all variants associated with the page will be cloned as well. If not checked the page will be cloned without variants.'),
-    '#default_value' => TRUE,
-  );
-
-  $form['submit'] = array(
-    '#type' => 'submit',
-    '#value' => t('Clone'),
-  );
-
+  $form = layout_settings_form($form, $form_state, $layout);
+  $form['layout']['#access'] = FALSE;
+  $form['actions']['submit']['#value'] = t('Clone layout');
   return $form;
 }
 
 /**
- * Validate clone page form.
+ * Entry point to delete a layout.
  */
-function layout_page_form_clone_validate(&$form, &$form_state) {
-  $page = &$form_state['page']->subtask['subtask'];
+function layout_delete_form($form, &$form_state, $layout) {
+  $form_state['layout'] = $layout;
 
-  $page->old_name = $page->name;
-  $page->name = NULL;
-  layout_page_form_basic_validate($form, $form_state);
-}
-
-/**
- * submit clone page form.
- *
- * Load the page, change the name(s) to protect the innocent, and if
- * requested, load all the task handlers so that they get saved properly too.
- */
-function layout_page_form_clone_submit(&$form, &$form_state) {
-  $original = $form_state['page']->subtask['subtask'];
-
-  $original->name = $form_state['values']['name'];
-  $original->admin_title = $form_state['values']['admin_title'];
-  $original->path = $form_state['values']['path'];
-
-  $handlers = !empty($form_state['values']['handlers']) ? $form_state['page']->handlers : FALSE;
-  // Export the handler, which is a fantastic way to clean database IDs out of it.
-  $export = layout_page_export($original, $handlers);
-  ob_start();
-  eval($export);
-  ob_end_clean();
-
-  $task_name = layout_make_task_name('page', $page->name);
-  $cache = new stdClass();
-
-  layout_page_new_page_cache($page, $cache);
-  layout_set_page_cache($cache);
-
-  $form_state['redirect'] = layout_edit_url($task_name);
-}
-
-/**
- * Entry point to export a page.
- */
-function layout_page_form_delete($form, &$form_state) {
-  $page = &$form_state['page']->subtask['subtask'];
-
-  if ($page->type == t('Overridden')) {
-    $text = t('Reverting the page will delete the page that is in the database, reverting it to the original default page. Any changes you have made will be lost and cannot be recovered.');
+  if ($layout->storage === LAYOUT_STORAGE_NORMAL) {
+    $question = t('Delete layout @title?', array('@title' => $layout->title));
+    $text = t('Are you sure you want to delete this layout? Deleting a layout cannot be undone.');
+    $button_text = t('Delete layout');
   }
   else {
-    $text = t('Are you sure you want to delete this page? Deleting a page cannot be undone.');
-  }
-  $form['markup'] = array(
-    '#value' => '<p>' . $text . '</p>',
-  );
-
-  if (empty($form_state['page']->locked)) {
-    unset($form['buttons']);
-    $form['delete'] = array(
-      '#type' => 'submit',
-      '#value' => $page->type == t('Overridden') ? t('Revert') : t('Delete'),
-    );
+    $question = t('Delete layout @title?', array('@title' => $layout->title));
+    $text = t('Reverting the layout will delete any changes, reverting it to the original default layout provided by the %module module.');
+    $button_text = t('Revert layout');
   }
 
-  return $form;
+  return confirm_form($form, $question, 'admin/structure/layouts', $text, $button_text);
 }
 
 /**
- * Submit handler to delete a view.
+ * Submit handler for layout_delete_form(). Delete a layout.
  */
-function layout_page_form_delete_submit(&$form, &$form_state) {
-  $page = $form_state['page']->subtask['subtask'];
-  layout_page_delete($page);
-  if ($page->type != t('Overridden')) {
-    $form_state['redirect'] = 'admin/structure/pages';
-    drupal_set_message(t('The page has been deleted.'));
+function layout_delete_form_submit(&$form, &$form_state) {
+  $layout = $form_state['layout'];
+
+  if ($layout->storage === LAYOUT_STORAGE_NORMAL) {
+    $layout->delete();
+    drupal_set_message(t('The layout has been deleted.'));
   }
   else {
-    $form_state['redirect'] = layout_edit_url($form_state['page']->task_name, array('summary'));
+    $layout->revert();
     drupal_set_message(t('The page has been reverted.'));
   }
+  $form_state['redirect'] = 'admin/structure/layouts';
+}
+
+/**
+ * Form callback; Configure a layout menu item.
+ */
+function layout_menu_item_settings_form($form, &$form_state, $menu_item) {
+  return $form;
+}
+
+/**
+ * Form callback; Configure argument handling for a layout menu item.
+ */
+function layout_menu_item_arguments_form($form, &$form_state, $menu_item) {
+  return $form;
+}
+
+/**
+ * Form callback; Configure access to a layout menu item.
+ */
+function layout_menu_item_access_form($form, &$form_state, $menu_item) {
+  return $form;
 }

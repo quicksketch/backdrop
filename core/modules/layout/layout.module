@@ -54,25 +54,46 @@ function layout_menu() {
     'title' => 'Layouts',
     'description' => 'Create new landing pages or modify the layout of existing pages on your site.',
     'page callback' => 'layout_list_page',
+    'type' => MENU_NORMAL_ITEM,
   ) + $base;
 
-  $items['admin/structure/layouts/list'] = array(
+  $items['admin/structure/layouts/reorder'] = array(
     'title' => 'List',
-    'type' => MENU_DEFAULT_LOCAL_TASK,
-    'weight' => -10,
-  );
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('layout_reorder_form'),
+    'type' => MENU_CALLBACK,
+  ) + $base;
 
   $items['admin/structure/layouts/manage/%layout_cache'] = array(
-    'title' => 'Edit',
+    'title' => 'Edit layout settings',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('layout_settings_form', 4),
-    'type' => MENU_NORMAL_ITEM,
+    'type' => MENU_CALLBACK,
+  ) + $base;
+
+  $items['admin/structure/layouts/manage/%layout_cache/edit'] = array(
+    'title' => 'Layout',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+  ) + $base;
+
+  $items['admin/structure/layouts/manage/%layout_cache/settings'] = array(
+    'title' => 'Settings',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('layout_settings_form', 4),
+    'type' => MENU_LOCAL_TASK,
   ) + $base;
 
   $items['admin/structure/layouts/manage/%layout_cache/operation'] = array(
     'page callback' => 'layout_edit_layout_operation',
     'page arguments' => array(4),
-    'type' => MENU_NORMAL_ITEM,
+    'type' => MENU_CALLBACK,
+  ) + $base;
+
+  $items['admin/structure/layouts/manage/%layout_cache/clone'] = array(
+    'title' => 'Clone layout',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('layout_clone_form', 4),
+    'type' => MENU_CALLBACK,
   ) + $base;
 
   $items['admin/structure/layouts/manage/%layout_cache/enable'] = array(
@@ -87,12 +108,42 @@ function layout_menu() {
     'type' => MENU_CALLBACK,
   ) + $base;
 
+  $items['admin/structure/layouts/manage/%layout_cache/delete'] = array(
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('layout_delete_form', 4),
+    'type' => MENU_CALLBACK,
+  ) + $base;
+
   $items['admin/structure/layouts/add'] = array(
-      'title' => 'Add new layout',
-      'page callback' => 'layout_add_page',
-      'page arguments' => array(),
-      'type' => MENU_LOCAL_ACTION,
-    ) + $base;
+    'title' => 'Add new layout',
+    'page callback' => 'layout_add_page',
+    'page arguments' => array(),
+    'type' => MENU_LOCAL_ACTION,
+  ) + $base;
+
+  $items['admin/structure/layouts/menu/%layout_cache'] = array(
+    'title' => 'Menu settings',
+    'load arguments' => array('menu_item'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('layout_menu_item_settings_form', 4),
+    'type' => MENU_CALLBACK,
+  ) + $base;
+
+  $items['admin/structure/layouts/menu/%layout_cache/arguments'] = array(
+    'title' => 'Arguments',
+    'load arguments' => array('menu_item'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('layout_menu_item_arguments_form', 4),
+    'type' => MENU_CALLBACK,
+  ) + $base;
+
+  $items['admin/structure/layouts/menu/%layout_cache/access'] = array(
+    'title' => 'Access control',
+    'load arguments' => array('menu_item'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('layout_menu_item_access_form', 4),
+    'type' => MENU_CALLBACK,
+  ) + $base;
 
   // AJAX callbacks for argument modal.
   $items['admin/structure/pages/argument'] = array(
@@ -101,30 +152,27 @@ function layout_menu() {
     ) + $base;
 
   // Add menu entries for each custom layout path.
-  foreach (layout_get_all_layouts() as $layout_name => $layout) {
-    if (!empty($layout->disabled)) {
+  foreach (layout_get_all_layout_menu_items() as $menu_item) {
+    if (!empty($menu_item->disabled)) {
       continue;
     }
 
-    // TODO: revise page manager code below.
-    continue;
-
-    if (!isset($layout->access['type'])) {
-      $layout->access['type'] = 'none';
+    if (!isset($menu_item->access['type'])) {
+      $menu_item->access['type'] = 'none';
     }
-    if (!isset($layout->access['settings'])) {
-      $layout->access['settings'] = NULL;
+    if (!isset($menu_item->access['settings'])) {
+      $menu_item->access['settings'] = NULL;
     }
 
     $path             = array();
-    $page_arguments   = array($layout_name);
-    $access_arguments = array($layout->access);
-    $load_arguments   = array($layout_name, '%index', '%map');
+    $page_arguments   = array($menu_item->name);
+    $access_arguments = array($menu_item->access);
+    $load_arguments   = array($menu_item->name, '%index', '%map');
 
     // Replace named placeholders with our own placeholder to load contexts.
     $position = 0;
 
-    foreach (explode('/', $layout->path) as $bit) {
+    foreach (explode('/', $menu_item->path) as $bit) {
       // Remove things like double slashes completely.
       if (!isset($bit) || $bit === '') {
         continue;
@@ -138,13 +186,13 @@ function layout_menu() {
 
         // Check to see if the argument plugin wants to use a different
         // placeholder. This will allow to_args.
-        if (!empty($layout->arguments[$name])) {
-          if (!empty($layout->arguments[$name]['name'])) {
+        if (!empty($menu_item->arguments[$name])) {
+          if (!empty($menu_item->arguments[$name]['name'])) {
             // @port: previously ctools_get_argument.
-            $plugin = layout_get_argument($layout->arguments[$name]['name']);
+            $plugin = layout_get_argument($menu_item->arguments[$name]['name']);
             if (isset($plugin['path placeholder'])) {
               if (function_exists($plugin['path placeholder'])) {
-                $placeholder = $plugin['path placeholder']($layout->arguments[$name]);
+                $placeholder = $plugin['path placeholder']($menu_item->arguments[$name]);
               }
               else {
                 $placeholder = $plugin['path placeholder'];
@@ -169,17 +217,92 @@ function layout_menu() {
 
     $menu_path = implode('/', $path);
 
-    $items[$menu_path] = layout_custom_page_menu_item($layout->menu, $access_arguments, $page_arguments, $load_arguments);
+    $items[$menu_path] = layout_page_menu_item($menu_item->menu, $access_arguments, $page_arguments, $load_arguments);
 
     // Add a parent menu item if one is configured.
-    if (isset($layout->menu['type']) && $layout->menu['type'] == 'default tab') {
+    if (isset($menu_item->menu['type']) && $menu_item->menu['type'] == 'default tab') {
       array_pop($path);
       $parent_path = implode('/', $path);
-      $items[$parent_path] = layout_custom_page_menu_item($layout->menu['parent'], $access_arguments, $page_arguments, $load_arguments);
+      $items[$parent_path] = layout_page_menu_item($menu_item->menu['parent'], $access_arguments, $page_arguments, $load_arguments);
     }
   }
 
   return $items;
+}
+
+/**
+ * Create a menu item for page manager pages.
+ *
+ * @param $menu
+ *   The configuration to use. It will contain a type, and depending on the
+ *   type may also contain weight, title and name. These are presumed to have
+ *   been configured from the UI.
+ * @param $access_arguments
+ *   Arguments that go with ctools_access_menu; it should be loaded with
+ *   the access plugin type, settings, and positions of any arguments that
+ *   may produce contexts.
+ * @param $page_arguments
+ *   This should be seeded with the subtask name for easy loading and like
+ *   the access arguments above should contain positions of arguments so
+ *   that the menu system passes contexts through.
+ * @param $load_arguments
+ *   Arguments to send to the arg loader; should be the subtask id and '%index'.
+ */
+function layout_page_menu_item($menu, $access_arguments, $page_arguments, $load_arguments) {
+  $item = array(
+    'access callback' => 'layout_page_access',
+    'access arguments' => $access_arguments,
+    'page callback' => 'layout_page_callback',
+    'page arguments' => $page_arguments,
+    'load arguments' => $load_arguments,
+    'file' => 'includes/layout.pages.inc',
+  );
+
+  if (isset($menu['title'])) {
+    $item['title'] = $menu['title'];
+  }
+  if (isset($menu['weight'])) {
+    $item['weight'] = $menu['weight'];
+  }
+
+  if (empty($menu['type'])) {
+    $menu['type'] = 'none';
+  }
+
+  switch ($menu['type']) {
+    case 'normal':
+      $item['type'] = MENU_NORMAL_ITEM;
+      // Insert item into the proper menu
+      $item['menu_name'] = $menu['name'];
+      break;
+
+    case 'tab':
+      $item['type'] = MENU_LOCAL_TASK;
+      break;
+
+    case 'action':
+      $item['type'] = MENU_LOCAL_ACTION;
+      break;
+
+    case 'default tab':
+      $item['type'] = MENU_DEFAULT_LOCAL_TASK;
+      break;
+    case 'none':
+    default:
+      $item['type'] = MENU_CALLBACK;
+      break;
+  }
+
+  return $item;
+}
+
+/**
+ * Menu access callback; Check access for any Layout-provided page.
+ */
+function layout_page_access() {
+  module_load_include('inc', 'layout', 'includes/layout.pages');
+  $args = func_get_args();
+  return call_user_func_array('_layout_page_access', $args);
 }
 
 /**
@@ -206,7 +329,7 @@ function layout_theme() {
   );
 
   $items = array(
-    'layout_path_rearrange_layouts' => array(
+    'layout_reorder_form' => array(
       'render element' => 'form',
     ) + $base,
     'layout_edit_form' => array(
@@ -234,34 +357,149 @@ function layout_layout_api() {
 }
 
 /**
- * Return an array of all layouts as fully loaded $layout objects.
+ * Return an array of all layouts as fully loaded Layout objects.
  */
 function layout_get_all_layouts() {
-  $layouts = &drupal_static(__FUNCTION__, array());
-  $configs = config_get_names_with_prefix('layout.layout.');
-  foreach ($configs as $config_file) {
-    $config = config($config_file);
-    $name = str_replace('layout.layout.', '', $config_file);
-    $layouts[$name] = new Layout($config->get());
+  $layouts = &drupal_static(__FUNCTION__);
+  if (!isset($layouts)) {
+    $layouts = array();
+    $menu_items = layout_get_all_layout_menu_items();
+
+    // Cache the raw config files once read.
+    if ($cache = cache()->get('layout:layouts:config')) {
+      $configs = $cache->data;
+    }
+    else {
+      $configs = array();
+      $config_names = config_get_names_with_prefix('layout.layout.');
+      foreach ($config_names as $config_file) {
+        $config = config($config_file);
+        $data = $config->get();
+        $data += array(
+          'weight' => 0,
+        );
+        $configs[$data['name']] = $data;
+      }
+      // Sort the configs by name and weight.
+      uasort($configs, function($a, $b) {
+        if ($a['path'] == $b['path']) {
+          if ($a['weight'] == $b['weight']) {
+            return 0;
+          }
+          return ($a['weight'] < $b['weight']) ? -1 : 1;
+        }
+        else {
+          return strcmp($a['path'], $b['path']);
+        }
+      });
+      cache()->set('layout:layouts:config', $configs);
+    }
+
+    foreach ($configs as $layout_name => $layout_data) {
+      // Create the layout from the configuration.
+      $layouts[$layout_name] = new Layout($layout_data);
+
+      // Associate the applicable menu item.
+      if (isset($menu_items[$layout_data['path']])) {
+        $layouts[$layout_name]->menu_item = $menu_items[$layout_data['path']];
+      }
+      else {
+        $layouts[$layout_name]->menu_item = NULL;
+      }
+    }
   }
+
   return $layouts;
 }
 
 /**
+ * Return an array of all menu items as fully loaded LayoutMenuItem objects.
+ */
+function layout_get_all_layout_menu_items() {
+  $menu_items = &drupal_static(__FUNCTION__);
+  if (!isset($menu_items)) {
+
+    // Cache the raw config files once read.
+    if ($cache = cache()->get('layout:menu_items:config')) {
+      $configs = $cache->data;
+    }
+    else {
+      $configs = array();
+      $config_names = config_get_names_with_prefix('layout.menu_item.');
+      foreach ($config_names as $config_file) {
+        $config = config($config_file);
+        $data = $config->get();
+        $configs[$data['name']] = $data;
+      }
+      cache()->set('layout:menu_items:config', $configs);
+    }
+
+    $menu_items = array();
+    foreach ($configs as $data) {
+      $menu_items[$data['path']] = new LayoutMenuItem($data);
+    }
+  }
+  return $menu_items;
+}
+
+/**
+ * Get a list of layouts that share a particular path.
+ */
+function layout_get_path_layout_names($path) {
+  $path_map = array();
+  $layouts = layout_get_all_layouts();
+  foreach ($layouts as $name => $layout) {
+    $path_map[$layout->path][] = $name;
+  }
+
+  return isset($path_map[$path]) ? $path_map[$path] : array();
+}
+/**
  * Load an individual layout.
  */
 function layout_load($layout_name) {
-  $layouts = &drupal_static(__FUNCTION__, array());
-  if (!isset($layouts[$layout_name])) {
-    $config = config('layout.layout.' . $layout_name);
-    if (!$config->isNew()) {
-      $layouts[$layout_name] = new Layout($config->get());
+  $layouts = layout_get_all_layouts();
+  return isset($layouts[$layout_name]) ? $layouts[$layout_name] : FALSE;
+}
+
+/**
+ * Load an individual Layout menu item.
+ */
+function layout_menu_item_load($menu_item_name) {
+  $menu_items = layout_get_all_layout_menu_items();
+  $path = config_get('layout.menu_item.' . $menu_item_name, 'path');
+  return $path && isset($menu_items[$path]) ? $menu_items[$path] : FALSE;
+}
+
+/**
+ * Check if a path is provided by Layout module, as in a custom layout path.
+ */
+function layout_provides_path($path) {
+  $result = db_query('SELECT * FROM {menu_router} WHERE path = :path', array(':path' => $path));
+  $return = FALSE;
+
+  // If any page callback exists at this path, allow it to trump custom layouts.
+  foreach ($result as $router) {
+    if ($router->page_callback == 'layout_page_callback') {
+      $return = TRUE;
     }
     else {
-      $layouts[$layout_name] = FALSE;
+      $return = FALSE;
+      break;
     }
   }
-  return $layouts[$layout_name];
+  return $return;
+}
+
+/**
+ * Reset all caches provided by Layout module.
+ */
+function layout_reset_caches() {
+  cache()->delete('layout:layouts:config');
+  cache()->delete('layout:menu_items:config');
+
+  drupal_static_reset('layout_get_all_layouts');
+  drupal_static_reset('layout_get_all_layout_menu_items');
 }
 
 /**
@@ -349,97 +587,57 @@ function layout_create_handler($handler, array $config = array()) {
  * cache. When loading from the page cache, it will either load the cached
  * version, or if there is not one, load the real thing and create a cache
  * object which can then be easily stored.
+ *
+ * @param string $name
+ *   The machine name of the Layout item to load.
+ * @param string $type
+ *   The type of item to load. Must be either "layout" or "menu_item".
  */
-function layout_get_layout_cache($layout_name) {
+function layout_get_layout_cache($name, $type = 'layout') {
   $caches = &drupal_static(__FUNCTION__, array());
-  if (!isset($caches[$layout_name])) {
+  if (!isset($caches[$type][$name])) {
     // Try loading from tempstore first to get in-progress changes.
-    $layout = tempstore_get('layout.layout', $layout_name);
-    if (!$layout) {
-      $layout = layout_load($layout_name);
+    $item = tempstore_get('layout.' . $type, $name);
+    if (!$item) {
+      if ($type == 'layout') {
+        $item = layout_load($name);
+      }
+      elseif ($type == 'menu_item') {
+        $item = layout_menu_item_load($name);
+      }
     }
-    $caches[$layout_name] = $layout;
+    $caches[$type][$name] = $item;
   }
 
-  return $caches[$layout_name];
+  return $caches[$type][$name];
 }
 
 /**
  * Store changes to a task handler in the object cache.
  */
-function layout_set_layout_cache($layout) {
-  if (!empty($layout->locked)) {
+function layout_set_layout_cache($item, $type = 'layout') {
+  if (!empty($item->locked)) {
     return;
   }
-
-  if (empty($layout->name)) {
+  if (empty($item->name)) {
     return;
   }
-
-  $layout->changed = TRUE;
-  tempstore_set('layout.layout', $layout->name, $layout, 604800);
+  $item->changed = TRUE;
+  tempstore_set('layout.' . $type, $item->name, $item, 604800);
 }
 
 /**
  * Remove an item from the object cache.
  */
-function layout_clear_layout_cache($name) {
-  tempstore_clear('layout.layout', $name);
-}
-
-/**
- * Write all changes from the page cache and clear it out.
- */
-function layout_save_layout_cache($cache) {
-  // Save the subtask:
-  if ($function = ctools_plugin_get_function($cache->task, 'save subtask callback')) {
-    $function($cache->subtask, $cache);
-  }
-
-  // Iterate through handlers and save/delete/update as necessary.
-  // Go through each of the task handlers, check to see if it needs updating,
-  // and update it if so.
-  foreach ($cache->handler_info as $id => $info) {
-    $handler = &$cache->handlers[$id];
-    // If it has been marked for deletion, delete it.
-
-    if ($info['changed'] & PAGE_MANAGER_CHANGED_DELETED) {
-      page_manager_delete_task_handler($handler);
-    }
-    // If it has been somehow edited (or added), write the cached version
-    elseif ($info['changed'] & PAGE_MANAGER_CHANGED_CACHED) {
-      // Make sure we get updated weight from the form for this.
-      $handler->weight = $info['weight'];
-      page_manager_save_task_handler($handler);
-    }
-    // Otherwise, check to see if it has moved and, if so, update the weight.
-    elseif ($info['weight'] != $handler->weight) {
-      // Theoretically we could only do this for in code objects, but since our
-      // load mechanism checks for all, this is less database work.
-      page_manager_update_task_handler_weight($handler, $info['weight']);
-    }
-
-    // Set enable/disabled status.
-    if ($info['changed'] & PAGE_MANAGER_CHANGED_STATUS) {
-      ctools_include('export');
-      ctools_export_set_object_status($cache->handlers[$id], $info['disabled']);
-    }
-  }
-
-  page_manager_clear_page_cache($cache->task_name);
-
-  if (!empty($cache->path_changed) || !empty($cache->new)) {
-    // Force a menu rebuild to make sure the menu entries are set.
-    menu_rebuild();
-  }
-  cache_clear_all();
+function layout_clear_layout_cache($name, $type = 'layout') {
+  tempstore_clear('layout.' . $type, $name);
 }
 
 /**
  * Menu callback to load a page manager cache object for menu callbacks.
  */
-function layout_cache_load($layout_name) {
-  return layout_get_layout_cache($layout_name);
+function layout_cache_load($layout_name, $type = 'layout') {
+  return layout_get_layout_cache($layout_name, $type);
 }
 
 /**

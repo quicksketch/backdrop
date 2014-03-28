@@ -1,4 +1,15 @@
+/* Layout listing form. */
+#layout-list .layout-group td {
+  background: #E1E2DC;
+}
+#layout-list .layout-group td:first-child {
+  font-weight: bold;
+}
+#layout-list .layout-row td:first-child {
+  padding-left: 24px;
+}
 
+/* Individual layout settings form. */
 #layout-settings-form .layout-options {
   width: 100%;
 }

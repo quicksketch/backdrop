@@ -39,41 +39,35 @@ function template_preprocess_layout_edit_page(&$vars) {
 }
 
 /**
- * Turn the rearrange form into a table with tablesorting on.
+ * Turn the rearrange form into a table with table sorting displayed.
  */
-function theme_page_manager_handler_rearrange($vars) {
-  $form = &$vars['form'];
+function theme_layout_reorder_form($variables) {
+  $form = &$variables['form'];
+
   // Assemble the data for a table from everything in $form['handlers']
-  foreach (element_children($form['handlers']) as $id) {
+  foreach (element_children($form['layouts']) as $layout_name) {
     // provide a reference shortcut.
-    $element = &$form['handlers'][$id];
+    $element = &$form['layouts'][$layout_name];
     if (isset($element['title'])) {
       $row = array();
-
       $row[] = array(
         'data' => render($element['title']),
-        'class' => array('page-manager-handler'),
+        'class' => array('layout'),
       );
-
       $element['weight']['#attributes']['class'][] = 'weight';
       $row[] = render($element['weight']);
-
-      $rows[] = array('data' => $row, 'class' => array('draggable'), 'id' => 'page-manager-row-' . $id);
+      $rows[] = array('data' => $row, 'class' => array('draggable'));
     }
   }
 
-  if (empty($rows)) {
-    $rows[] = array(array('data' => t('No task handlers are defined for this task.'), 'colspan' => '5'));
-  }
-
   $header = array(
-    array('data' => t('Variant'), 'class' => array('page-manager-handler')),
+    array('data' => t('Layout'), 'class' => array('layout')),
     t('Weight'),
   );
 
-  drupal_add_tabledrag('page-manager-arrange-handlers', 'order', 'sibling', 'weight');
+  drupal_add_tabledrag('layout-reorder', 'order', 'sibling', 'weight');
 
-  $output = theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => array('id' => 'page-manager-arrange-handlers')));
+  $output = theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => array('id' => 'layout-reorder')));
   $output .= drupal_render_children($form);
   return $output;
 }
