@@ -108,7 +108,8 @@ function _layout_get_operations(Layout $layout) {
  */
 function _layout_get_group_operations($path, array $group) {
   $links = array();
-  $last_layout = array_pop($group);
+  $last_layout = end($group);
+  reset($group);
   if (layout_provides_path($path)) {
     $links['menu_settings'] = array(
       'title' => t('Menu settings'),
@@ -125,7 +126,7 @@ function _layout_get_group_operations($path, array $group) {
       'href' => 'admin/structure/layouts/menu/' . $last_layout->menu_item->name . '/access',
     );
   }
-  if (count($group)) {
+  if (count($group) > 1) {
     $links['reorder'] = array(
       'title' => t('Reorder'),
       'href' => 'admin/structure/layouts/reorder',
@@ -695,100 +696,6 @@ function layout_handler_add_submit(&$form, &$form_state) {
 }
 
 /**
- * Finish the add process and make the new handler official.
- */
-function layout_handler_add_finish(&$form_state) {
-  $page = &$form_state['page'];
-  $handler = $page->new_handler;
-  layout_handler_add_to_page($page, $handler);
-
-  // Remove the temporary page.
-  unset($page->new_handler);
-  unset($page->forms);
-
-  // Set the new destination
-  $plugin = layout_get_task_handler($handler->handler);
-  if (!empty($plugin['add finish'])) {
-    $location = $plugin['add finish'];
-  }
-  else {
-    $keys = array_keys($plugin['operations']);
-    $location = reset($keys);
-  }
-
-  $form_state['new trail'] = array('handlers', $handler->name, $location);
-
-  // Pass through.
-  layout_edit_page_finish($form_state);
-}
-
-/**
- * Reorder the order of variants.
- */
-function layout_handler_import($form, &$form_state) {
-  $form['title'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Variant name'),
-    '#description' => t('Enter the name of the new variant.'),
-  );
-
-  if (user_access('use PHP for settings')) {
-    $form['object'] = array(
-      '#type' => 'textarea',
-      '#title' => t('Paste variant code here'),
-      '#rows' => 15,
-    );
-  }
-  // Users ordinarily can't get here without the PHP block visibility perm.
-  // In case they somehow do, though, disable the form widget for extra safety.
-  else {
-    $form['shoveoff'] = array(
-      '#markup' => '<div>' . t('You do not have sufficient permissions to perform this action.') . '</div>',
-    );
-  }
-
-  return $form;
-}
-
-/**
- * Make sure that an import actually provides a handler.
- */
-function layout_handler_import_validate($form, &$form_state) {
-  if (!user_access('use PHP for settings')) {
-    form_error($form['shoveoff'], t('You account permissions do not permit you to import.'));
-    return;
-  }
-  ob_start();
-  eval($form_state['values']['object']);
-  ob_end_clean();
-
-  if (empty($handler)) {
-    $errors = ob_get_contents();
-    if (empty($errors)) {
-      $errors = t('No variant found.');
-    }
-
-    form_error($form['object'], t('Unable to get a variant from the import. Errors reported: @errors', array('@errors' => $errors)));
-  }
-
-  $form_state['handler'] = $handler;
-}
-
-/**
- * Clone an existing task handler into a new handler.
- */
-function layout_handler_import_submit(&$form, &$form_state) {
-  $handler = $form_state['handler'];
-
-  layout_handler_add_to_page($form_state['page'], $handler, $form_state['values']['title']);
-
-  $plugin = layout_get_task_handler($handler->handler);
-  // It has no forms at all. Add the variant and go to its first operation.
-  $keys = array_keys($plugin['operations']);
-  $form_state['new trail'] = array('handlers', $handler->name, reset($keys));
-}
-
-/**
  * Reorder the order of layouts at the same path.
  */
 function layout_reorder_form($form, &$form_state) {
@@ -810,6 +717,14 @@ function layout_reorder_form($form, &$form_state) {
     drupal_set_message(t('No layouts specified to reorder.'));
     return $form;
   }
+
+  $form['help'] = array(
+    '#markup' => '<p>' . t('Layouts at the same path are selected based on the first layout that matches its conditions. Reorder the layouts on this page to affect the layout that will be used first.') . '</p>',
+  );
+
+  $form['layouts'] = array(
+    '#theme' => 'layout_reorder_layouts',
+  );
 
   $layout_count = count($layouts);
   foreach ($layouts as $layout) {

@@ -41,21 +41,19 @@ function template_preprocess_layout_edit_page(&$vars) {
 /**
  * Turn the rearrange form into a table with table sorting displayed.
  */
-function theme_layout_reorder_form($variables) {
-  $form = &$variables['form'];
+function theme_layout_reorder_layouts($variables) {
+  $element = $variables['element'];
 
   // Assemble the data for a table from everything in $form['handlers']
-  foreach (element_children($form['layouts']) as $layout_name) {
-    // provide a reference shortcut.
-    $element = &$form['layouts'][$layout_name];
-    if (isset($element['title'])) {
+  foreach (element_children($element) as $layout_name) {
+    if (isset($element[$layout_name]['title'])) {
       $row = array();
       $row[] = array(
-        'data' => render($element['title']),
+        'data' => render($element[$layout_name]['title']),
         'class' => array('layout'),
       );
-      $element['weight']['#attributes']['class'][] = 'weight';
-      $row[] = render($element['weight']);
+      $element[$layout_name]['weight']['#attributes']['class'][] = 'weight';
+      $row[] = render($element[$layout_name]['weight']);
       $rows[] = array('data' => $row, 'class' => array('draggable'));
     }
   }
@@ -68,7 +66,7 @@ function theme_layout_reorder_form($variables) {
   drupal_add_tabledrag('layout-reorder', 'order', 'sibling', 'weight');
 
   $output = theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => array('id' => 'layout-reorder')));
-  $output .= drupal_render_children($form);
+  $output .= drupal_render_children($element);
   return $output;
 }
 

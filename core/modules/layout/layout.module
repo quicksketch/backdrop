@@ -329,8 +329,8 @@ function layout_theme() {
   );
 
   $items = array(
-    'layout_reorder_form' => array(
-      'render element' => 'form',
+    'layout_reorder_layouts' => array(
+      'render element' => 'element',
     ) + $base,
     'layout_edit_form' => array(
       'template' => 'templates/layout-edit-page',
