@@ -27,6 +27,21 @@ const LAYOUT_STORAGE_OVERRIDE = 2;
 const LAYOUT_STORAGE_DEFAULT = 4;
 
 /**
+ * Layout constant indicating the title of the layout is manually specified.
+ */
+const LAYOUT_TITLE_FIXED = 0;
+
+/**
+ * Layout constant indicating the title of the layout is not shown.
+ */
+const LAYOUT_TITLE_NONE = 1;
+
+/**
+ * Layout constant indicating the title of the layout comes from a block.
+ */
+const LAYOUT_TITLE_BLOCK = 2;
+
+/**
  * Implements hook_permission().
  */
 function page_manager_permission() {

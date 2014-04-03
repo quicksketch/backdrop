@@ -503,6 +503,163 @@ function layout_settings_form_save_submit($form, &$form_state) {
 }
 
 /**
+ * Form definition for the panels display editor
+ *
+ * No validation function is necessary, as all 'validation' is handled
+ * either in the lead-up to form rendering (through the selection of
+ * specified content types) or by the validation functions specific to
+ * the ajax modals & content types.
+ *
+ * @ingroup forms
+ * @see panels_edit_display_submit()
+ */
+function layout_edit_form($form, &$form_state, Layout $layout, $renderer = NULL) {
+  if (!isset($form_state['layout'])) {
+    $form_state['layout'] = $layout;
+  }
+  if (!isset($renderer)) {
+    $renderer = layout_get_plugin('renderer', 'edit', $layout);
+  }
+  if (!isset($form_state['renderer'])) {
+    $form_state['renderer'] = $renderer;
+  }
+
+  $layout = $form_state['layout'];
+  $renderer = $form_state['renderer'];
+
+  // Although layout is already set in $form_state, we need this to make it
+  // available to the theme layer.
+  $form['#layout'] = $layout;
+
+  $form['display_title'] = array (
+    '#tree' => TRUE,
+  );
+
+  $form['display_title']['hide_title'] = array(
+    '#type' => 'select',
+    '#title' => t('Title type'),
+    '#default_value' => (int) $layout->hide_title,
+    '#options' => array(
+      LAYOUT_TITLE_NONE => t('No title'),
+      LAYOUT_TITLE_FIXED => t('Manually set'),
+      LAYOUT_TITLE_BLOCK => t('From block'),
+    ),
+  );
+
+  $form['display_title']['title'] = array(
+    '#type' => 'textfield',
+    '#default_value' => $layout->title,
+    '#title' => t('Title'),
+    '#description' => t('The title of this panel. If left blank, a default title may be used. Set to No Title if you want the title to actually be blank.'),
+    // @todo: Convert #dependency to #states.
+    '#dependency' => array('edit-display-title-hide-title' => array(LAYOUT_TITLE_FIXED)),
+    '#states' => array(
+
+    ),
+    '#maxlength' => 255,
+  );
+
+  $form['content'] = array('#tree' => TRUE);
+  $form['content']['block'] = array('#tree' => TRUE);
+
+  $form['display'] = array(
+    '#markup' => $renderer->render(),
+  );
+
+  foreach ($renderer->plugins['layout']['regions'] as $region_id => $title) {
+    // Make sure we at least have an empty array for all possible locations.
+    if (!isset($layout->panels[$region_id])) {
+      $layout->panels[$region_id] = array();
+    }
+
+    $form['content']['block'][$region_id] = array(
+      // Use 'hidden' instead of 'value' so the js can access it.
+      '#type' => 'hidden',
+      '#default_value' => implode(',', (array) $layout->content[$region_id]),
+    );
+  }
+
+  $form['actions'] = array(
+    '#type' => 'actions',
+  );
+  $form['actions']['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Save'),
+    '#id' => 'layout-edit-save',
+    '#submit' => array('layout_edit_form_submit'),
+  );
+  $form['actions']['cancel'] = array(
+    '#type' => 'submit',
+    '#value' => t('Cancel'),
+    '#submit' => array('layout_edit_form_cancel'),
+  );
+
+  return $form;
+}
+
+/**
+ * Validate the layout settings form.
+ */
+function layout_edit_form_validate($form, &$form_state) {
+  if ($function = panels_plugin_get_function('layout', $form_state['layout'], 'settings validate')) {
+    $function($form_state['values']['layout_settings'], $form['layout_settings'], $form_state['display'], $form_state['layout'], $form_state['display']->layout_settings);
+  }
+}
+
+/**
+ * Handle form submission of the display content editor.
+ *
+ * This reads the location of the various panes from the form, which will
+ * have been modified from the ajax, rearranges them and then saves
+ * the display.
+ */
+function layout_edit_form_submit($form, &$form_state) {
+  $display = &$form_state['display'];
+
+  $old_content = $display->content;
+  $display->content = array();
+
+  if (!empty($form_state['values']['panel']['pane'])) {
+    foreach ($form_state['values']['panel']['pane'] as $region_id => $panes) {
+      $display->panels[$region_id] = array();
+      if ($panes) {
+        $pids = explode(',', $panes);
+        // need to filter the array, b/c passing it in a hidden field can generate trash
+        foreach (array_filter($pids) as $pid) {
+          if ($old_content[$pid]) {
+            $display->panels[$region_id][] = $pid;
+            $old_content[$pid]->panel = $region_id;
+            $display->content[$pid] = $old_content[$pid];
+
+            // If the panel has region locking, make sure that the region
+            // the panel is in is applicable. This can happen if the panel
+            // was moved and then the lock changed and the server didn't
+            // know.
+            if (!empty($old_content[$pid]->locks) && $old_content[$pid]->locks['type'] == 'regions') {
+              $old_content[$pid]->locks['regions'][$region_id] = $region_id;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if ($function = panels_plugin_get_function('layout', $form_state['layout'], 'settings submit')) {
+    $function($form_state['values']['layout_settings'], $display, $form_state['layout'], $display->layout_settings);
+  }
+
+  // Since not all layouts have layout settings, check here in case of notices.
+  if (isset($form_state['values']['layout_settings'])) {
+    $display->layout_settings = $form_state['values']['layout_settings'];
+  }
+
+  if (isset($form_state['values']['display_title']['title'])) {
+    $display->title = $form_state['values']['display_title']['title'];
+    $display->hide_title = $form_state['values']['display_title']['hide_title'];
+  }
+}
+
+/**
  * Entry point to edit a single operation for a page.
  *
  * @param $js

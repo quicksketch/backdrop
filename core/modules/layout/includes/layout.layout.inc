@@ -82,3 +82,28 @@ function layout_layout_context_info() {
   );
   return $info;
 }
+
+/**
+ * Implements hook_layout_access_info().
+ */
+function layout_layout_access_info() {
+  $info = array();
+  return $info;
+}
+
+/**
+ * Implements hook_layout_renderer_info().
+ */
+function layout_layout_renderer_info() {
+  $info = array();
+  $info['editor'] = array(
+    'renderer class' => 'LayoutRendererEditor',
+  );
+  $info['simple'] = array(
+    'renderer class' => 'LayoutRendererSimple',
+  );
+  $info['standard'] = array(
+    'renderer class' => 'LayoutRendererStandard',
+  );
+  return $info;
+}
