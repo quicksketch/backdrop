@@ -21,3 +21,8 @@
   width: 90px;
   margin-bottom: 1em;
 }
+
+/* Menu item argument settings. */
+#layout-arguments strong {
+  text-decoration: underline;
+}

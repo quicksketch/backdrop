@@ -357,6 +357,9 @@ function layout_theme() {
     'layout_option' => array(
       'variables' => array('layout_info' => NULL),
     ) + $base,
+    'layout_menu_item_arguments_table' => array(
+      'render element' => 'element',
+    ) + $base,
   );
 
   return $items;
@@ -593,6 +596,20 @@ function layout_create_handler($handler, array $config = array()) {
     }
   }
   return new $handler($config);
+}
+
+/**
+ * Helper function to create a Layout Context.
+ */
+function layout_create_context($context_name, $config = array()) {
+  $context_info = layout_get_context_info();
+  if (isset($context_info[$context_name])) {
+    $handler = $context_info[$context_name]['context class'];
+  }
+  else {
+    $handler = 'LayoutContextBroken';
+  }
+  return layout_create_handler($handler, $config);
 }
 
 /**

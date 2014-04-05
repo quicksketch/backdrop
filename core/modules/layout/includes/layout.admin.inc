@@ -223,7 +223,7 @@ function layout_settings_form($form, &$form_state, Layout $layout) {
       $form['context']['active'][$context_key]['label'] = array(
         '#type' => 'item',
         '#title' => t('Position @count', array('@count' => $layout_context->position + 1)),
-        '#markup' => $layout_context->humanLabel(),
+        '#markup' => $layout_context->label(),
       );
     }
     elseif ($layout_context->required) {
@@ -240,7 +240,7 @@ function layout_settings_form($form, &$form_state, Layout $layout) {
       $form['context']['active'][$context_key]['label'] = array(
         '#type' => 'item',
         '#title' => t('Additional context @count', array('@count' => $extra_context_count)),
-        '#markup' => $layout_context->humanLabel(),
+        '#markup' => $layout_context->label(),
       );
       $form['context']['active'][$context_key]['configure'] = array(
         '#type' => 'submit',
@@ -288,7 +288,7 @@ function layout_settings_form($form, &$form_state, Layout $layout) {
   );
   foreach ($layout->access as $access_key => $layout_access) {
     $form['access']['active'][$access_key]['label'] = array(
-      '#markup' => $layout_access->humanLabel(),
+      '#markup' => $layout_access->label(),
     );
     $form['access']['active'][$access_key]['remove'] = array(
       '#type' => 'submit',
@@ -1177,133 +1177,6 @@ function layout_custom_page_menu_item($menu, $access_arguments, $page_arguments,
 /**
  * Form to handle menu item controls.
  */
-function layout_page_form_menu($form, &$form_state) {
-  ctools_include('dependent');
-  $form['menu'] = array(
-    '#prefix' => '<div class="clearfix">',
-    '#suffix' => '</div>',
-    '#tree' => TRUE,
-  );
-
-  $menu = $form_state['page']->subtask['subtask']->menu;
-  if (empty($menu)) {
-    $menu = array(
-      'type' => 'none',
-      'title' => '',
-      'weight' => 0,
-      'name' => 'navigation',
-      'parent' => array(
-        'type' => 'none',
-        'title' => '',
-        'weight' => 0,
-        'name' => 'navigation',
-      ),
-    );
-  }
-
-  $form['menu']['type'] = array(
-    '#title' => t('Type'),
-    '#type' => 'radios',
-    '#options' => array(
-      'none' => t('No menu entry'),
-      'normal' => t('Normal menu entry'),
-      'tab' => t('Menu tab'),
-      'default tab' => t('Default menu tab'),
-      'action' => t('Local action'),
-    ),
-    '#default_value' => $menu['type'],
-  );
-
-  $form['menu']['title'] = array(
-    '#title' => t('Title'),
-    '#type' => 'textfield',
-    '#default_value' => $menu['title'],
-    '#description' => t('If set to normal or tab, enter the text to use for the menu item.'),
-    '#dependency' => array('radio:menu[type]' => array('normal', 'tab', 'default tab', 'action')),
-  );
-
-  list($major, $minor) = explode('.', VERSION, 2);
-
-  // Only display the menu selector if menu module is enabled.
-  if (module_exists('menu')) {
-    $form['menu']['name'] = array(
-      '#title' => t('Menu'),
-      '#type' => 'select',
-      '#options' => menu_get_menus(),
-      '#default_value' => $menu['name'],
-      '#description' => t('Insert item into an available menu.'),
-      '#dependency' => array('radio:menu[type]' => array('normal')),
-    );
-  }
-  else {
-    $form['menu']['name'] = array(
-      '#type' => 'value',
-      '#value' => $menu['name'],
-    );
-    $form['menu']['markup'] = array(
-      '#value' => t('Menu selection requires the activation of menu module.'),
-    );
-  }
-  $form['menu']['weight'] = array(
-    '#title' => t('Weight'),
-    '#type' => 'textfield',
-    '#default_value' => isset($menu['weight']) ? $menu['weight'] : 0,
-    '#description' => t('The lower the weight the higher/further left it will appear.'),
-    '#dependency' => array('radio:menu[type]' => array('normal', 'tab', 'default tab', 'action')),
-  );
-
-  $form['menu']['parent']['type'] = array(
-    '#prefix' => '<div id="edit-menu-parent-type-wrapper">',
-    '#suffix' => '</div>',
-    '#title' => t('Parent menu item'),
-    '#type' => 'radios',
-    '#options' => array('none' => t('No menu entry'), 'normal' => t('Normal menu item'), 'tab' => t('Menu tab')),
-    '#default_value' => $menu['parent']['type'],
-    '#description' => t('When providing a menu item as a default tab, Drupal needs to know what the parent menu item of that tab will be. Sometimes the parent will already exist, but other times you will need to have one created. The path of a parent item will always be the same path with the last part left off. i.e, if the path to this view is <em>foo/bar/baz</em>, the parent path would be <em>foo/bar</em>.'),
-    '#dependency' => array('radio:menu[type]' => array('default tab')),
-  );
-  $form['menu']['parent']['title'] = array(
-    '#title' => t('Parent item title'),
-    '#type' => 'textfield',
-    '#default_value' => $menu['parent']['title'],
-    '#description' => t('If creating a parent menu item, enter the title of the item.'),
-    '#dependency' => array('radio:menu[type]' => array('default tab'), 'radio:menu[parent][type]' => array('normal', 'tab')),
-    '#dependency_count' => 2,
-  );
-  // Only display the menu selector if menu module is enabled.
-  if (module_exists('menu')) {
-    $form['menu']['parent']['name'] = array(
-      '#title' => t('Parent item menu'),
-      '#type' => 'select',
-      '#options' => menu_get_menus(),
-      '#default_value' => $menu['parent']['name'],
-      '#description' => t('Insert item into an available menu.'),
-      '#dependency' => array('radio:menu[type]' => array('default tab'), 'radio:menu[parent][type]' => array('normal')),
-      '#dependency_count' => 2,
-    );
-  }
-  else {
-    $form['menu']['parent']['name'] = array(
-      '#type' => 'value',
-      '#value' => $menu['parent']['name'],
-    );
-  }
-  $form['menu']['parent']['weight'] = array(
-    '#title' => t('Tab weight'),
-    '#type' => 'textfield',
-    '#default_value' => $menu['parent']['weight'],
-    '#size' => 5,
-    '#description' => t('If the parent menu item is a tab, enter the weight of the tab. The lower the number, the more to the left it will be.'),
-    '#dependency' => array('radio:menu[type]' => array('default tab'), 'radio:menu[parent][type]' => array('tab')),
-    '#dependency_count' => 2,
-  );
-
-  return $form;
-}
-
-/**
- * Form to handle menu item controls.
- */
 function layout_page_form_access($form, &$form_state) {
   ctools_include('context');
   $form_state['module'] = 'layout_page';
@@ -1472,13 +1345,209 @@ function layout_delete_form_submit(&$form, &$form_state) {
  * Form callback; Configure a layout menu item.
  */
 function layout_menu_item_settings_form($form, &$form_state, $menu_item) {
+  $form_state['menu_item'] = $menu_item;
+
+  $menu = $menu_item->menu;
+
+  $form['menu'] = array(
+    '#tree' => TRUE,
+  );
+
+  $form['menu']['type'] = array(
+    '#title' => t('Type'),
+    '#type' => 'radios',
+    '#options' => array(
+      'none' => t('No menu entry'),
+      'normal' => t('Normal menu entry'),
+      'tab' => t('Menu tab'),
+      'default tab' => t('Default menu tab'),
+      'action' => t('Local action'),
+    ),
+    '#default_value' => $menu['type'],
+  );
+
+  $form['menu']['title'] = array(
+    '#title' => t('Title'),
+    '#type' => 'textfield',
+    '#default_value' => $menu['title'],
+    '#description' => t('If set to normal or tab, enter the text to use for the menu item.'),
+    '#states' => array(
+      'invisible' => array(
+        ':input[name="menu[type]"]' => array('value' => 'none'),
+      ),
+    ),
+  );
+
+  // Only display the menu selector if menu module is enabled.
+  if (module_exists('menu')) {
+    $form['menu']['name'] = array(
+      '#title' => t('Menu'),
+      '#type' => 'select',
+      '#options' => menu_get_menus(),
+      '#default_value' => $menu['name'],
+      '#description' => t('Insert item into an available menu.'),
+      '#states' => array(
+        'visible' => array(
+          ':input[name="menu[type]"]' => array('value' => 'normal'),
+        ),
+      ),
+    );
+  }
+  else {
+    $form['menu']['name'] = array(
+      '#type' => 'value',
+      '#value' => $menu['name'],
+    );
+    $form['menu']['markup'] = array(
+      '#value' => t('Menu selection requires the activation of menu module.'),
+    );
+  }
+  $form['menu']['weight'] = array(
+    '#title' => t('Weight'),
+    '#type' => 'textfield',
+    '#default_value' => isset($menu['weight']) ? $menu['weight'] : 0,
+    '#description' => t('The lower the weight the higher/further left it will appear.'),
+    '#states' => array(
+      'invisible' => array(
+        ':input[name="menu[type]"]' => array('value' => 'none'),
+      ),
+    ),
+  );
+
+  $form['menu']['parent'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Parent menu item'),
+    '#states' => array(
+      'visible' => array(
+        ':input[name="menu[type]"]' => array('value' => 'default tab'),
+      ),
+    ),
+  );
+  $form['menu']['parent']['type'] = array(
+    '#title' => t('Parent menu item'),
+    '#title_display' => 'none',
+    '#type' => 'radios',
+    '#options' => array('none' => t('No menu entry'), 'normal' => t('Normal menu item'), 'tab' => t('Menu tab')),
+    '#default_value' => $menu['parent']['type'],
+    '#description' => t('When providing a menu item as a default tab, the parent menu item of that tab must be specified. Sometimes the parent will already exist, but other times you will need to have one created. The path of a parent item will always be the same path with the last part left off. i.e, if the path to this view is <em>foo/bar/baz</em>, the parent path would be <em>foo/bar</em>.'),
+  );
+  $form['menu']['parent']['title'] = array(
+    '#title' => t('Parent item title'),
+    '#type' => 'textfield',
+    '#default_value' => $menu['parent']['title'],
+    '#description' => t('If creating a parent menu item, enter the title of the item.'),
+    '#states' => array(
+      'invisible' => array(
+        ':input[name="menu[parent][type]"]' => array('value' => 'none'),
+      ),
+    ),
+  );
+  // Only display the menu selector if menu module is enabled.
+  if (module_exists('menu')) {
+    $form['menu']['parent']['name'] = array(
+      '#title' => t('Parent item menu'),
+      '#type' => 'select',
+      '#options' => menu_get_menus(),
+      '#default_value' => $menu['parent']['name'],
+      '#description' => t('Insert item into an available menu.'),
+      '#states' => array(
+        'visible' => array(
+          ':input[name="menu[parent][type]"]' => array('value' => 'normal'),
+        ),
+      ),
+    );
+  }
+  else {
+    $form['menu']['parent']['name'] = array(
+      '#type' => 'value',
+      '#value' => $menu['parent']['name'],
+    );
+  }
+  $form['menu']['parent']['weight'] = array(
+    '#title' => t('Tab weight'),
+    '#type' => 'textfield',
+    '#default_value' => $menu['parent']['weight'],
+    '#size' => 5,
+    '#description' => t('If the parent menu item is a tab, enter the weight of the tab. The lower the number, the more to the left it will be.'),
+    '#states' => array(
+      'visible' => array(
+        ':input[name="menu[parent][type]"]' => array('value' => 'tab'),
+      ),
+    ),
+  );
+
+  $form['actions'] = array('#type' => 'actions');
+  $form['actions']['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Save menu settings'),
+  );
   return $form;
+}
+/**
+ * Form callback; Configure a layout menu item.
+ */
+function layout_menu_item_settings_form_submit($form, &$form_state) {
+  $menu_item = $form_state['menu_item'];
+  $menu_item->menu = $form_state['values']['menu'];
+  $menu_item->save();
+  drupal_set_message(t('Menu settings saved for @path.', array('@path' => $menu_item->path)));
+  $form_state['redirect'] = 'admin/structure/layouts';
 }
 
 /**
  * Form callback; Configure argument handling for a layout menu item.
  */
 function layout_menu_item_arguments_form($form, &$form_state, $menu_item) {
+  $parts = explode('/', $menu_item->path);
+  $args = array();
+  foreach ($parts as $index => $part) {
+    if ($part === '%') {
+      $args[] = $index;
+    }
+  }
+
+  module_load_include('inc', 'layout', 'includes/layout.context');
+  $required_contexts = layout_context_required_by_path($menu_item->path);
+
+  $form['#attached']['css'][] = drupal_get_path('module', 'layout') . '/css/layout-admin.css';
+
+  $form['help'] = array(
+    '#type' => 'markup',
+    '#markup' => '<p>' . t('Arguments are dynamic values in a URL (such as an ID) and are respresented by a percent symbol (%). When loaded, each argument provides a <em>context</em> that may provide additional blocks or settings. Use the form on this page to map arguments from the URL to a particular context.') . '</p>',
+  );
+  $form['arguments'] = array(
+    '#layout_path' => $menu_item->path,
+    '#theme' => 'layout_menu_item_arguments_table',
+  );
+
+  foreach ($args as $index) {
+    $argument = $menu_item->arguments[$index];
+    if ($required_contexts[$index]) {
+      $context = $required_contexts[$index];
+    }
+    else {
+      $context = layout_create_context($argument['name']);
+    }
+    $form['arguments'][$index]['context'] = array(
+      '#type' => 'markup',
+      '#markup' => $context->label(),
+    );
+    $links = array();
+    $links['settings'] = array(
+      'href' => 'admin/structure/layouts/menu/' . $menu_item->name . '/arguments/' . $index,
+      'title' => t('Settings'),
+    );
+    if (empty($context->locked)) {
+      $links['change'] = array(
+        'href' => 'admin/structure/layouts/menu/' . $menu_item->name . '/arguments/' . $index . '/change',
+        'title' => t('Change'),
+      );
+    }
+    $form['arguments'][$index]['operations'] = array(
+      '#type' => 'dropbutton',
+      '#links' => $links,
+    );
+  }
   return $form;
 }
 

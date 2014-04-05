@@ -83,6 +83,9 @@ class LayoutContextBroken extends LayoutContext {
   function type() {
     return 'broken';
   }
+  function label() {
+    return t('Broken or missing context');
+  }
 }
 
 /**
@@ -91,6 +94,9 @@ class LayoutContextBroken extends LayoutContext {
 class LayoutStringContext extends LayoutContext {
   function type() {
     return 'string';
+  }
+  function label() {
+    return t('String pass-through');
   }
 }
 

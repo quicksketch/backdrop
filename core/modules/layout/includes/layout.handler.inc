@@ -11,7 +11,7 @@ abstract class LayoutHandler {
    *
    * @var string
    *
-   * @see LayoutHandler::humanLabel()
+   * @see LayoutHandler::label()
    */
   var $title = '';
 
@@ -32,7 +32,7 @@ abstract class LayoutHandler {
   /**
    * Assemble a human-readable label of this object.
    */
-  function humanLabel() {
+  function label() {
     $label = get_class($this);
     if ($this->title) {
       $label .= '(' . check_plain($this->title) . ')';

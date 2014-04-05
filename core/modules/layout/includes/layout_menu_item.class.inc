@@ -50,8 +50,28 @@ class LayoutMenuItem {
     'title' => NULL,
     'weight' => 0,
     'type' => 'none',
-    'parent' => NULL,
+    'name' => 'navigation',
+    'parent' => array(
+      'title' => NULL,
+      'weight' => 0,
+      'type' => 'none',
+      'name' => 'navigation',
+    ),
   );
+
+  /**
+   * An array of layout arguments.
+   *
+   * Each argument is keyed by its position in the path. For example a path of
+   * node/%/view would have an argument in index 1. Each argument has the
+   * following properties:
+   *
+   * - name: The context name to which this argument maps.
+   * - label: The human-readable label for this argument.
+   *
+   * @var array
+   */
+  var $arguments = array();
 
   /**
    * The module that originally provided this layout (if any).
@@ -78,6 +98,45 @@ class LayoutMenuItem {
   function __construct($data) {
     foreach ($data as $key => $value) {
       $this->$key = $value;
+    }
+
+    // Ensure defaults for menu settings.
+    if (empty($this->menu)) {
+      $this->menu = array();
+    }
+    $this->menu += array(
+      'type' => 'none',
+      'title' => '',
+      'weight' => 0,
+      'name' => 'navigation',
+    );
+    if (!isset($this->menu['parent'])) {
+      $this->menu['parent'] = array();
+    }
+    $this->menu['parent'] += array(
+      'type' => 'none',
+      'title' => '',
+      'weight' => 0,
+      'name' => 'navigation',
+    );
+
+    // Ensure all arguments have basic values and non-dynamic parts of the path
+    // do not have arguments.
+    $arguments = $this->arguments;
+    $this->arguments = array();
+    if (strpos($this->path, '%')) {
+      $parts = explode('/', $this->path);
+      foreach ($parts as $index => $part) {
+        if (!isset($arguments[$index])) {
+          $this->arguments[$index] = array(
+            'name' => 'string',
+            'label' => '',
+          );
+        }
+        else {
+          $this->arguments[$index] = $arguments[$index];
+        }
+      }
     }
   }
 

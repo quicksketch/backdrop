@@ -117,3 +117,28 @@ function theme_layout_option($variables) {
   $output .= '</div>';
   return $output;
 }
+
+/**
+ * Output the arguments table for layout_menu_item_arguments_form().
+ */
+function theme_layout_menu_item_arguments_table($variables) {
+  $element = $variables['element'];
+  $path = $element['#layout_path'];
+  $parts = explode('/', $path);
+  $header = array(
+    t('Argument position'),
+    t('Context'),
+    t('Operations'),
+  );
+  $rows = array();
+  foreach (element_children($element) as $key) {
+    $argument_parts = $parts;
+    $argument_parts[$key] = '<strong>' . $argument_parts[$key] . '</strong>';
+    $row = array();
+    $row[] = t('Position @index:', array('@index' => $key)) . ' ' . implode('/', $argument_parts);
+    $row[] = drupal_render($element[$key]['context']);
+    $row[] = drupal_render($element[$key]['operations']);
+    $rows[] = $row;
+  }
+  return theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => array('id' => 'layout-arguments')));
+}
