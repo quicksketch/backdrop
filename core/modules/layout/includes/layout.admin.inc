@@ -1526,7 +1526,7 @@ function layout_menu_item_arguments_form($form, &$form_state, $menu_item) {
       $context = $required_contexts[$index];
     }
     else {
-      $context = layout_create_context($argument['name']);
+      $context = layout_create_context($argument['plugin']);
     }
     $form['arguments'][$index]['context'] = array(
       '#type' => 'markup',

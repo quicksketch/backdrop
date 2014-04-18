@@ -579,37 +579,42 @@ function layout_get_context_info() {
 }
 
 /**
+ * Helper function to get a handler class name based on the plugin name.
+ */
+function layout_get_handler_name($plugin_type, $plugin_name) {
+  switch ($plugin_type) {
+    case 'access':
+      $info = layout_get_access_info();
+      return isset($info[$plugin_name]['class']) ? $info[$plugin_name]['class'] : 'LayoutAccessBroken';
+    case 'context':
+      $info = layout_get_context_info();
+      return isset($info[$plugin_name]['class']) ? $info[$plugin_name]['class'] : 'LayoutContextBroken';
+    case 'renderer':
+      $info = layout_get_renderer_info();
+      return isset($info[$plugin_name]['class']) ? $info[$plugin_name]['class'] : 'LayoutRendererBroken';
+  }
+}
+
+/**
  * Helper function to instantiate handlers when loading from config.
  *
- * @param string $handler
- *   The class name of the handler to instantiate.
+ * @param string $plugin_type
+ *   The type of plugin being loaded, i.e. 'context', 'access', etc.
+ * @param string $plugin_name
+ *   The name of the plugin, as keyed by that plugin type's info hooks.
  * @param array $config
  *   The configuration options for the handler being created.
  */
-function layout_create_handler($handler, array $config = array()) {
-  if (!class_exists($handler)) {
-    if (class_exists($handler . 'Broken')) {
-      $handler = $handler . 'Broken';
-    }
-    else {
-      $handler = 'LayoutHandlerBroken';
-    }
-  }
-  return new $handler($config);
+function layout_create_handler($plugin_type, $plugin_name, array $config = array()) {
+  $handler_name = layout_get_handler_name($plugin_type, $plugin_name);
+  return new $handler_name($config);
 }
 
 /**
  * Helper function to create a Layout Context.
  */
 function layout_create_context($context_name, $config = array()) {
-  $context_info = layout_get_context_info();
-  if (isset($context_info[$context_name])) {
-    $handler = $context_info[$context_name]['context class'];
-  }
-  else {
-    $handler = 'LayoutContextBroken';
-  }
-  return layout_create_handler($handler, $config);
+  return layout_create_handler('context', $context_name, $config);
 }
 
 /**

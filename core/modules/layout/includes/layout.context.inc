@@ -148,7 +148,7 @@ function layout_context_required_by_path($path) {
   // Convert required context info into objects.
   $required_contexts = array();
   foreach ($required_context_info as $context_position => $context_info) {
-    $context = layout_create_handler($context_info['context class']);
+    $context = layout_create_handler('context', $context_info['name']);
     $context->required = TRUE;
     // String placeholders are not locked, allowing a new value to be set.
     $context->locked = $context_info['name'] !== 'string';

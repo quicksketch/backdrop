@@ -132,9 +132,9 @@ class Layout {
 
     // Convert all stored contexts, access, and relationships to their
     // handler equivalents.
-    foreach (array('context', 'access', 'relationship') as $config_type) {
-      foreach ($this->{$config_type} as $config_type_key => $config_type_data) {
-        $this->{$config_type}[$config_type_key] = layout_create_handler($config_type_data['handler'], $config_type_data['data']);
+    foreach (array('context', 'access', 'relationship') as $plugin_type) {
+      foreach ($this->{$plugin_type} as $plugin_type_key => $plugin_data) {
+        $this->{$plugin_type}[$plugin_type_key] = layout_create_handler($plugin_type, $plugin_data['plugin'], $plugin_data['data']);
       }
     }
   }
@@ -163,7 +163,7 @@ class Layout {
       foreach ($data[$config_type] as $config_type_key => $config_type_data) {
         unset($config_type_data->is_new);
         $data[$config_type][$config_type_key] = array(
-          'handler' => get_class($config_type_data),
+          'plugin' => $config_type_data->type(),
           'data' => $config_type_data->toArray(),
         );
       }

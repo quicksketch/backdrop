@@ -38,7 +38,7 @@ function layout_layout_context_info() {
     'title' => t('Node'),
     'description' => t('A node object.'),
     // Define the class which is used to handle this context.
-    'context class' => 'NodeLayoutContext',
+    'class' => 'NodeLayoutContext',
     // Define menu paths where the node ID is a "known" context.
     'menu paths' => array(
       'node/%node',
@@ -54,7 +54,7 @@ function layout_layout_context_info() {
   $info['node_add'] = array(
     'title' => t('Node add form'),
     'description' => t('Form for adding a new node.'),
-    'context class' => 'NodeAddLayoutContext',
+    'class' => 'NodeAddLayoutContext',
     'menu parts' => array(
       '%type' => 'type',
     ),
@@ -65,7 +65,7 @@ function layout_layout_context_info() {
   $info['node_edit'] = array(
     'title' => t('Node edit form'),
     'description' => t('Form for editing an existing node.'),
-    'context class' => 'NodeEditLayoutContext',
+    'class' => 'NodeEditLayoutContext',
     'menu loaders' => array(
       '%node' => 'nid',
     ),
@@ -76,7 +76,7 @@ function layout_layout_context_info() {
   $info['string'] = array(
     'title' => t('String pass-through'),
     'description' => t('A pass-through context which allows a string to be passed from the URL to a block.'),
-    'context class' => 'LayoutStringContext',
+    'class' => 'LayoutStringContext',
     'menu loaders' => array(),
     'menu paths' => array(),
   );
@@ -97,13 +97,13 @@ function layout_layout_access_info() {
 function layout_layout_renderer_info() {
   $info = array();
   $info['editor'] = array(
-    'renderer class' => 'LayoutRendererEditor',
+    'class' => 'LayoutRendererEditor',
   );
   $info['simple'] = array(
-    'renderer class' => 'LayoutRendererSimple',
+    'class' => 'LayoutRendererSimple',
   );
   $info['standard'] = array(
-    'renderer class' => 'LayoutRendererStandard',
+    'class' => 'LayoutRendererStandard',
   );
   return $info;
 }
