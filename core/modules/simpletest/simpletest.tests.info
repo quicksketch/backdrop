@@ -551,7 +551,7 @@ group = Database
 file = tests/database_test.test
 
 [ConnectionUnitTest]
-name' = Connection unit tests
+name = Connection unit tests
 description = Tests management of database connections.
 group = Database
 file = tests/database_test.test
