@@ -23,8 +23,12 @@ function module_load_all($bootstrap = FALSE) {
     foreach (module_list(TRUE, $bootstrap) as $module) {
       drupal_load('module', $module);
     }
-    // $has_run will be TRUE if $bootstrap is FALSE.
-    $has_run = !$bootstrap;
+    // When fully loading all modules, clear the registry to make sure it
+    // includes classes provided by non-bootstrap modules.
+    if (!$bootstrap) {
+      $has_run = TRUE;
+      drupal_static_reset('drupal_autoload');
+    }
   }
   return $has_run;
 }

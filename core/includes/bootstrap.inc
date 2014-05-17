@@ -2249,12 +2249,11 @@ function drupal_array_merge_deep_array($arrays) {
  *   An anonymous user entity object.
  */
 function drupal_anonymous_user() {
-  $user = new User(array(
-    'uid' => 0,
-    'name' => NULL,
+  // Because this is called early in the bootstrap (starting the session) it
+  // must not use the autoloader, so it's pulled in manually.
+  require_once DRUPAL_ROOT . '/core/includes/anonymous.inc';
+  $user = new AnonymousUser(array(
     'hostname' => ip_address(),
-    'roles' => array(DRUPAL_ANONYMOUS_RID => 'anonymous user'),
-    'cache' => 0,
   ));
   return $user;
 }

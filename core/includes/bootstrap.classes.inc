@@ -6,6 +6,7 @@
 function backdrop_class_list() {
   $path = DRUPAL_ROOT . '/core/includes/';
   return array(
+    'AnonymousUser' => $path . 'anonymous.inc',
     'ArchiverInterface' => $path . 'archiver.inc',
     'BatchQueue' => $path . 'batch.queue.inc',
     'BatchMemoryQueue' => $path . 'batch.queue.inc',

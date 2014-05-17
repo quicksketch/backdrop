@@ -173,8 +173,6 @@ group = Views Handlers
 file = tests/handlers/views_handler_filter_numeric.test
 
 [ViewsHandlerFilterStringTest]
-  var $column_map = array();
-
 name = Filter: String
 description = Tests the core views_handler_filter_string handler.
 group = Views Handlers

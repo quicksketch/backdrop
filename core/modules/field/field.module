@@ -346,6 +346,12 @@ function field_autoload_info() {
     'FieldException' => 'field.exceptions.inc',
     'FieldUpdateForbiddenException' => 'field.exceptions.inc',
     'FieldValidationException' => 'field.exceptions.inc',
+    // Views handlers.
+    'views_handler_field_field' => 'views/views_handler_field_field.inc',
+    'views_handler_relationship_entity_reverse' => 'views/views_handler_relationship_entity_reverse.inc',
+    'views_handler_argument_field_list' => 'views/views_handler_argument_field_list.inc',
+    'views_handler_argument_field_list_string' => 'views/views_handler_argument_field_list_string.inc',
+    'views_handler_filter_field_list' => 'views/views_handler_filter_field_list.inc',
   );
 }
 
