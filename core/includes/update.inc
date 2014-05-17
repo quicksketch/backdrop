@@ -59,8 +59,8 @@ function update_check_incompatibility($name, $type = 'module') {
     $file = $themes[$name];
   }
   if (!isset($file)
-      || !isset($file->info['core'])
-      || $file->info['core'] != DRUPAL_CORE_COMPATIBILITY
+      || !isset($file->info['backdrop'])
+      || $file->info['backdrop'] != BACKDROP_CORE_COMPATIBILITY
       || version_compare(phpversion(), $file->info['php']) < 0) {
     return TRUE;
   }
@@ -83,6 +83,37 @@ function update_prepare_d8_bootstrap() {
   // created yet.
   include_once DRUPAL_ROOT . '/core/includes/install.inc';
   include_once DRUPAL_ROOT . '/core/modules/entity/entity.controller.inc';
+  drupal_bootstrap(DRUPAL_BOOTSTRAP_CONFIGURATION);
+
+  // Check whether settings.php needs to be rewritten.
+  $settings_exist = !empty($GLOBALS['config_directories']);
+
+  if (!$settings_exist || !is_dir(config_get_config_directory('active')) || !is_dir(config_get_config_directory('staging'))) {
+    backdrop_install_config_directories();
+  }
+
+  // If any of the required settings needs to be written, then settings.php
+  // needs to be writable.
+  if (!$settings_exist) {
+    $settings_file = conf_path() . '/settings.php';
+    $writable = drupal_verify_install_file($settings_file, FILE_EXIST | FILE_READABLE | FILE_WRITABLE);
+    $requirements['settings file']['title'] = 'Settings file';
+    if ($writable) {
+      $requirements['settings file'] += array(
+        'value' => 'settings.php is writable.',
+      );
+    }
+    else {
+      $requirements['settings file'] += array(
+        'value' => 'settings.php is not writable.',
+        'severity' => REQUIREMENT_ERROR,
+        'description' => 'Drupal requires write permissions to <em>' . $settings_file . '</em> during the update process. If you are unsure how to grant file permissions, consult the <a href="http://drupal.org/server-permissions">online handbook</a>.',
+      );
+    }
+    update_extra_requirements($requirements);
+  }
+
+  // Bootstrap the database.
   drupal_bootstrap(DRUPAL_BOOTSTRAP_DATABASE);
 
   // If the site has not updated to Drupal 8 yet, check to make sure that it is
@@ -128,6 +159,30 @@ function update_prepare_d8_bootstrap() {
           ),
         );
         db_change_field('url_alias', 'language', 'langcode', $langcode_spec, $langcode_indexes);
+      }
+
+      // Create the state table.
+      if (!db_table_exists('state')) {
+        $schema = array(
+          'description' => 'Stores environment-specific state values.',
+          'fields' => array(
+            'name' => array(
+              'description' => 'The name of the state.',
+              'type' => 'varchar',
+              'length' => 128,
+              'not null' => TRUE,
+              'default' => '',
+            ),
+            'value' => array(
+              'description' => 'The value of the state.',
+              'type' => 'blob',
+              'not null' => TRUE,
+              'size' => 'big',
+            ),
+          ),
+          'primary key' => array('name'),
+        );
+        db_create_table('state', $schema);
       }
     }
   }
@@ -409,9 +464,9 @@ class DrupalUpdateException extends Exception { }
 function update_batch($start, $redirect = NULL, $url = NULL, $batch = array(), $redirect_callback = 'drupal_goto') {
   // During the update, bring the site offline so that schema changes do not
   // affect visiting users.
-  $_SESSION['maintenance_mode'] = variable_get('maintenance_mode', FALSE);
+  $_SESSION['maintenance_mode'] = state_get('maintenance_mode', FALSE);
   if ($_SESSION['maintenance_mode'] == FALSE) {
-    variable_set('maintenance_mode', TRUE);
+    state_set('maintenance_mode', TRUE);
   }
 
   // Resolve any update dependencies to determine the actual updates that will
@@ -482,7 +537,7 @@ function update_finished($success, $results, $operations) {
   // Now that the update is done, we can put the site back online if it was
   // previously in maintenance mode.
   if (isset($_SESSION['maintenance_mode']) && $_SESSION['maintenance_mode'] == FALSE) {
-    variable_set('maintenance_mode', FALSE);
+    state_set('maintenance_mode', FALSE);
     unset($_SESSION['maintenance_mode']);
   }
 }
@@ -848,17 +903,3 @@ function update_retrieve_dependencies() {
 
   return $return;
 }
-
-/**
- * @defgroup update-api-7.x-to-8.x Update versions of API functions
- * @{
- * Functions similar to normal API function but not firing hooks.
- *
- * During update, it is impossible to judge the consequences of firing a hook
- * as it might hit a module not yet updated. So simplified versions of some
- * core APIs are provided.
- */
-
-/**
- * @} End of "defgroup update-api-7.x-to-8.x"
- */

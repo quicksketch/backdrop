@@ -2,7 +2,7 @@
 
 /**
  * @file
- * Content type editing UI.
+ * Content type editing user interface.
  */
 
 /**
@@ -14,7 +14,7 @@ function node_overview_types() {
   $types = node_type_get_types();
   $names = node_type_get_names();
   $field_ui = module_exists('field_ui');
-  $header = array(t('Name'), array('data' => t('Operations'), 'colspan' => $field_ui ? '4' : '2'));
+  $header = array(t('Name'), t('Operations'));
   $rows = array();
 
   foreach ($names as $key => $name) {
@@ -22,24 +22,36 @@ function node_overview_types() {
     if (node_hook($type->type, 'form')) {
       $type_url_str = str_replace('_', '-', $type->type);
       $row = array(theme('node_admin_overview', array('name' => $name, 'type' => $type)));
-      // Set the edit column.
-      $row[] = array('data' => l(t('edit'), 'admin/structure/types/manage/' . $type_url_str));
-
+      $links['edit'] = array(
+        'title' => t('Edit'),
+        'href' => 'admin/structure/types/manage/' . $type_url_str,
+        'weight' => 0,
+      );
       if ($field_ui) {
-        // Manage fields.
-        $row[] = array('data' => l(t('manage fields'), 'admin/structure/types/manage/' . $type_url_str . '/fields'));
-
-        // Display fields.
-        $row[] = array('data' => l(t('manage display'), 'admin/structure/types/manage/' . $type_url_str . '/display'));
+        $links['fields'] = array(
+          'title' => t('Manage fields'),
+          'href' => 'admin/structure/types/manage/' . $type_url_str . '/fields',
+          'weight' => 5,
+        );
+        $links['display'] = array(
+          'title' => t('Manage display'),
+          'href' => 'admin/structure/types/manage/' . $type_url_str . '/display',
+          'weight' => 10,
+        );
       }
-
-      // Set the delete column.
       if ($type->custom) {
-        $row[] = array('data' => l(t('delete'), 'admin/structure/types/manage/' . $type_url_str . '/delete'));
+        $links['Delete'] = array(
+          'title' => t('Delete'),
+          'href' => 'admin/structure/types/manage/' . $type_url_str . '/delete',
+          'weight' => 15,
+        );
       }
-      else {
-        $row[] = array('data' => '');
-      }
+      $row[] = array(
+        'data' => array(
+          '#type' => 'operations',
+          '#links' => $links,
+        ),
+      );
 
       $rows[] = $row;
     }
@@ -80,8 +92,8 @@ function theme_node_admin_overview($variables) {
  * Form constructor for the node type editing form.
  *
  * @param $type
- *   (optional) The machine name of the node type when editing an existing node
- *   type.
+ *   (optional) An object representing the node type, when editing an existing
+ *   node type.
  *
  * @see node_type_form_validate()
  * @see node_type_form_submit()
@@ -265,11 +277,11 @@ function _node_characters($length) {
  */
 function node_type_form_validate($form, &$form_state) {
   $type = new stdClass();
-  $type->type = trim($form_state['values']['type']);
+  $type->type = $form_state['values']['type'];
   $type->name = trim($form_state['values']['name']);
 
   // Work out what the type was before the user submitted this form
-  $old_type = trim($form_state['values']['old_type']);
+  $old_type = $form_state['values']['old_type'];
 
   $types = node_type_get_names();
 
@@ -298,7 +310,7 @@ function node_type_form_submit($form, &$form_state) {
 
   $type = node_type_set_defaults();
 
-  $type->type = trim($form_state['values']['type']);
+  $type->type = $form_state['values']['type'];
   $type->name = trim($form_state['values']['name']);
   $type->orig_type = trim($form_state['values']['orig_type']);
   $type->old_type = isset($form_state['values']['old_type']) ? $form_state['values']['old_type'] : $type->type;
@@ -398,8 +410,7 @@ function node_node_type_update($info) {
 }
 
 /**
- * Resets all of the relevant fields of a module-defined node type to their
- * default values.
+ * Resets relevant fields of a module-defined node type to their default values.
  *
  * @param $type
  *   The node type to reset. The node type is passed back by reference with its
@@ -419,7 +430,7 @@ function node_type_reset($type) {
 }
 
 /**
- * Page callback: Form constructor for the content type delete form.
+ * Menu callback; delete a single content type.
  *
  * @param $type
  *   Content type object.
@@ -428,6 +439,7 @@ function node_type_reset($type) {
  *   Form array for delete confirmation form.
  *
  * @see node_type_delete_confirm_submit()
+ * @ingroup forms
  */
 function node_type_delete_confirm($form, &$form_state, $type) {
   $form['type'] = array('#type' => 'value', '#value' => $type->type);
@@ -447,15 +459,17 @@ function node_type_delete_confirm($form, &$form_state, $type) {
 }
 
 /**
- * Form submission handler for node_type_delete_confirm().
- */
+ * Process content type delete confirm submissions.
+ *
+ * @see node_type_delete_confirm()
+ */                                                
 function node_type_delete_confirm_submit($form, &$form_state) {
   node_type_delete($form_state['values']['type']);
 
   variable_del('node_preview_' . $form_state['values']['type']);
   $t_args = array('%name' => $form_state['values']['name']);
   drupal_set_message(t('The content type %name has been deleted.', $t_args));
-  watchdog('menu', 'Deleted content type %name.', $t_args, WATCHDOG_NOTICE);
+  watchdog('node', 'Deleted content type %name.', $t_args, WATCHDOG_NOTICE);
 
   node_types_rebuild();
   menu_rebuild();

@@ -182,9 +182,11 @@ function filter_format_save($format) {
   }
   $filter_info = filter_get_filters();
   foreach ($filter_info as $name => $filter) {
-    // Add new filters without weight to the bottom.
+    // If the format does not specify an explicit weight for a filter, assign
+    // a default weight, either defined in hook_filter_info(), or the default of
+    // 0 by filter_get_filters()
     if (!isset($format->filters[$name]['weight'])) {
-      $format->filters[$name]['weight'] = 10;
+      $format->filters[$name]['weight'] = $filter['weight'];
     }
     $format->filters[$name]['status'] = isset($format->filters[$name]['status']) ? $format->filters[$name]['status'] : 0;
     $format->filters[$name]['module'] = $filter['module'];
@@ -324,6 +326,16 @@ function filter_permission_name($format) {
     return 'use text format ' . $format->format;
   }
   return FALSE;
+}
+
+/**
+ * Implements hook_views_api().
+ */
+function filter_views_api() {
+  return array(
+    'api' => '3.0',
+    'path' => drupal_get_path('module', 'filter') . '/views',
+  );
 }
 
 /**
@@ -1076,7 +1088,7 @@ function filter_dom_serialize_escape_cdata_element($dom_document, $dom_element, 
       $embed_suffix = "\n{$comment_start}--><!]]>{$comment_end}\n";
 
       // Prevent invalid cdata escaping as this would throw a DOM error.
-      // This is the same behaviour as found in libxml2.
+      // This is the same behavior as found in libxml2.
       // Related W3C standard: http://www.w3.org/TR/REC-xml/#dt-cdsection
       // Fix explanation: http://en.wikipedia.org/wiki/CDATA#Nesting
       $data = str_replace(']]>', ']]]]><![CDATA[>', $node->data);
@@ -1325,6 +1337,7 @@ function _filter_url_settings($form, &$form_state, $filter, $format, $defaults) 
     '#maxlength' => 4,
     '#field_suffix' => t('characters'),
     '#description' => t('URLs longer than this number of characters will be truncated to prevent long strings that break formatting. The link itself will be retained; just the text portion of the link will be truncated.'),
+    '#element_validate' => array('element_validate_integer_positive'),
   );
   return $settings;
 }
@@ -1359,7 +1372,7 @@ function _filter_url($text, $filter) {
   // we cannot cleanly differ between protocols here without hard-coding MAILTO,
   // so '//' is optional for all protocols.
   // @see filter_xss_bad_protocol()
-  $protocols = variable_get('filter_allowed_protocols', array('http', 'https', 'ftp', 'news', 'nntp', 'telnet', 'mailto', 'irc', 'ssh', 'sftp', 'webcal', 'rtsp'));
+  $protocols = variable_get('filter_allowed_protocols', array('ftp', 'http', 'https', 'irc', 'mailto', 'news', 'nntp', 'rtsp', 'sftp', 'ssh', 'tel', 'telnet', 'webcal'));
   $protocols = implode(':(?://)?|', $protocols) . ':(?://)?';
 
   // Prepare domain name pattern.
@@ -1383,7 +1396,7 @@ function _filter_url($text, $filter) {
   $tasks['_filter_url_parse_full_links'] = $pattern;
 
   // Match e-mail addresses.
-  $url_pattern = "[A-Za-z0-9._-]+@(?:$domain)";
+  $url_pattern = "[A-Za-z0-9._-]{1,254}@(?:$domain)";
   $pattern = "`($url_pattern)`";
   $tasks['_filter_url_parse_email_links'] = $pattern;
 

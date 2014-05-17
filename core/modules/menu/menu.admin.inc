@@ -10,13 +10,30 @@
  */
 function menu_overview_page() {
   $result = db_query("SELECT * FROM {menu_custom} ORDER BY title", array(), array('fetch' => PDO::FETCH_ASSOC));
-  $header = array(t('Title'), array('data' => t('Operations'), 'colspan' => '3'));
+  $header = array(t('Title'), t('Operations'));
   $rows = array();
   foreach ($result as $menu) {
-    $row = array(theme('menu_admin_overview', array('title' => $menu['title'], 'name' => $menu['menu_name'], 'description' => $menu['description'])));
-    $row[] = array('data' => l(t('list links'), 'admin/structure/menu/manage/' . $menu['menu_name']));
-    $row[] = array('data' => l(t('edit menu'), 'admin/structure/menu/manage/' . $menu['menu_name'] . '/edit'));
-    $row[] = array('data' => l(t('add link'), 'admin/structure/menu/manage/' . $menu['menu_name'] . '/add'));
+    $row = array();
+    $row[] = theme('menu_admin_overview', array('title' => $menu['title'], 'name' => $menu['menu_name'], 'description' => $menu['description']));
+    $links = array();
+    $links['list'] = array(
+      'title' => t('List links'),
+      'href' => 'admin/structure/menu/manage/' . $menu['menu_name'],
+    );
+    $links['edit'] = array(
+      'title' => t('Edit menu'),
+      'href' => 'admin/structure/menu/manage/' . $menu['menu_name'] . '/edit',
+    );
+    $links['add'] = array(
+      'title' => t('Add link'),
+      'href' => 'admin/structure/menu/manage/' . $menu['menu_name'] . '/add',
+    );
+    $row[] = array(
+      'data' => array(
+        '#type' => 'operations',
+        '#links' => $links,
+      ),
+    );
     $rows[] = $row;
   }
 
@@ -99,7 +116,14 @@ function _menu_overview_tree_form($tree) {
       $mlid = 'mlid:' . $item['mlid'];
       $form[$mlid]['#item'] = $item;
       $form[$mlid]['#attributes'] = $item['hidden'] ? array('class' => array('menu-disabled')) : array('class' => array('menu-enabled'));
-      $form[$mlid]['title']['#markup'] = l($item['title'], $item['href'], $item['localized_options']) . ($item['hidden'] ? ' (' . t('disabled') . ')' : '');
+      $form[$mlid]['title']['#markup'] = l($item['title'], $item['href'], $item['localized_options']);
+      if ($item['hidden']) {
+        $form[$mlid]['title']['#markup'] .= ' (' . t('disabled') . ')';
+      }
+      elseif ($item['link_path'] == 'user' && $item['module'] == 'system') {
+        $form[$mlid]['title']['#markup'] .= ' (' . t('logged in users only') . ')';
+      }
+
       $form[$mlid]['hidden'] = array(
         '#type' => 'checkbox',
         '#title' => t('Enable @title menu link', array('@title' => $item['title'])),
@@ -122,17 +146,29 @@ function _menu_overview_tree_form($tree) {
         '#default_value' => $item['plid'],
       );
       // Build a list of operations.
-      $operations = array();
-      $operations['edit'] = array('#type' => 'link', '#title' => t('edit'), '#href' => 'admin/structure/menu/item/' . $item['mlid'] . '/edit');
+      $links = array();
+      $links['edit'] = array(
+        'title' => t('Edit'),
+        'href' => 'admin/structure/menu/item/' . $item['mlid'] . '/edit',
+      );
       // Only items created by the menu module can be deleted.
       if ($item['module'] == 'menu' || $item['updated'] == 1) {
-        $operations['delete'] = array('#type' => 'link', '#title' => t('delete'), '#href' => 'admin/structure/menu/item/' . $item['mlid'] . '/delete');
+        $links['delete'] = array(
+          'title' => t('Delete'),
+          'href' => 'admin/structure/menu/item/' . $item['mlid'] . '/delete',
+        );
       }
       // Set the reset column.
       elseif ($item['module'] == 'system' && $item['customized']) {
-        $operations['reset'] = array('#type' => 'link', '#title' => t('reset'), '#href' => 'admin/structure/menu/item/' . $item['mlid'] . '/reset');
+        $links['reset'] = array(
+          'title' => t('Reset'),
+          'href' => 'admin/structure/menu/item/' . $item['mlid'] . '/reset',
+        );
       }
-      $form[$mlid]['operations'] = $operations;
+      $form[$mlid]['operations'] = array(
+        '#type' => 'operations',
+        '#links' => $links,
+      );
     }
 
     if ($data['below']) {
@@ -208,21 +244,13 @@ function theme_menu_overview_form($variables) {
     t('Menu link'),
     array('data' => t('Enabled'), 'class' => array('checkbox')),
     t('Weight'),
-    array('data' => t('Operations'), 'colspan' => '3'),
+    t('Operations'),
   );
 
   $rows = array();
   foreach (element_children($form) as $mlid) {
     if (isset($form[$mlid]['hidden'])) {
       $element = &$form[$mlid];
-      // Build a list of operations.
-      $operations = array();
-      foreach (element_children($element['operations']) as $op) {
-        $operations[] = array('data' => drupal_render($element['operations'][$op]), 'class' => array('menu-operations'));
-      }
-      while (count($operations) < 2) {
-        $operations[] = '';
-      }
 
       // Add special classes to be used for tabledrag.js.
       $element['plid']['#attributes']['class'] = array('menu-plid');
@@ -236,7 +264,7 @@ function theme_menu_overview_form($variables) {
       $row[] = theme('indentation', array('size' => $element['#item']['depth'] - 1)) . drupal_render($element['title']);
       $row[] = array('data' => drupal_render($element['hidden']), 'class' => array('checkbox', 'menu-enabled'));
       $row[] = drupal_render($element['weight']) . drupal_render($element['plid']) . drupal_render($element['mlid']);
-      $row = array_merge($row, $operations);
+      $row[] = drupal_render($element['operations']);
 
       $row = array_merge(array('data' => $row), $element['#attributes']);
       $row['class'][] = 'draggable';
@@ -259,6 +287,16 @@ function menu_edit_item($form, &$form_state, $type, $item, $menu) {
   if ($type == 'add' || empty($item)) {
     // This is an add form, initialize the menu link.
     $item = array('link_title' => '', 'mlid' => 0, 'plid' => 0, 'menu_name' => $menu['menu_name'], 'weight' => 0, 'link_path' => '', 'options' => array(), 'module' => 'menu', 'expanded' => 0, 'hidden' => 0, 'has_children' => 0);
+  }
+  else {
+    // Get the human-readable menu title from the given menu name
+    $titles = menu_get_menus();
+    $current_title = $titles[$item['menu_name']];
+
+    // Get the current breadcrumb and add a link to that menu's overview page.
+    $breadcrumb = menu_get_active_breadcrumb();
+    $breadcrumb[] = l($current_title, 'admin/structure/menu/manage/' . $item['menu_name']);
+    drupal_set_breadcrumb($breadcrumb);
   }
   $form['actions'] = array('#type' => 'actions');
   $form['link_title'] = array(
@@ -453,7 +491,6 @@ function menu_edit_menu($form, &$form_state, $type, $menu = array()) {
     '#machine_name' => array(
       'exists' => 'menu_edit_menu_name_exists',
       'source' => array('title'),
-      'label' => t('URL path'),
       'replace_pattern' => '[^a-z0-9-]+',
       'replace' => '-',
     ),

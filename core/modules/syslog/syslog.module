@@ -50,10 +50,11 @@ function syslog_form_system_logging_settings_alter(&$form, &$form_state) {
   $form['actions']['#weight'] = 1;
 }
 
- /**
+/**
  * List all possible syslog facilities for UNIX/Linux.
  *
  * @return array
+ *  An array of syslog facilities for UNIX/Linux.
  */
 function syslog_facility_list() {
   return array(
@@ -89,7 +90,7 @@ function syslog_watchdog(array $log_entry) {
     '!ip'          => $log_entry['ip'],
     '!request_uri' => $log_entry['request_uri'],
     '!referer'     => $log_entry['referer'],
-    '!uid'         => $log_entry['user']->uid,
+    '!uid'         => $log_entry['uid'],
     '!link'        => strip_tags($log_entry['link']),
     '!message'     => strip_tags(!isset($log_entry['variables']) ? $log_entry['message'] : strtr($log_entry['message'], $log_entry['variables'])),
   ));

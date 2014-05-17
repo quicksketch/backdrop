@@ -23,11 +23,12 @@ function field_test_entity_info() {
 
   return array(
     'test_entity' => array(
-      'name' => t('Test Entity'),
+      'label' => t('Test Entity'),
       'fieldable' => TRUE,
       'field cache' => FALSE,
       'base table' => 'test_entity',
       'revision table' => 'test_entity_revision',
+      'class' => 'TestEntity',
       'entity keys' => array(
         'id' => 'ftid',
         'revision' => 'ftvid',
@@ -38,7 +39,7 @@ function field_test_entity_info() {
     ),
     // This entity type doesn't get form handling for now...
     'test_cacheable_entity' => array(
-      'name' => t('Test Entity, cacheable'),
+      'label' => t('Test Entity, cacheable'),
       'fieldable' => TRUE,
       'field cache' => TRUE,
       'entity keys' => array(
@@ -50,7 +51,7 @@ function field_test_entity_info() {
       'view modes' => $test_entity_modes,
     ),
     'test_entity_bundle_key' => array(
-      'name' => t('Test Entity with a bundle key.'),
+      'label' => t('Test Entity with a bundle key.'),
       'base table' => 'test_entity_bundle_key',
       'fieldable' => TRUE,
       'field cache' => FALSE,
@@ -63,9 +64,10 @@ function field_test_entity_info() {
     ),
     // In this case, the bundle key is not stored in the database.
     'test_entity_bundle' => array(
-      'name' => t('Test Entity with a specified bundle.'),
+      'label' => t('Test Entity with a specified bundle.'),
       'base table' => 'test_entity_bundle',
       'fieldable' => TRUE,
+      'entity class' => 'TestFieldEntity',
       'controller class' => 'TestEntityBundleController',
       'field cache' => FALSE,
       'entity keys' => array(
@@ -77,7 +79,7 @@ function field_test_entity_info() {
     ),
     // @see EntityPropertiesTestCase::testEntityLabel()
     'test_entity_no_label' => array(
-      'name' => t('Test entity without label'),
+      'label' => t('Test entity without label'),
       'fieldable' => TRUE,
       'field cache' => FALSE,
       'base table' => 'test_entity',
@@ -90,7 +92,7 @@ function field_test_entity_info() {
       'view modes' => $test_entity_modes,
     ),
     'test_entity_label' => array(
-      'name' => t('Test entity label'),
+      'label' => t('Test entity label'),
       'fieldable' => TRUE,
       'field cache' => FALSE,
       'base table' => 'test_entity',
@@ -104,7 +106,7 @@ function field_test_entity_info() {
       'view modes' => $test_entity_modes,
     ),
     'test_entity_label_callback' => array(
-      'name' => t('Test entity label callback'),
+      'label' => t('Test entity label callback'),
       'fieldable' => TRUE,
       'field cache' => FALSE,
       'base table' => 'test_entity',
@@ -474,3 +476,43 @@ function field_test_entity_nested_form_submit($form, &$form_state) {
 
   drupal_set_message(t('test_entities @id_1 and @id_2 have been updated.', array('@id_1' => $entity_1->ftid, '@id_2' => $entity_2->ftid)));
 }
+
+/**
+ * Test class for the test_entity entity type.
+ */
+class TestFieldEntity extends Entity {
+  function id() {
+    return $this->id;
+  }
+
+  public function entityType() {
+    return 'test_field_entity';
+  }
+
+  function label() {
+    return $this->label;
+  }
+
+  function uri() {
+    return 'test/' . $this->id;
+  }
+}
+
+/**
+ * Controller class for the test_entity_bundle entity type.
+ *
+ * This extends the DrupalDefaultEntityController class, adding required
+ * special handling for bundles (since they are not stored in the database).
+ */
+class TestEntityBundleController extends DrupalDefaultEntityController {
+
+  protected function attachLoad(&$entities, $revision_id = FALSE) {
+    // Add bundle information.
+    foreach ($entities as $key => $entity) {
+      $entity->fttype = 'test_entity_bundle';
+      $entities[$key] = $entity;
+    }
+    parent::attachLoad($entities, $revision_id);
+  }
+}
+

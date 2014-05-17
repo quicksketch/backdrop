@@ -47,7 +47,7 @@
  *
  * These two variables are provided for context:
  * - $comment: Full comment object.
- * - $node: Node object the comments are attached to.
+ * - $node: Node entity the comments are attached to.
  *
  * Other variables:
  * - $classes_array: Array of html class attribute values. It is flattened
@@ -57,6 +57,8 @@
  * @see template_preprocess_comment()
  * @see template_process()
  * @see theme_comment()
+ *
+ * @ingroup themeable
  */
 ?>
 <article class="<?php print $classes; ?> clearfix"<?php print $attributes; ?>>

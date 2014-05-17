@@ -67,6 +67,15 @@ function bartik_process_page(&$variables) {
     // Make sure the shortcut link is the first item in title_suffix.
     $variables['title_suffix']['add_or_remove_shortcut']['#weight'] = -100;
   }
+  // Alter the attributes on the main menu and secondary menu render arrays.
+  if (!empty($variables['main_menu'])) {
+    $variables['main_menu']['#attributes']['id'] = 'main-menu-links';
+    $variables['main_menu']['#attributes']['class'] = array('links', 'clearfix');
+  }
+  if (!empty($variables['secondary_menu'])) {
+    $variables['secondary_menu']['#attributes']['id'] = 'secondary-menu-links';
+    $variables['secondary_menu']['#attributes']['class'] = array('links', 'inline', 'clearfix');
+  }
 }
 
 /**
@@ -137,7 +146,7 @@ function bartik_field__taxonomy_term_reference($variables) {
   $output .= '</ul>';
 
   // Render the top-level DIV.
-  $output = '<div class="' . $variables['classes'] . (!in_array('clearfix', $variables['classes_array']) ? ' clearfix' : '') . '">' . $output . '</div>';
+  $output = '<div class="' . $variables['classes'] . (!in_array('clearfix', $variables['classes_array']) ? ' clearfix' : '') . '"' . $variables['attributes'] .'>' . $output . '</div>';
 
   return $output;
 }

@@ -6,6 +6,7 @@
  */
 
 require_once DRUPAL_ROOT . '/core/modules/field/tests/field.test';
+require_once DRUPAL_ROOT . '/core/modules/field/modules/list/tests/list.test';
 
 class OptionsWidgetsTestCase extends FieldTestCase {
   function setUp() {
@@ -353,7 +354,7 @@ class OptionsWidgetsTestCase extends FieldTestCase {
 
     // Test the 'None' option.
 
-    // Check that the 'none' option has no efect if actual options are selected
+    // Check that the 'none' option has no effect if actual options are selected
     // as well.
     $edit = array("card_2[$langcode][]" => array('_none' => '_none', 0 => 0));
     $this->drupalPost('test-entity/manage/' . $entity->ftid . '/edit', $edit, t('Save'));
@@ -510,3 +511,39 @@ class OptionsWidgetsTestCase extends FieldTestCase {
   }
 }
 
+/**
+ * Test an options select on a list field with a dynamic allowed values function.
+ */
+class OptionsSelectDynamicValuesTestCase extends ListDynamicValuesTestCase {
+  /**
+   * Tests the 'options_select' widget (single select).
+   */
+  function testSelectListDynamic() {
+    // Create an entity.
+    $this->entity->is_new = TRUE;
+    field_test_entity_save($this->entity);
+    // Create a web user.
+    $web_user = $this->drupalCreateUser(array('access field_test content', 'administer field_test content'));
+    $this->drupalLogin($web_user);
+
+    // Set the values that are checked by list_test_dynamic_values_callback().
+    $expected_values = array(
+      'foo' => $this->randomName(),
+      'bar' => $this->randomName(),
+      'baz' => $this->randomName(),
+    );
+    state_set('list_test_dynamic_values', $expected_values);
+
+    // Display form.
+    $this->drupalGet('test-entity/manage/' . $this->entity->ftid . '/edit');
+    $options = $this->xpath('//select[@id="edit-test-list-und"]/option');
+    $this->assertEqual(count($options), count($expected_values) + 1, 'Expected number of items found in dynamic select list.');
+    foreach ($options as $option) {
+      $key = (string) $option['value'];
+      $value = (string) $option;
+      if ($key !== '_none') {
+        $this->assertTrue($expected_values[$key] === $value);
+      }
+    }
+  }
+}

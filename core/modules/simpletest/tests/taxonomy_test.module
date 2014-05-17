@@ -3,12 +3,14 @@
 /**
  * @file
  * Test module for Taxonomy hooks and functions not used in core.
+ *
+ * @see TaxonomyHooksTestCase::testTaxonomyTermHooks()
  */
 
 /**
  * Implements hook_taxonomy_term_load().
  */
-function taxonomy_test_taxonomy_term_load($terms) {
+function taxonomy_test_taxonomy_term_load(array $terms) {
   foreach ($terms as $term) {
     $antonym = taxonomy_test_get_antonym($term->tid);
     if ($antonym) {
@@ -20,7 +22,7 @@ function taxonomy_test_taxonomy_term_load($terms) {
 /**
  * Implements hook_taxonomy_term_insert().
  */
-function taxonomy_test_taxonomy_term_insert($term) {
+function taxonomy_test_taxonomy_term_insert(TaxonomyTerm $term) {
   if (!empty($term->antonym)) {
     db_insert('taxonomy_term_antonym')
       ->fields(array(
@@ -34,7 +36,7 @@ function taxonomy_test_taxonomy_term_insert($term) {
 /**
  * Implements hook_taxonomy_term_update().
  */
-function taxonomy_test_taxonomy_term_update($term) {
+function taxonomy_test_taxonomy_term_update(TaxonomyTerm $term) {
   if (!empty($term->antonym)) {
     db_merge('taxonomy_term_antonym')
       ->key(array('tid' => $term->tid))
@@ -48,10 +50,38 @@ function taxonomy_test_taxonomy_term_update($term) {
 /**
  * Implements hook_taxonomy_term_delete().
  */
-function taxonomy_test_taxonomy_term_delete($term) {
+function taxonomy_test_taxonomy_term_delete(TaxonomyTerm $term) {
   db_delete('taxonomy_term_antonym')
     ->condition('tid', $term->tid)
     ->execute();
+}
+
+/**
+ * Implements hook_taxonomy_term_view().
+ */
+function taxonomy_test_taxonomy_term_view($term, $view_mode, $langcode) {
+  if ($view_mode == 'full') {
+    $term->content['taxonomy_test_term_view_check'] = array(
+      '#prefix' => '<div>',
+      '#markup' => t('The antonym is %antonym', array('%antonym' => $term->antonym)),
+      '#suffix' => '</div>',
+      '#weight' => 10,
+    );
+  }
+}
+
+/**
+ * Implements hook_entity_view().
+ */
+function taxonomy_test_entity_view($entity, $type, $view_mode, $langcode) {
+  if ($type == 'taxonomy_term' && $view_mode == 'full') {
+    $entity->content['taxonomy_test_entity_view_check'] = array(
+      '#prefix' => '<div>',
+      '#markup' => t('The antonym is %antonym', array('%antonym' => $entity->antonym)),
+      '#suffix' => '</div>',
+      '#weight' => 20,
+    );
+  }
 }
 
 /**

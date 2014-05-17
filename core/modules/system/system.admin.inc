@@ -150,7 +150,7 @@ function system_themes_page() {
      // Ensure this theme is compatible with this version of core.
      // Require the 'content' region to make sure the main page
      // content has a common place in all themes.
-      $theme->incompatible_core = !isset($theme->info['core']) || ($theme->info['core'] != DRUPAL_CORE_COMPATIBILITY) || (!isset($theme->info['regions']['content']));
+      $theme->incompatible_core = !isset($theme->info['backdrop']) || ($theme->info['backdrop'] != BACKDROP_CORE_COMPATIBILITY) || (!isset($theme->info['regions']['content']));
       $theme->incompatible_php = version_compare(phpversion(), $theme->info['php']) < 0;
     }
     $query['token'] = drupal_get_token('system-theme-operation-link');
@@ -789,7 +789,7 @@ function system_modules($form, $form_state = array()) {
   $modules = array();
   $form['modules'] = array('#tree' => TRUE);
 
-  // Used when displaying modules that are required by the install profile.
+  // Used when displaying modules that are required by the installation profile.
   require_once DRUPAL_ROOT . '/core/includes/install.inc';
   $distribution_name = check_plain(drupal_install_profile_distribution_name());
 
@@ -797,9 +797,14 @@ function system_modules($form, $form_state = array()) {
   foreach ($visible_files as $filename => $module) {
     $extra = array();
     $extra['enabled'] = (bool) $module->status;
+
+    // Some modules are always required by core and cannot be disabled, e.g.
+    // node, system, entity.
+    $extra['required_by_distribution'] = FALSE;
     if (!empty($module->info['required'] )) {
       $extra['disabled'] = TRUE;
       $extra['required_by'][] = $distribution_name . (!empty($module->info['explanation']) ? ' ('. $module->info['explanation'] .')' : '');
+      $extra['required_by_distribution'] = TRUE;
     }
 
     // If this module requires other modules, add them to the array.
@@ -812,7 +817,7 @@ function system_modules($form, $form_state = array()) {
       elseif (isset($visible_files[$requires])) {
         $requires_name = $files[$requires]->info['name'];
         // Disable this module if it is incompatible with the dependency's version.
-        if ($incompatible_version = drupal_check_incompatibility($v, str_replace(DRUPAL_CORE_COMPATIBILITY . '-', '', $files[$requires]->info['version']))) {
+        if ($incompatible_version = drupal_check_incompatibility($v, str_replace(BACKDROP_CORE_COMPATIBILITY . '-', '', $files[$requires]->info['version']))) {
           $extra['requires'][$requires] = t('@module (<span class="admin-missing">incompatible with</span> version @version)', array(
             '@module' => $requires_name . $incompatible_version,
             '@version' => $files[$requires]->info['version'],
@@ -821,7 +826,7 @@ function system_modules($form, $form_state = array()) {
         }
         // Disable this module if the dependency is incompatible with this
         // version of Drupal core.
-        elseif ($files[$requires]->info['core'] != DRUPAL_CORE_COMPATIBILITY) {
+        elseif ($files[$requires]->info['backdrop'] != BACKDROP_CORE_COMPATIBILITY) {
           $extra['requires'][$requires] = t('@module (<span class="admin-missing">incompatible with</span> this version of Drupal core)', array(
             '@module' => $requires_name,
           ));
@@ -954,6 +959,7 @@ function _system_modules_build_row($info, $extra) {
   );
   $form['#requires'] = $extra['requires'];
   $form['#required_by'] = $extra['required_by'];
+  $form['#required_by_distribution'] = $extra['required_by_distribution'];
 
   // Check the compatibilities.
   $compatible = TRUE;
@@ -961,10 +967,10 @@ function _system_modules_build_row($info, $extra) {
   $status_long = '';
 
   // Check the core compatibility.
-  if (!isset($info['core']) || $info['core'] != DRUPAL_CORE_COMPATIBILITY) {
+  if (!isset($info['backdrop']) || $info['backdrop'] != BACKDROP_CORE_COMPATIBILITY) {
     $compatible = FALSE;
-    $status_short .= t('Incompatible with this version of Drupal core.');
-    $status_long .= t('This version is not compatible with Drupal !core_version and should be replaced.', array('!core_version' => DRUPAL_CORE_COMPATIBILITY));
+    $status_short .= t('Incompatible with this version of Backdrop CMS.');
+    $status_long .= t('This version is not compatible with Backdrop CMS !core_version and should be replaced.', array('!core_version' => BACKDROP_CORE_COMPATIBILITY));
   }
 
   // Ensure this module is compatible with the currently installed version of PHP.
@@ -1239,8 +1245,8 @@ function system_modules_uninstall($form, $form_state = NULL) {
         '#title_display' => 'invisible',
       );
       // All modules which depend on this one must be uninstalled first, before
-      // we can allow this module to be uninstalled. (The install profile is
-      // excluded from this list.)
+      // we can allow this module to be uninstalled. (The installation profile
+      // is excluded from this list.)
       foreach (array_keys($module->required_by) as $dependent) {
         if ($dependent != $profile && drupal_get_installed_schema_version($dependent) != SCHEMA_UNINSTALLED) {
           $dependent_name = isset($all_modules[$dependent]->info['name']) ? $all_modules[$dependent]->info['name'] : $dependent;
@@ -1451,6 +1457,7 @@ function system_site_information_settings_validate($form, &$form_state) {
  * @ingroup forms
  */
 function system_cron_settings() {
+  global $base_url;
   $form['description'] = array(
     '#markup' => '<p>' . t('Cron takes care of running periodic tasks like checking for updates and indexing content for search.') . '</p>',
   );
@@ -1459,16 +1466,22 @@ function system_cron_settings() {
     '#value' => t('Run cron'),
     '#submit' => array('system_run_cron_submit'),
   );
-  $status = '<p>' . t('Last run: %cron-last ago.', array('%cron-last' => format_interval(REQUEST_TIME - variable_get('cron_last')),)) . '</p>';
+  $status = '<p>' . t('Last run: %cron-last ago.', array('%cron-last' => format_interval(REQUEST_TIME - state_get('cron_last')),)) . '</p>';
   $form['status'] = array(
     '#markup' => $status,
   );
+
+  $form['cron_url'] = array(
+    '#markup' => '<p>' . t('To run cron from outside the site, go to <a href="!cron">!cron</a>', array('!cron' => url($base_url . '/cron.php', array('external' => TRUE, 'query' => array('cron_key' => variable_get('cron_key', 'drupal')))))) . '</p>',
+  );
+
   $form['cron'] = array(
     '#type' => 'fieldset',
   );
   $form['cron']['cron_safe_threshold'] = array(
     '#type' => 'select',
     '#title' => t('Run cron every'),
+    '#description' => t('More information about setting up scheduled tasks can be found by <a href="@url">reading the cron tutorial on drupal.org</a>.', array('@url' => url('http://drupal.org/cron'))),
     '#default_value' => variable_get('cron_safe_threshold', DRUPAL_CRON_DEFAULT_THRESHOLD),
     '#options' => array(0 => t('Never')) + drupal_map_assoc(array(3600, 10800, 21600, 43200, 86400, 604800), 'format_interval'),
   );
@@ -1519,10 +1532,19 @@ function system_logging_settings() {
  * Form builder; Configure site performance settings.
  *
  * @ingroup forms
- * @see system_settings_form()
+ * @see system_performance_settings_submit().
  */
-function system_performance_settings() {
+function system_performance_settings($form, &$form_state) {
   drupal_add_js(drupal_get_path('module', 'system') . '/system.js');
+  $form_state['config'] = array(
+    'cache' => 'system.performance',
+    'page_compression' => 'system.performance',
+    'page_cache_maximum_age' => 'system.performance',
+    'preprocess_css' => 'system.performance',
+    'preprocess_js' => 'system.performance',
+  );
+
+  $config = config('system.performance');
 
   $form['clear_cache'] = array(
     '#type' => 'fieldset',
@@ -1540,11 +1562,10 @@ function system_performance_settings() {
     '#title' => t('Caching'),
   );
 
-  $cache = variable_get('cache', 0);
   $form['caching']['cache'] = array(
     '#type' => 'checkbox',
     '#title' => t('Cache pages for anonymous users'),
-    '#default_value' => $cache,
+    '#default_value' => $config->get('cache'),
     '#weight' => -2,
   );
   $period = drupal_map_assoc(array(0, 60, 180, 300, 600, 900, 1800, 2700, 3600, 10800, 21600, 32400, 43200, 86400), 'format_interval');
@@ -1552,16 +1573,16 @@ function system_performance_settings() {
   $form['caching']['cache_lifetime'] = array(
     '#type' => 'select',
     '#title' => t('Minimum cache lifetime'),
-    '#default_value' => variable_get('cache_lifetime', 0),
+    '#default_value' => $config->get('cache_lifetime'),
     '#options' => $period,
-    '#description' => t('Cached pages will not be re-created until at least this much time has elapsed.')
+    '#description' => t('Cached pages will not be re-created until at least this much time has elapsed.'),
   );
   $form['caching']['page_cache_maximum_age'] = array(
     '#type' => 'select',
     '#title' => t('Expiration of cached pages'),
-    '#default_value' => variable_get('page_cache_maximum_age', 0),
+    '#default_value' => $config->get('page_cache_maximum_age'),
     '#options' => $period,
-    '#description' => t('The maximum time an external cache can use an old version of a page.')
+    '#description' => t('The maximum time an external cache can use an old version of a page.'),
   );
 
   $directory = 'public://';
@@ -1578,25 +1599,31 @@ function system_performance_settings() {
     '#description' => t('External resources can be optimized automatically, which can reduce both the size and number of requests made to your website.') . $disabled_message,
   );
 
-  $js_hide = $cache ? '' : ' class="js-hide"';
+  $js_hide = $config->get('cache') ? '' : ' class="js-hide"';
   $form['bandwidth_optimization']['page_compression'] = array(
     '#type' => 'checkbox',
     '#title' => t('Compress cached pages.'),
-    '#default_value' => variable_get('page_compression', TRUE),
+    '#default_value' => $config->get('page_compression'),
     '#prefix' => '<div id="page-compression-wrapper"' . $js_hide . '>',
     '#suffix' => '</div>',
   );
   $form['bandwidth_optimization']['preprocess_css'] = array(
     '#type' => 'checkbox',
     '#title' => t('Aggregate and compress CSS files.'),
-    '#default_value' => intval(variable_get('preprocess_css', 0) && $is_writable),
+    '#default_value' => $config->get('preprocess_css'),
     '#disabled' => $disabled,
   );
   $form['bandwidth_optimization']['preprocess_js'] = array(
     '#type' => 'checkbox',
     '#title' => t('Aggregate JavaScript files.'),
-    '#default_value' => intval(variable_get('preprocess_js', 0) && $is_writable),
+    '#default_value' => $config->get('preprocess_js'),
     '#disabled' => $disabled,
+  );
+
+  $form['actions'] = array('#type' => 'actions');
+  $form['actions']['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Save configuration'),
   );
 
   $form['#submit'][] = 'drupal_clear_css_cache';
@@ -1604,8 +1631,25 @@ function system_performance_settings() {
   // This form allows page compression settings to be changed, which can
   // invalidate the page cache, so it needs to be cleared on form submit.
   $form['#submit'][] = 'system_clear_page_cache_submit';
+  $form['#submit'][] = 'system_performance_settings_submit';
 
-  return system_settings_form($form);
+  return $form;
+}
+
+/**
+ * Form submission handler for system_performance_settings().
+ *
+ * @ingroup forms
+ */
+function system_performance_settings_submit($form, &$form_state) {
+  $config = config('system.performance');
+  $config->set('cache', $form_state['values']['cache']);
+  $config->set('cache_lifetime', $form_state['values']['cache_lifetime']);
+  $config->set('page_cache_maximum_age', $form_state['values']['page_cache_maximum_age']);
+  $config->set('page_compression', $form_state['values']['page_compression']);
+  $config->set('preprocess_css', $form_state['values']['preprocess_css']);
+  $config->set('preprocess_js', $form_state['values']['preprocess_js']);
+  $config->save();
 }
 
 /**
@@ -1892,15 +1936,19 @@ function system_date_time_settings() {
         '#options' => $choices,
       );
 
+      $links = array();
       // If this isn't a system provided type, allow the user to remove it from
       // the system.
       if ($type_info['locked'] == 0) {
-        $form['formats']['delete']['date_format_' . $type . '_delete'] = array(
-          '#type' => 'link',
-          '#title' => t('delete'),
-          '#href' => 'admin/config/regional/date-time/types/' . $type . '/delete',
+        $links['delete'] = array(
+          'title' => t('Delete'),
+          'href' => "admin/config/regional/date-time/types/$type/delete",
         );
       }
+      $form['formats']['operations']["date_format_$type"] = array(
+        '#type' => 'operations',
+        '#links' => $links,
+      );
     }
   }
 
@@ -1928,12 +1976,11 @@ function theme_system_date_time_settings($variables) {
   );
 
   foreach (element_children($form['format']) as $key) {
-    $delete_key = $key . '_delete';
     $row = array();
     $row[] = $form['format'][$key]['#title'];
     $form['format'][$key]['#title_display'] = 'invisible';
     $row[] = array('data' => drupal_render($form['format'][$key]));
-    $row[] = array('data' => drupal_render($form['delete'][$delete_key]));
+    $row[] = drupal_render($form['operations'][$key]);
     $rows[] = $row;
   }
 
@@ -2052,7 +2099,7 @@ function system_site_maintenance_mode() {
   $form['maintenance_mode'] = array(
     '#type' => 'checkbox',
     '#title' => t('Put site into maintenance mode'),
-    '#default_value' => variable_get('maintenance_mode', 0),
+    '#default_value' => state_get('maintenance_mode', 0),
     '#description' => t('Visitors will only see the maintenance mode message. Only users with the "Access site in maintenance mode" <a href="@permissions-url">permission</a> will be able to access the site. Authorized users can log in directly via the <a href="@user-login">user login</a> page.', array('@permissions-url' => url('admin/config/people/permissions'), '@user-login' => url('user'))),
   );
   $form['maintenance_mode_message'] = array(
@@ -2061,7 +2108,31 @@ function system_site_maintenance_mode() {
     '#default_value' => variable_get('maintenance_mode_message', t('@site is currently under maintenance. We should be back shortly. Thank you for your patience.', array('@site' => variable_get('site_name', 'Drupal')))),
   );
 
-  return system_settings_form($form);
+  $form['actions']['#type'] = 'actions';
+  $form['actions']['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Save configuration'),
+  );
+  return $form;
+}
+
+/**
+ * Submit handler for the system_site_maintenance_mode() form.
+ */
+function system_site_maintenance_mode_submit($form, &$form_state) {
+  state_set('maintenance_mode', (int) $form_state['values']['maintenance_mode']);
+  variable_set('maintenance_mode_message', $form_state['values']['maintenance_mode_message']);
+
+  // Give specific messages on the primary action for this form.
+  if ($form_state['values']['maintenance_mode']) {
+    drupal_set_message(t('The site is now in maintenance mode. Only users with the "Access site in maintenance mode" permission will be able to access the site.'), 'warning');
+  }
+  elseif ($form['maintenance_mode']['#default_value'] != $form_state['values']['maintenance_mode']) {
+    drupal_set_message(t('The site is no longer in maintenance mode.'));
+  }
+  else {
+    drupal_set_message(t('The configuration options have been saved.'));
+  }
 }
 
 /**
@@ -2425,7 +2496,7 @@ function theme_status_report($variables) {
 
   foreach ($requirements as $requirement) {
     if (empty($requirement['#type'])) {
-      $severity = $severities[isset($requirement['severity']) ? (int) $requirement['severity'] : 0];
+      $severity = $severities[isset($requirement['severity']) ? (int) $requirement['severity'] : REQUIREMENT_OK];
       $severity['icon'] = '<div title="' . $severity['title'] . '"><span class="element-invisible">' . $severity['title'] . '</span></div>';
 
       // Output table row(s)
@@ -2484,7 +2555,11 @@ function theme_system_modules_fieldset($variables) {
     foreach (array('help', 'permissions', 'configure') as $key) {
       $row[] = array('data' => drupal_render($module['links'][$key]), 'class' => array($key));
     }
-    $rows[] = $row;
+
+    // Hide modules that can't be disabled at all.
+    if (!$module["#required_by_distribution"]) {
+      $rows[] = $row;
+    }
   }
 
   return theme('table', array('header' => $form['#header'], 'rows' => $rows));
@@ -2590,7 +2665,7 @@ function theme_system_themes_page($variables) {
 
       // Make sure to provide feedback on compatibility.
       if (!empty($theme->incompatible_core)) {
-        $output .= '<div class="incompatible">' . t('This version is not compatible with Drupal !core_version and should be replaced.', array('!core_version' => DRUPAL_CORE_COMPATIBILITY)) . '</div>';
+        $output .= '<div class="incompatible">' . t('This version is not compatible with Backdrop CMS !core_version and should be replaced.', array('!core_version' => BACKDROP_CORE_COMPATIBILITY)) . '</div>';
       }
       elseif (!empty($theme->incompatible_php)) {
         if (substr_count($theme->info['php'], '.') < 2) {
@@ -2681,7 +2756,7 @@ function system_delete_date_format_type_form_submit($form, &$form_state) {
  * Displays the date format strings overview page.
  */
 function system_date_time_formats() {
-  $header = array(t('Format'), array('data' => t('Operations'), 'colspan' => '2'));
+  $header = array(t('Format'), t('Operations'));
   $rows = array();
 
   drupal_static_reset('system_get_date_formats');
@@ -2690,8 +2765,21 @@ function system_date_time_formats() {
     foreach ($formats as $format) {
       $row = array();
       $row[] = array('data' => format_date(REQUEST_TIME, 'custom', $format['format']));
-      $row[] = array('data' => l(t('edit'), 'admin/config/regional/date-time/formats/' . $format['dfid'] . '/edit'));
-      $row[] = array('data' => l(t('delete'), 'admin/config/regional/date-time/formats/' . $format['dfid'] . '/delete'));
+      $links = array();
+      $links['edit'] = array(
+        'title' => t('Edit'),
+        'href' => 'admin/config/regional/date-time/formats/' . $format['dfid'] . '/edit',
+      );
+      $links['delete'] = array(
+        'title' => t('Delete'),
+        'href' => 'admin/config/regional/date-time/formats/' . $format['dfid'] . '/delete',
+      );
+      $row[] = array(
+        'data' => array(
+          '#type' => 'operations',
+          '#links' => $links,
+        ),
+      );
       $rows[] = $row;
     }
   }
@@ -2813,7 +2901,7 @@ function system_actions_manage() {
   $header = array(
     array('data' => t('Action type'), 'field' => 'type'),
     array('data' => t('Label'), 'field' => 'label'),
-    array('data' => $instances_present ? t('Operations') : '', 'colspan' => '2')
+    array('data' => $instances_present ? t('Operations') : ''),
   );
   $query = db_select('actions')->extend('PagerDefault')->extend('TableSort');
   $result = $query
@@ -2823,11 +2911,28 @@ function system_actions_manage() {
     ->execute();
 
   foreach ($result as $action) {
+    if ($action->parameters) {
+      $links = array();
+      $links['configure'] = array(
+        'title' => t('Configure'),
+        'href' => "admin/config/system/actions/configure/$action->aid",
+      );
+      $links['delete'] = array(
+        'title' => t('Delete'),
+        'href' => "admin/config/system/actions/delete/$action->aid",
+      );
+      $operations = array(
+        '#type' => 'operations',
+        '#links' => $links,
+      );
+    }
+    else {
+      $operations = '';
+    }
     $row[] = array(
       array('data' => $action->type),
       array('data' => check_plain($action->label)),
-      array('data' => $action->parameters ? l(t('configure'), "admin/config/system/actions/configure/$action->aid") : ''),
-      array('data' => $action->parameters ? l(t('delete'), "admin/config/system/actions/delete/$action->aid") : '')
+      array('data' => $operations),
     );
   }
 

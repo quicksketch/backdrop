@@ -20,7 +20,7 @@
  *   the template.
  *
  * The following variables are provided for contextual information.
- * - $node: Node object the comments are attached to.
+ * - $node: Node entity the comments are attached to.
  * The constants below the variables show the possible values and should be
  * used for comparison.
  * - $display_mode
@@ -32,10 +32,9 @@
  *   into a string within the variable $classes.
  *
  * @see template_preprocess_comment_wrapper()
- * @see theme_comment_wrapper()
  */
 ?>
-<div id="comments" class="<?php print $classes; ?>"<?php print $attributes; ?>>
+<section id="comments" class="<?php print $classes; ?>"<?php print $attributes; ?>>
   <?php if ($content['comments']): ?>
     <?php print render($title_prefix); ?>
     <h2 class="title"><?php print t('Comments'); ?></h2>
@@ -48,4 +47,4 @@
     <h2 class="title comment-form"><?php print t('Add new comment'); ?></h2>
     <?php print render($content['comment_form']); ?>
   <?php endif; ?>
-</div>
+</section>

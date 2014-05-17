@@ -27,6 +27,7 @@
   color: #000;
   cursor: default;
   white-space: pre;
+  zoom: 1; /* IE7 */
 }
 /* Animated throbber */
 .js input.form-autocomplete {
@@ -229,6 +230,8 @@ tr .ajax-progress-throbber .throbber {
 .element-invisible {
   position: absolute !important;
   clip: rect(1px, 1px, 1px, 1px);
+  overflow: hidden;
+  height: 1px;
 }
 
 /**
@@ -239,6 +242,8 @@ tr .ajax-progress-throbber .throbber {
 .element-invisible.element-focusable:focus {
   position: static !important;
   clip: auto;
+  overflow: visible;
+  height: auto;
 }
 
 /**
@@ -269,6 +274,7 @@ figure,
 footer,
 header,
 hgroup,
+main,
 menu,
 nav,
 section,

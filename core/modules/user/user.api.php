@@ -227,61 +227,52 @@ function hook_user_operations() {
 }
 
 /**
- * A user account is about to be created or updated.
+ * Act on a user account being inserted or updated.
  *
- * This hook is primarily intended for modules that want to store properties in
- * the serialized {users}.data column, which is automatically loaded whenever a
- * user account object is loaded, modules may add to $edit['data'] in order
- * to have their data serialized on save.
+ * This hook is invoked before the user account is saved to the database.
  *
- * @param $edit
- *   The array of form values submitted by the user.
+ * Modules that want to store properties in the serialized {users}.data column,
+ * which is automatically loaded whenever a user account object is loaded, may
+ * add their properties to $account->data in order to have their data serialized
+ * on save.
+ *
  * @param $account
- *   The user object on which the operation is performed.
+ *   The user account object.
  *
  * @see hook_user_insert()
  * @see hook_user_update()
  */
-function hook_user_presave(&$edit, $account) {
-  // Make sure that our form value 'mymodule_foo' is stored as 'mymodule_bar'.
-  if (isset($edit['mymodule_foo'])) {
-    $edit['data']['my_module_foo'] = $edit['my_module_foo'];
+function hook_user_presave($account) {
+  // Make sure that our form value 'mymodule_foo' is stored as
+  // 'mymodule_bar' in the 'data' (serialized) column.
+  if (isset($account->mymodule_foo)) {
+    $account->data['mymodule_bar'] = $account->mymodule_foo;
   }
 }
 
 /**
- * A user account was created.
+ * Respond to creation of a new user account.
  *
- * The module should save its custom additions to the user object into the
- * database.
- *
- * @param $edit
- *   The array of form values submitted by the user.
  * @param $account
- *   The user object on which the operation is being performed.
+ *   The user account object.
  *
  * @see hook_user_presave()
  * @see hook_user_update()
  */
-function hook_user_insert(&$edit, $account) {
+function hook_user_insert($account) {
   db_insert('mytable')
     ->fields(array(
-      'myfield' => $edit['myfield'],
       'uid' => $account->uid,
+      'created' => REQUEST_TIME,
     ))
     ->execute();
 }
 
 /**
- * A user account was updated.
+ * Respond to updates to a user account.
  *
- * Modules may use this hook to update their user data in a custom storage
- * after a user account has been updated.
- *
- * @param $edit
- *   The array of form values submitted by the user.
  * @param $account
- *   The user object on which the operation is performed.
+ *   The user account object.
  *
  * @see hook_user_presave()
  * @see hook_user_insert()
@@ -290,7 +281,7 @@ function hook_user_update(&$edit, $account) {
   db_insert('user_changes')
     ->fields(array(
       'uid' => $account->uid,
-      'changed' => time(),
+      'changed' => REQUEST_TIME,
     ))
     ->execute();
 }
@@ -313,6 +304,14 @@ function hook_user_login(&$edit, $account) {
 /**
  * The user just logged out.
  *
+ * Note that when this hook is invoked, the changes have not yet been written to
+ * the database, because a database transaction is still in progress. The
+ * transaction is not finalized until the save operation is entirely completed
+ * and user_save() goes out of scope. You should not rely on data in the
+ * database at this time as it is not updated yet. You should also note that any
+ * write/update database queries executed from this hook are also not committed
+ * immediately. Check user_save() and db_transaction() for more info.
+ *
  * @param $account
  *   The user object on which the operation was just performed.
  */
@@ -330,6 +329,14 @@ function hook_user_logout($account) {
  *
  * The module should format its custom additions for display and add them to the
  * $account->content array.
+ *
+ * Note that when this hook is invoked, the changes have not yet been written to
+ * the database, because a database transaction is still in progress. The
+ * transaction is not finalized until the save operation is entirely completed
+ * and user_save() goes out of scope. You should not rely on data in the
+ * database at this time as it is not updated yet. You should also note that any
+ * write/update database queries executed from this hook are also not committed
+ * immediately. Check user_save() and db_transaction() for more info.
  *
  * @param $account
  *   The user object on which the operation is being performed.

@@ -638,6 +638,31 @@ class CommonCascadingStylesheetsTestCase extends DrupalWebTestCase {
   }
 
   /**
+   * Tests removing charset when rendering stylesheets with preprocessing on.
+   */
+  function testRenderRemoveCharsetPreprocess() {
+    $cases = array(
+      array(
+        'asset' => '@charset "UTF-8";html{font-family:"sans-serif";}',
+        'expected' => 'html{font-family:"sans-serif";}',
+      ),
+      // This asset contains extra \n character.
+      array(
+        'asset' => "@charset 'UTF-8';\nhtml{font-family:'sans-serif';}",
+        'expected' => "\nhtml{font-family:'sans-serif';}",
+      ),
+    );
+
+    foreach ($cases as $case) {
+      $this->assertEqual(
+        $case['expected'],
+        drupal_load_stylesheet_content($case['asset']),
+        'CSS optimizing correctly removes the charset declaration.'
+      );
+    }
+  }
+
+  /**
    * Tests rendering inline stylesheets with preprocessing off.
    */
   function testRenderInlineNoPreprocess() {
@@ -741,7 +766,7 @@ class CommonCascadingStylesheetsTestCase extends DrupalWebTestCase {
    */
   function testAddCssFileWithQueryString() {
     $this->drupalGet('common-test/query-string');
-    $query_string = variable_get('css_js_query_string', '0');
+    $query_string = state_get('css_js_query_string', '0');
     $this->assertRaw(drupal_get_path('module', 'node') . '/node.admin.css?' . $query_string, t('Query string was appended correctly to css.'));
     $this->assertRaw(drupal_get_path('module', 'node') . '/node-fake.css?arg1=value1&amp;arg2=value2', t('Query string not escaped on a URI.'));
   }
@@ -1079,8 +1104,8 @@ class CommonJavaScriptTestCase extends DrupalWebTestCase {
     parent::setUp('locale', 'simpletest', 'common_test');
 
     // Disable preprocessing
-    $this->preprocess_js = variable_get('preprocess_js', 0);
-    variable_set('preprocess_js', 0);
+    $this->preprocess_js = config_get('system.performance', 'preprocess_js');
+    config_set('system.performance', 'preprocess_js', 0);
 
     // Reset drupal_add_js() and drupal_add_library() statics before each test.
     drupal_static_reset('drupal_add_js');
@@ -1089,7 +1114,7 @@ class CommonJavaScriptTestCase extends DrupalWebTestCase {
 
   function tearDown() {
     // Restore configured value for JavaScript preprocessing.
-    variable_set('preprocess_js', $this->preprocess_js);
+    config_set('system.performance', 'preprocess_js', $this->preprocess_js);
     parent::tearDown();
   }
 
@@ -1238,7 +1263,7 @@ class CommonJavaScriptTestCase extends DrupalWebTestCase {
    * @see drupal_pre_render_conditional_comments()
    */
   function testBrowserConditionalComments() {
-    $default_query_string = variable_get('css_js_query_string', '0');
+    $default_query_string = state_get('css_js_query_string', '0');
 
     drupal_add_js('core/misc/collapse.js', array('browsers' => array('IE' => 'lte IE 8', '!IE' => FALSE)));
     drupal_add_js('jQuery(function () { });', array('type' => 'inline', 'browsers' => array('IE' => FALSE)));
@@ -1265,7 +1290,7 @@ class CommonJavaScriptTestCase extends DrupalWebTestCase {
    * Test JavaScript grouping and aggregation.
    */
   function testAggregation() {
-    $default_query_string = variable_get('css_js_query_string', '0');
+    $default_query_string = state_get('css_js_query_string', '0');
 
     // To optimize aggregation, items with the 'every_page' option are ordered
     // ahead of ones without. The order of JavaScript execution must be the
@@ -1287,7 +1312,7 @@ class CommonJavaScriptTestCase extends DrupalWebTestCase {
     // Now ensure that with aggregation on, one file is made for the
     // 'every_page' files, and one file is made for the others.
     drupal_static_reset('drupal_add_js');
-    variable_set('preprocess_js', 1);
+    config_set('system.performance', 'preprocess_js', 1);
     drupal_add_js('core/misc/ajax.js');
     drupal_add_js('core/misc/authorize.js', array('every_page' => TRUE));
     drupal_add_js('core/misc/autocomplete.js');
@@ -1299,6 +1324,48 @@ class CommonJavaScriptTestCase extends DrupalWebTestCase {
       '<script type="text/javascript" src="' . file_create_url(drupal_build_js_cache(array('core/misc/ajax.js' => $js_items['core/misc/ajax.js'], 'core/misc/autocomplete.js' => $js_items['core/misc/autocomplete.js']))) . '"></script>',
     ));
     $this->assertTrue(strpos($javascript, $expected) > 0, t('JavaScript is aggregated in the expected groups and order.'));
+  }
+
+  /**
+   * Tests JavaScript aggregation when files are added to a different scope.
+   */
+  function testAggregationOrder() {
+    // Enable JavaScript aggregation.
+    variable_set('preprocess_js', 1);
+    drupal_static_reset('drupal_add_js');
+
+    // Add two JavaScript files to the current request and build the cache.
+    drupal_add_js('core/misc/ajax.js');
+    drupal_add_js('core/misc/autocomplete.js');
+
+    $js_items = drupal_add_js();
+    drupal_build_js_cache(array(
+      'core/misc/ajax.js' => $js_items['core/misc/ajax.js'],
+      'core/misc/autocomplete.js' => $js_items['core/misc/autocomplete.js']
+    ));
+
+    // Store the expected key for the first item in the cache.
+    $cache = array_keys(variable_get('drupal_js_cache_files', array()));
+    $expected_key = $cache[0];
+
+    // Reset variables and add a file in a different scope first.
+    variable_del('drupal_js_cache_files');
+    drupal_static_reset('drupal_add_js');
+    drupal_add_js('some/custom/javascript_file.js', array('scope' => 'footer'));
+    drupal_add_js('core/misc/ajax.js');
+    drupal_add_js('core/misc/autocomplete.js');
+
+    // Rebuild the cache.
+    $js_items = drupal_add_js();
+    drupal_build_js_cache(array(
+      'core/misc/ajax.js' => $js_items['core/misc/ajax.js'],
+      'core/misc/autocomplete.js' => $js_items['core/misc/autocomplete.js']
+    ));
+
+    // Compare the expected key for the first file to the current one.
+    $cache = array_keys(variable_get('drupal_js_cache_files', array()));
+    $key = $cache[0];
+    $this->assertEqual($key, $expected_key, 'JavaScript aggregation is not affected by ordering in different scopes.');
   }
 
   /**
@@ -1460,7 +1527,7 @@ class CommonJavaScriptTestCase extends DrupalWebTestCase {
    */
   function testAddJsFileWithQueryString() {
     $this->drupalGet('common-test/query-string');
-    $query_string = variable_get('css_js_query_string', '0');
+    $query_string = state_get('css_js_query_string', '0');
     $this->assertRaw(drupal_get_path('module', 'node') . '/node.js?' . $query_string, t('Query string was appended correctly to js.'));
   }
 }
@@ -1471,6 +1538,60 @@ class CommonJavaScriptTestCase extends DrupalWebTestCase {
 class CommonDrupalRenderTestCase extends DrupalWebTestCase {
   function setUp() {
     parent::setUp('common_test');
+  }
+
+  /**
+   * Tests the output drupal_render() for some elementary input values.
+   */
+  function testDrupalRenderBasics() {
+    $types = array(
+      array(
+        'name' => 'null',
+        'value' => NULL,
+        'expected' => '',
+      ),
+      array(
+        'name' => 'no value',
+        'expected' => '',
+      ),
+      array(
+        'name' => 'empty string',
+        'value' => '',
+        'expected' => '',
+      ),
+      array(
+        'name' => 'no access',
+        'value' => array(
+          '#markup' => 'foo',
+          '#access' => FALSE,
+        ),
+        'expected' => '',
+      ),
+      array(
+        'name' => 'previously printed',
+        'value' => array(
+          '#markup' => 'foo',
+          '#printed' => TRUE,
+        ),
+        'expected' => '',
+      ),
+      array(
+        'name' => 'printed in prerender',
+        'value' => array(
+          '#markup' => 'foo',
+          '#pre_render' => array('common_test_drupal_render_printing_pre_render'),
+        ),
+        'expected' => '',
+      ),
+      array(
+        'name' => 'basic renderable array',
+        'value' => array('#markup' => 'foo'),
+        'expected' => 'foo',
+      ),
+    );
+    foreach($types as $type) {
+      $this->assertIdentical(drupal_render($type['value']), $type['expected'], '"' . $type['name'] . '" input rendered correctly by drupal_render().');
+    }
   }
 
   /**
@@ -1772,7 +1893,7 @@ class CommonDrupalRenderTestCase extends DrupalWebTestCase {
  */
 class CommonValidUrlUnitTestCase extends DrupalUnitTestCase {
   /**
-   * Test valid absolute urls.
+   * Test valid absolute URLs.
    */
   function testValidAbsolute() {
     $url_schemes = array('http', 'https', 'ftp');
@@ -1807,7 +1928,7 @@ class CommonValidUrlUnitTestCase extends DrupalUnitTestCase {
   }
 
   /**
-   * Test invalid absolute urls.
+   * Test invalid absolute URLs.
    */
   function testInvalidAbsolute() {
     $url_schemes = array('http', 'https', 'ftp');
@@ -1827,7 +1948,7 @@ class CommonValidUrlUnitTestCase extends DrupalUnitTestCase {
   }
 
   /**
-   * Test valid relative urls.
+   * Test valid relative URLs.
    */
   function testValidRelative() {
     $valid_relative_urls = array(
@@ -1848,7 +1969,7 @@ class CommonValidUrlUnitTestCase extends DrupalUnitTestCase {
   }
 
   /**
-   * Test invalid relative urls.
+   * Test invalid relative URLs.
    */
   function testInvalidRelative() {
     $invalid_relative_urls = array(
@@ -2482,12 +2603,12 @@ class CommonDrupalAddFeedTestCase extends DrupalWebTestCase {
         'output_url' => url($path, array('absolute' => TRUE)),
         'title' => '',
       ),
-      'external url without title' => array(
+      'external URL without title' => array(
         'input_url' => $external_url,
         'output_url' => $external_url,
         'title' => '',
       ),
-      'local url without title' => array(
+      'local URL without title' => array(
         'input_url' => $fully_qualified_local_url,
         'output_url' => $fully_qualified_local_url,
         'title' => '',
@@ -2497,12 +2618,12 @@ class CommonDrupalAddFeedTestCase extends DrupalWebTestCase {
         'output_url' => url($path_for_title, array('absolute' => TRUE)),
         'title' => $this->randomName(12),
       ),
-      'external url with title' => array(
+      'external URL with title' => array(
         'input_url' => $external_for_title,
         'output_url' => $external_for_title,
         'title' => $this->randomName(12),
       ),
-      'local url with title' => array(
+      'local URL with title' => array(
         'input_url' => $fully_qualified_for_title,
         'output_url' => $fully_qualified_for_title,
         'title' => $this->randomName(12),
@@ -2523,9 +2644,91 @@ class CommonDrupalAddFeedTestCase extends DrupalWebTestCase {
    * Create a pattern representing the RSS feed in the page.
    */
   function urlToRSSLinkPattern($url, $title = '') {
-    // Escape any regular expression characters in the url ('?' is the worst).
+    // Escape any regular expression characters in the URL ('?' is the worst).
     $url = preg_replace('/([+?.*])/', '[$0]', $url);
     $generated_pattern = '%<link +rel="alternate" +type="application/rss.xml" +title="' . $title . '" +href="' . $url . '" */>%';
     return $generated_pattern;
   }
+}
+
+/**
+ * Test array diff functions.
+ */
+class ArrayDiffUnitTest extends DrupalUnitTestCase {
+
+  /**
+   * Array to use for testing.
+   *
+   * @var array
+   */
+  protected $array1;
+
+  /**
+   * Array to use for testing.
+   *
+   * @var array
+   */
+  protected $array2;
+
+  function setUp() {
+    parent::setUp();
+
+    $this->array1 = array(
+      'same' => 'yes',
+      'different' => 'no',
+      'array_empty_diff' => array(),
+      'null' => NULL,
+      'int_diff' => 1,
+      'array_diff' => array('same' => 'same', 'array' => array('same' => 'same')),
+      'array_compared_to_string' => array('value'),
+      'string_compared_to_array' => 'value',
+      'new' => 'new',
+    );
+    $this->array2 = array(
+      'same' => 'yes',
+      'different' => 'yes',
+      'array_empty_diff' => array(),
+      'null' => NULL,
+      'int_diff' => '1',
+      'array_diff' => array('same' => 'different', 'array' => array('same' => 'same')),
+      'array_compared_to_string' => 'value',
+      'string_compared_to_array' => array('value'),
+    );
+  }
+
+
+  /**
+   * Tests drupal_array_diff_assoc_recursive().
+   */
+  public function testArrayDiffAssocRecursive() {
+    $expected = array(
+      'different' => 'no',
+      'int_diff' => 1,
+      // The 'array' key should not be returned, as it's the same.
+      'array_diff' => array('same' => 'same'),
+      'array_compared_to_string' => array('value'),
+      'string_compared_to_array' => 'value',
+      'new' => 'new',
+    );
+
+    $this->assertIdentical(drupal_array_diff_assoc_recursive($this->array1, $this->array2), $expected);
+  }
+}
+
+/**
+ * Test for theme_feed_icon().
+ */
+class FeedIconTest extends DrupalWebTestCase {
+  /**
+   * Check that special characters are correctly escaped. Test for issue #1211668.
+   */
+  function testFeedIconEscaping() {
+    $variables = array();
+    $variables['url'] = 'node';
+    $variables['title'] = '<>&"\'';
+    $text = theme_feed_icon($variables);
+    preg_match('/title="(.*?)"/', $text, $matches);
+    $this->assertEqual($matches[1], 'Subscribe to &amp;&quot;&#039;', 'theme_feed_icon() escapes reserved HTML characters.');
+  }
+
 }

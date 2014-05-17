@@ -100,6 +100,12 @@ description = Various tests of AJAX behavior
 group = AJAX
 file = tests/ajax.test
 
+[AJAXDialogTest]
+name = AJAX dialog commands
+description = APerforms tests on opening and manipulating dialogs via AJAX commands.
+group = AJAX
+file = tests/ajax.test
+
 [BatchProcessingTestCase]
 name = Batch processing
 description = Test batch processing in form and non-form workflow.
@@ -334,9 +340,27 @@ description = Make sure that drupal_add_feed() works correctly with various cons
 group = Common
 file = tests/common.test
 
+[ArrayDiffUnitTest]
+name = Array differences
+description = Performs tests on drupal_array_diff_assoc_recursive().
+group = Common
+file = tests/common.test
+
+[FeedIconTest]
+name = Feed icon
+description = Check escaping of theme_feed_icon().
+group = System
+file = tests/common.test
+
 [DatabaseConnectionTestCase]
 name = Connection tests
 description = Tests of the core database system.
+group = Database
+file = tests/database_test.test
+
+[DatabaseSelectCloneTest]
+name = Select tests, cloning
+description = Test cloning Select queries.
 group = Database
 file = tests/database_test.test
 
@@ -490,6 +514,12 @@ description = Test SQL syntax interpretation.
 group = Database
 file = tests/database_test.test
 
+[DatabaseCaseSensitivityTestCase]
+name = Case sensitivity
+description = Test handling case sensitive collation.
+group = Database
+file = tests/database_test.test
+
 [DatabaseInvalidDataTestCase]
 name = Invalid data
 description = Test handling of some invalid data.
@@ -517,6 +547,12 @@ file = tests/database_test.test
 [DatabaseEmptyStatementTestCase]
 name = Empty statement
 description = Test the empty pseudo-statement class.
+group = Database
+file = tests/database_test.test
+
+[ConnectionUnitTest]
+name = Connection unit tests
+description = Tests management of database connections.
 group = Database
 file = tests/database_test.test
 
@@ -660,7 +696,7 @@ file = tests/file.test
 
 [FileSaveTest]
 name = File saving
-description = Tests the file_save() function.
+description = File saving tests.
 group = File API
 file = tests/file.test
 
@@ -721,6 +757,12 @@ file = tests/filetransfer.test
 [FormsTestCase]
 name = Form element validation
 description = Tests various form element validation mechanisms.
+group = Form API
+file = tests/form.test
+
+[FormsRedirectTestCase]
+name = Form redirecting
+description = Tests functionality of drupal_redirect_form().
 group = Form API
 file = tests/form.test
 
@@ -823,6 +865,12 @@ file = tests/form.test
 [FormEmailTestCase]
 name = Form API email
 description = Tests the form API email element.
+group = Form API
+file = tests/form.test
+
+[HTMLIdTestCase]
+name = Unique HTML IDs
+description = Tests functionality of drupal_html_id().
 group = Form API
 file = tests/form.test
 

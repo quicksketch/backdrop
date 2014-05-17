@@ -14,7 +14,13 @@ class ImageToolkitTestCase extends DrupalWebTestCase {
   protected $image;
 
   function setUp() {
-    parent::setUp('image_test');
+    $modules = func_get_args();
+    if (isset($modules[0]) && is_array($modules[0])) {
+      $modules = $modules[0];
+    }
+    $modules[] = 'image_test';
+
+    parent::setUp($modules);
 
     // Use the image_test.module's test toolkit.
     $this->toolkit = 'test';
@@ -456,7 +462,7 @@ class ImageFileMoveTest extends ImageToolkitTestCase {
    */
   function testNormal() {
     // Pick a file for testing.
-    $file = current($this->drupalGetTestFiles('image'));
+    $file = entity_create('file', (array) current($this->drupalGetTestFiles('image')));
 
     // Create derivative image.
     $style = image_style_load(key(image_styles()));

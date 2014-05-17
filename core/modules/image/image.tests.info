@@ -28,6 +28,18 @@ description = Tests validation functions such as min/max resolution.
 group = Image
 file = image.test
 
+[ImageFieldDefaultImagesTestCase]
+name = Image field default images tests
+description = Tests setting up default images both to the field and field instance.
+group = Image
+file = image.test
+
+[ImageStyleFlushTest]
+name = Image style flushing
+description = Tests flushing of image styles.
+group = Image
+file = image.test
+
 [ImageDimensionsUnitTest]
 name = Image dimensions
 description = Tests that images have correct dimensions when styled.
@@ -35,7 +47,13 @@ group = Image
 file = image.test
 
 [ImageDimensionsScaleTestCase]
-name = image_dimensions_scale()
+name = Image dimensions scale
 description = Tests all control flow branches in image_dimensions_scale().
+group = Image
+file = image.test
+
+[ImageThemeFunctionWebTestCase]
+name = Image theme functions
+description = Test that the image theme functions work correctly.
 group = Image
 file = image.test

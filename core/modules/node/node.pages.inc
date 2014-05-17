@@ -9,20 +9,21 @@
  * @see node_menu()
  */
 
-
 /**
  * Page callback: Presents the node editing form.
  *
  * @see node_menu()
  */
-function node_page_edit($node) {
+function node_page_edit(Node $node) {
   $type_name = node_type_get_name($node);
   drupal_set_title(t('<em>Edit @type</em> @title', array('@type' => $type_name, '@title' => $node->title)), PASS_THROUGH);
   return drupal_get_form($node->type . '_node_form', $node);
 }
 
 /**
- * Page callback: Presents the node add form.
+ * Page callback: Displays add content links for available content types.
+ *
+ * Redirects to node/add/[type] if only one content type is available.
  *
  * @see node_menu()
  */
@@ -65,7 +66,6 @@ function theme_node_add_list($variables) {
   return $output;
 }
 
-
 /**
  * Page callback: Provides the node submission form.
  *
@@ -81,7 +81,12 @@ function node_add($type) {
   global $user;
 
   $types = node_type_get_types();
-  $node = (object) array('uid' => $user->uid, 'name' => (isset($user->name) ? $user->name : ''), 'type' => $type, 'langcode' => LANGUAGE_NONE);
+  $node = entity_create('node', array(
+    'uid' => $user->uid,
+    'name' => (isset($user->name) ? $user->name : ''),
+    'type' => $type,
+    'langcode' => LANGUAGE_NONE,
+  ));
   drupal_set_title(t('Create @name', array('@name' => $types[$type]->name)), PASS_THROUGH);
   $output = drupal_get_form($type . '_node_form', $node);
 
@@ -100,7 +105,10 @@ function node_form_validate($form, &$form_state) {
   // $form_state['node'] contains the actual entity being edited, but we must
   // not update it with form values that have not yet been validated, so we
   // create a pseudo-entity to use during validation.
-  $node = (object) $form_state['values'];
+  $node = clone $form_state['node'];
+  foreach ($form_state['values'] as $key => $value) {
+    $node->{$key} = $value;
+  }
   node_validate($node, $form, $form_state);
   entity_form_field_validate('node', $form, $form_state);
 }
@@ -113,18 +121,16 @@ function node_form_validate($form, &$form_state) {
  * @see node_form_validate()
  * @see node_form_submit()
  * @see node_form_submit_build_node()
+ *
  * @ingroup forms
  */
-function node_form($form, &$form_state, $node) {
+function node_form($form, &$form_state, Node $node) {
   global $user;
 
   // During initial form build, add the node entity to the form state for use
   // during form building and processing. During a rebuild, use what is in the
   // form state.
   if (!isset($form_state['node'])) {
-    if (!isset($node->title)) {
-      $node->title = NULL;
-    }
     node_object_prepare($node);
     $form_state['node'] = $node;
   }
@@ -282,6 +288,15 @@ function node_form($form, &$form_state, $node) {
     '#maxlength' => 25,
     '#description' => t('Format: %time. The date format is YYYY-MM-DD and %timezone is the time zone offset from UTC. Leave blank to use the time of form submission.', array('%time' => !empty($node->date) ? date_format(date_create($node->date), 'Y-m-d H:i:s O') : format_date($node->created, 'custom', 'Y-m-d H:i:s O'), '%timezone' => !empty($node->date) ? date_format(date_create($node->date), 'O') : format_date($node->created, 'custom', 'O'))),
     '#default_value' => !empty($node->date) ? $node->date : '',
+    '#attached' => array(
+      'library' => array(array('system', 'ui.datepicker')),
+      'js' => array(array(
+        'data' => "jQuery(function ($) {
+          $('#edit-date').datepicker();
+        });",
+        'type' => 'inline',
+      ))
+    ),
   );
 
   // Node options for administrators
@@ -391,15 +406,15 @@ function node_form_build_preview($form, &$form_state) {
 /**
  * Generates a node preview.
  *
- * @param $node
+ * @param Node $node
  *   The node to preview.
  *
  * @return
- *   Themed node preview.
+ *   An HTML-formatted string of a node preview.
  *
  * @see node_form_build_preview()
  */
-function node_preview($node) {
+function node_preview(Node $node) {
   // Clone the node before previewing it to prevent the node itself from being
   // modified.
   $cloned_node = clone $node;
@@ -444,9 +459,10 @@ function node_preview($node) {
  *
  * @param $variables
  *   An associative array containing:
- *   - node: The node object which is being previewed.
+ *   - node: The node entity which is being previewed.
  *
  * @see node_preview()
+ *
  * @ingroup themeable
  */
 function theme_node_preview($variables) {
@@ -479,15 +495,15 @@ function theme_node_preview($variables) {
 /**
  * Form submission handler that saves the node for node_form().
  *
- * @see node_form_delete_submit()
  * @see node_form_build_preview()
+ * @see node_form_delete_submit()
  * @see node_form_validate()
  * @see node_form_submit_build_node()
  */
 function node_form_submit($form, &$form_state) {
   $node = node_form_submit_build_node($form, $form_state);
   $insert = empty($node->nid);
-  node_save($node);
+  $node->save();
   $node_link = l(t('view'), 'node/' . $node->nid);
   $watchdog_args = array('@type' => $node->type, '%title' => $node->title);
   $t_args = array('@type' => node_type_get_name($node), '%title' => $node->title);
@@ -556,6 +572,7 @@ function node_form_submit_build_node($form, &$form_state) {
  * Page callback: Form constructor for node deletion confirmation form.
  *
  * @see node_menu()
+ * @see node_delete_confirm_submit()
  */
 function node_delete_confirm($form, &$form_state, $node) {
   $form['#node'] = $node;
@@ -572,6 +589,8 @@ function node_delete_confirm($form, &$form_state, $node) {
 
 /**
  * Form submission handler for node_delete_confirm().
+ *
+ * @see node_delete_confirm()
  */
 function node_delete_confirm_submit($form, &$form_state) {
   if ($form_state['values']['confirm']) {
@@ -587,12 +606,18 @@ function node_delete_confirm_submit($form, &$form_state) {
 /**
  * Page callback: Generates an overview table of older revisions of a node.
  *
+ * @param Node $node
+ *   A node object.
+ *
+ * @return array
+ *   An array as expected by drupal_render().
+ *
  * @see node_menu()
  */
 function node_revision_overview($node) {
   drupal_set_title(t('Revisions for %title', array('%title' => $node->title)), PASS_THROUGH);
 
-  $header = array(t('Revision'), array('data' => t('Operations'), 'colspan' => 2));
+  $header = array(t('Revision'), t('Operations'));
 
   $revisions = node_revision_list($node);
 
@@ -607,25 +632,35 @@ function node_revision_overview($node) {
   }
   foreach ($revisions as $revision) {
     $row = array();
-    $operations = array();
-
     if ($revision->current_vid > 0) {
       $row[] = array('data' => t('!date by !username', array('!date' => l(format_date($revision->timestamp, 'short'), "node/$node->nid"), '!username' => theme('username', array('account' => $revision))))
                                . (($revision->log != '') ? '<p class="revision-log">' . filter_xss($revision->log) . '</p>' : ''),
                      'class' => array('revision-current'));
-      $operations[] = array('data' => drupal_placeholder(t('current revision')), 'class' => array('revision-current'), 'colspan' => 2);
+      $row[] = array('data' => drupal_placeholder(t('current revision')), 'class' => array('revision-current'));
     }
     else {
       $row[] = t('!date by !username', array('!date' => l(format_date($revision->timestamp, 'short'), "node/$node->nid/revisions/$revision->vid/view"), '!username' => theme('username', array('account' => $revision))))
                . (($revision->log != '') ? '<p class="revision-log">' . filter_xss($revision->log) . '</p>' : '');
       if ($revert_permission) {
-        $operations[] = l(t('revert'), "node/$node->nid/revisions/$revision->vid/revert");
+        $links['revert'] = array(
+          'title' => t('Revert'),
+          'href' => "node/$node->nid/revisions/$revision->vid/revert",
+        );
       }
       if ($delete_permission) {
-        $operations[] = l(t('delete'), "node/$node->nid/revisions/$revision->vid/delete");
+        $links['delete'] = array(
+          'title' => t('Delete'),
+          'href' => "node/$node->nid/revisions/$revision->vid/delete",
+        );
       }
+      $row[] = array(
+        'data' => array(
+          '#type' => 'operations',
+          '#links' => $links,
+        ),
+      );
     }
-    $rows[] = array_merge($row, $operations);
+    $rows[] = $row;
   }
 
   $build['node_revisions_table'] = array(
@@ -641,12 +676,18 @@ function node_revision_overview($node) {
 }
 
 /**
- * Page callback: Form constructor for the reversion confirmation form.
+ * Asks for confirmation of the reversion to prevent against CSRF attacks.
  *
- * This form prevents against CSRF attacks.
+ * @param int $node_revision
+ *   The node revision ID.
+ *
+ * @return array
+ *   An array as expected by drupal_render().
  *
  * @see node_menu()
  * @see node_revision_revert_confirm_submit()
+ *
+ * @ingroup forms
  */
 function node_revision_revert_confirm($form, $form_state, $node_revision) {
   $form['#node_revision'] = $node_revision;
@@ -659,22 +700,34 @@ function node_revision_revert_confirm($form, $form_state, $node_revision) {
 function node_revision_revert_confirm_submit($form, &$form_state) {
   $node_revision = $form['#node_revision'];
   $node_revision->revision = 1;
-  $node_revision->log = t('Copy of the revision from %date.', array('%date' => format_date($node_revision->revision_timestamp)));
+  // The revision timestamp will be updated when the revision is saved. Keep the
+  // original one for the confirmation message.
+  $original_revision_timestamp = $node_revision->revision_timestamp;
 
-  node_save($node_revision);
+  $node_revision->log = t('Copy of the revision from %date.', array('%date' => format_date($original_revision_timestamp)));
+
+  $node_revision->save();
 
   watchdog('content', '@type: reverted %title revision %revision.', array('@type' => $node_revision->type, '%title' => $node_revision->title, '%revision' => $node_revision->vid));
-  drupal_set_message(t('@type %title has been reverted back to the revision from %revision-date.', array('@type' => node_type_get_name($node_revision), '%title' => $node_revision->title, '%revision-date' => format_date($node_revision->revision_timestamp))));
+  drupal_set_message(t('@type %title has been reverted back to the revision from %revision-date.', array('@type' => node_type_get_name($node_revision), '%title' => $node_revision->title, '%revision-date' => format_date($original_revision_timestamp))));
   $form_state['redirect'] = 'node/' . $node_revision->nid . '/revisions';
 }
 
 /**
- * Page callback: Form constructor for the revision deletion confirmation form.
+ * Form constructor for the revision deletion confirmation form.
  *
  * This form prevents against CSRF attacks.
  *
+ * @param $node_revision
+ *   The node revision ID.
+ *
+ * @return
+ *   An array as expected by drupal_render().
+ *
  * @see node_menu()
  * @see node_revision_delete_confirm_submit()
+ *
+ * @ingroup forms
  */
 function node_revision_delete_confirm($form, $form_state, $node_revision) {
   $form['#node_revision'] = $node_revision;

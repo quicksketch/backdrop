@@ -222,6 +222,11 @@ function language_negotiation_get_switch_links($type, $path) {
   $links = FALSE;
   $negotiation = variable_get("language_negotiation_$type", array());
 
+  // Only get the languages if we have more than one.
+  if (count(language_list()) >= 2) {
+    $language = language_types_initialize($type);
+  }
+
   foreach ($negotiation as $id => $provider) {
     if (isset($provider['callbacks']['switcher'])) {
       if (isset($provider['file'])) {
@@ -230,6 +235,12 @@ function language_negotiation_get_switch_links($type, $path) {
 
       $callback = $provider['callbacks']['switcher'];
       $result = $callback($type, $path);
+
+      // Add support for WCAG 2.0's Language of Parts to add language identifiers.
+      // http://www.w3.org/TR/UNDERSTANDING-WCAG20/meaning-other-lang-id.html
+      foreach ($result as $langcode => $link) {
+        $result[$langcode]['attributes']['lang'] = $langcode;
+      }
 
       if (!empty($result)) {
         // Allow modules to provide translations for specific links.
@@ -244,7 +255,7 @@ function language_negotiation_get_switch_links($type, $path) {
 }
 
 /**
- * Updates language configuration to remove any language provider that is no longer defined.
+ * Removes any unused language negotiation providers from the configuration.
  */
 function language_negotiation_purge() {
   // Ensure that we are getting the defined language negotiation information. An
@@ -375,7 +386,7 @@ function language_provider_invoke($provider_id, $provider = NULL) {
 
     // If the language provider has no cache preference or this is satisfied
     // we can execute the callback.
-    $cache = !isset($provider['cache']) || $user->uid || $provider['cache'] == variable_get('cache', 0);
+    $cache = !isset($provider['cache']) || $user->uid || $provider['cache'] == config_get('system.performance', 'cache');
     $callback = isset($provider['callbacks']['language']) ? $provider['callbacks']['language'] : FALSE;
     $langcode = $cache && function_exists($callback) ? $callback($languages) : FALSE;
     $results[$provider_id] = isset($languages[$langcode]) ? $languages[$langcode] : FALSE;
@@ -412,7 +423,7 @@ function language_from_default() {
 }
 
 /**
- * Split the given path into prefix and actual path.
+ * Splits the given path into prefix and actual path.
  *
  * Parse the given path and return the language object identified by the
  * prefix and the actual path.
@@ -445,10 +456,10 @@ function language_url_split_prefix($path, $languages) {
 }
 
 /**
- * Return the possible fallback languages ordered by language weight.
+ * Returns the possible fallback languages ordered by language weight.
  *
  * @param
- *   The language type.
+ *   (optional) The language type. Defaults to LANGUAGE_TYPE_CONTENT.
  *
  * @return
  *   An array of language codes.

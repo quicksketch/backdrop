@@ -6,21 +6,6 @@
  */
 
 /**
- * Error reporting level: display no errors.
- */
-const ERROR_REPORTING_HIDE = 0;
-
-/**
- * Error reporting level: display errors and warnings.
- */
-const ERROR_REPORTING_DISPLAY_SOME = 1;
-
-/**
- * Error reporting level: display all messages.
- */
-const ERROR_REPORTING_DISPLAY_ALL = 2;
-
-/**
  * Maps PHP error constants to watchdog severity levels.
  *
  * The error constants are documented at
@@ -183,7 +168,7 @@ function error_displayable($error = NULL) {
  *   TRUE if the error is fatal.
  */
 function _drupal_log_error($error, $fatal = FALSE) {
-  // Initialize a maintenance theme if the boostrap was not complete.
+  // Initialize a maintenance theme if the bootstrap was not complete.
   // Do it early because drupal_set_message() triggers a drupal_theme_initialize().
   if ($fatal && (drupal_get_bootstrap_phase() != DRUPAL_BOOTSTRAP_FULL)) {
     unset($GLOBALS['theme']);
@@ -229,8 +214,10 @@ function _drupal_log_error($error, $fatal = FALSE) {
 
   if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] == 'XMLHttpRequest') {
     if ($fatal) {
-      // When called from JavaScript, simply output the error message.
-      print t('%type: !message in %function (line %line of %file).', $error);
+      if (error_displayable($error)) {
+        // When called from JavaScript, simply output the error message.
+        print t('%type: !message in %function (line %line of %file).', $error);
+      }
       exit;
     }
   }

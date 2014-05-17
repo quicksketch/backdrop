@@ -73,6 +73,36 @@ class Comment extends Entity {
    */
   public $homepage;
 
+  /**
+   * Implements EntityInterface::id().
+   */
+  public function id() {
+    return $this->cid;
+  }
+
+  /**
+   * Implements EntityInterface::entityType().
+   */
+  public function entityType() {
+    return 'comment';
+  }
+
+  /**
+   * Implements EntityInterface::label().
+   */
+  public function label() {
+    return $this->subject;
+  }
+
+  /**
+   * Implements EntityInterface::uri().
+   */
+  public function uri() {
+    return array(
+      'path' => 'comment/' . $this->cid,
+      'options' => array('fragment' => 'comment-' . $this->cid),
+    );
+  }
 }
 
 /**
@@ -141,8 +171,11 @@ class CommentStorageController extends EntityDatabaseStorageController {
         $max = db_query('SELECT MAX(thread) FROM {comment} WHERE nid = :nid', array(':nid' => $comment->nid))->fetchField();
         // Strip the "/" from the end of the thread.
         $max = rtrim($max, '/');
+        // We need to get the value at the correct depth.
+        $parts = explode('.', $max);
+        $firstsegment = $parts[0];
         // Finally, build the thread field for this new comment.
-        $thread = comment_increment_alphadecimal($max) . '/';
+        $thread = comment_increment_alphadecimal($firstsegment) .'/';
       }
       else {
         // This is a comment with a parent comment, so increase the part of
@@ -193,7 +226,7 @@ class CommentStorageController extends EntityDatabaseStorageController {
   /**
    * Overrides EntityDatabaseStorageController::postSave().
    */
-  protected function postSave(EntityInterface $comment) {
+  protected function postSave(EntityInterface $comment, $update) {
     // Update the {node_comment_statistics} table prior to executing the hook.
     $this->updateNodeStatistics($comment->nid);
     if ($comment->status == COMMENT_PUBLISHED) {

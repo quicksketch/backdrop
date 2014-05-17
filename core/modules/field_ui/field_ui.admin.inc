@@ -169,7 +169,8 @@ function field_ui_table_pre_render($elements) {
 
         // Add tabledrag indentation to the first row cell.
         if ($depth = count($parents[$name])) {
-          $cell = current(element_children($row));
+          $children = element_children($row);
+          $cell = current($children);
           $row[$cell]['#prefix'] = theme('indentation', array('size' => $depth)) . (isset($row[$cell]['#prefix']) ? $row[$cell]['#prefix'] : '');
         }
 
@@ -324,10 +325,10 @@ function field_ui_field_overview_form($form, &$form_state, $entity_type, $bundle
       t('Label'),
       t('Weight'),
       t('Parent'),
-      t('Name'),
-      t('Field'),
+      t('Machine name'),
+      t('Field type'),
       t('Widget'),
-      array('data' => t('Operations'), 'colspan' => 2),
+      t('Operations'),
     ),
     '#parent_options' => array(),
     '#regions' => array(
@@ -390,23 +391,25 @@ function field_ui_field_overview_form($form, &$form_state, $entity_type, $bundle
         '#href' => $admin_field_path . '/widget-type',
         '#options' => array('attributes' => array('title' => t('Change widget type.'))),
       ),
-      'edit' => array(
-        '#type' => 'link',
-        '#title' => t('edit'),
-        '#href' => $admin_field_path,
-        '#options' => array('attributes' => array('title' => t('Edit instance settings.'))),
-      ),
-      'delete' => array(
-        '#type' => 'link',
-        '#title' => t('delete'),
-        '#href' => $admin_field_path . '/delete',
-        '#options' => array('attributes' => array('title' => t('Delete instance.'))),
-      ),
+    );
+    $links = array();
+    $links['edit'] = array(
+      'title' => t('Edit'),
+      'href' => $admin_field_path,
+      'attributes' => array('title' => t('Edit instance settings.')),
+    );
+    $links['delete'] = array(
+      'title' => t('Delete'),
+      'href' => "$admin_field_path/delete",
+      'attributes' => array('title' => t('Delete instance.')),
+    );
+    $table[$name]['operations']['data'] = array(
+      '#type' => 'operations',
+      '#links' => $links,
     );
 
     if (!empty($instance['locked'])) {
-      $table[$name]['edit'] = array('#value' => t('Locked'));
-      $table[$name]['delete'] = array();
+      $table[$name]['operations'] = array('#value' => t('Locked'));
       $table[$name]['#attributes']['class'][] = 'menu-disabled';
     }
   }
@@ -451,11 +454,8 @@ function field_ui_field_overview_form($form, &$form_state, $entity_type, $bundle
         '#markup' => isset($extra_field['description']) ? $extra_field['description'] : '',
         '#cell_attributes' => array('colspan' => 2),
       ),
-      'edit' => array(
-        '#markup' => isset($extra_field['edit']) ? $extra_field['edit'] : '',
-      ),
-      'delete' => array(
-        '#markup' => isset($extra_field['delete']) ? $extra_field['delete'] : '',
+      'operations' => array(
+        '#markup' => '',
       ),
     );
   }
@@ -506,16 +506,24 @@ function field_ui_field_overview_form($form, &$form_state, $entity_type, $bundle
         ),
       ),
       'field_name' => array(
-        '#type' => 'textfield',
+        '#type' => 'machine_name',
         '#title' => t('New field name'),
         '#title_display' => 'invisible',
         // This field should stay LTR even for RTL languages.
         '#field_prefix' => '<span dir="ltr">field_',
         '#field_suffix' => '</span>&lrm;',
-        '#attributes' => array('dir'=>'ltr'),
-        '#size' => 10,
-        '#description' => t('Field name (a-z, 0-9, _)'),
+        '#size' => 15,
+        '#description' => t('A unique machine-readable name containing letters, numbers, and underscores.'),
+        // 32 characters minus the 'field_' prefix.
+        '#maxlength' => 26,
         '#prefix' => '<div class="add-new-placeholder">&nbsp;</div>',
+        '#machine_name' => array(
+          'source' => array('fields', $name, 'label'),
+          'exists' => '_field_ui_field_name_exists',
+          'standalone' => TRUE,
+          'label' => '',
+        ),
+        '#required' => FALSE,
       ),
       'type' => array(
         '#type' => 'select',
@@ -686,25 +694,8 @@ function _field_ui_field_overview_form_validate_add_new($form, &$form_state) {
       $field_name = $field['field_name'];
 
       // Add the 'field_' prefix.
-      if (substr($field_name, 0, 6) != 'field_') {
-        $field_name = 'field_' . $field_name;
-        form_set_value($form['fields']['_add_new_field']['field_name'], $field_name, $form_state);
-      }
-
-      // Invalid field name.
-      if (!preg_match('!^field_[a-z0-9_]+$!', $field_name)) {
-        form_set_error('fields][_add_new_field][field_name', t('Add new field: the field name %field_name is invalid. The name must include only lowercase unaccentuated letters, numbers, and underscores.', array('%field_name' => $field_name)));
-      }
-      if (strlen($field_name) > 32) {
-        form_set_error('fields][_add_new_field][field_name', t("Add new field: the field name %field_name is too long. The name is limited to 32 characters, including the 'field_' prefix.", array('%field_name' => $field_name)));
-      }
-
-      // Field name already exists. We need to check inactive fields as well, so
-      // we can't use field_info_fields().
-      $fields = field_read_fields(array('field_name' => $field_name), array('include_inactive' => TRUE));
-      if ($fields) {
-        form_set_error('fields][_add_new_field][field_name', t('Add new field: the field name %field_name already exists.', array('%field_name' => $field_name)));
-      }
+      $field_name = 'field_' . $field_name;
+      form_set_value($form['fields']['_add_new_field']['field_name'], $field_name, $form_state);
     }
 
     // Missing field type.
@@ -724,6 +715,24 @@ function _field_ui_field_overview_form_validate_add_new($form, &$form_state) {
       }
     }
   }
+}
+
+/**
+ * Render API callback: Checks if a field machine name is taken.
+ *
+ * @param $value
+ *   The machine name, not prefixed with 'field_'.
+ *
+ * @return
+ *   Whether or not the field machine name is taken.
+ */
+function _field_ui_field_name_exists($value) {
+  // Prefix with 'field_'.
+  $field_name = 'field_' . $value;
+
+  // We need to check inactive fields as well, so we can't use
+  // field_info_fields().
+  return (bool) field_read_fields(array('field_name' => $field_name), array('include_inactive' => TRUE));
 }
 
 /**
@@ -1533,7 +1542,7 @@ function field_ui_existing_field_options($entity_type, $bundle) {
           // - locked fields,
           // - fields already in the current bundle,
           // - fields that cannot be added to the entity type,
-          // - fields that that shoud not be added via user interface.
+          // - fields that should not be added via user interface.
 
           if (empty($field['locked'])
             && !field_info_instance($entity_type, $field['field_name'], $bundle)
@@ -1543,7 +1552,7 @@ function field_ui_existing_field_options($entity_type, $bundle) {
               'type' => $field['type'],
               'type_label' => $field_types[$field['type']]['label'],
               'field' => $field['field_name'],
-              'label' => t($instance['label']),
+              'label' => $instance['label'],
               'widget_type' => $instance['widget']['type'],
             );
           }
@@ -1558,8 +1567,8 @@ function field_ui_existing_field_options($entity_type, $bundle) {
  * Form constructor for the field settings edit page.
  *
  * @see field_ui_menu()
- * @see field_ui_settings_form_submit()
- * @ingroups forms
+ * @see field_ui_field_settings_form_submit()
+ * @ingroup forms
  */
 function field_ui_field_settings_form($form, &$form_state, $instance) {
   $bundle = $instance['bundle'];

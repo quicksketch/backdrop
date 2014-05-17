@@ -34,7 +34,16 @@ function _locale_translate_seek() {
   }
 
   $sql_query = db_select('locales_source', 's');
-  $sql_query->leftJoin('locales_target', 't', 't.lid = s.lid');
+
+  $limit_language = NULL;
+  if ($query['language'] != 'en' && $query['language'] != 'all') {
+    $sql_query->leftJoin('locales_target', 't', "t.lid = s.lid AND t.language = :langcode", array(':langcode' => $query['language']));
+    $limit_language = $query['language'];
+  }
+  else {
+    $sql_query->leftJoin('locales_target', 't', 't.lid = s.lid');
+  }
+
   $sql_query->fields('s', array('source', 'location', 'context', 'lid'));
   $sql_query->fields('t', array('translation', 'language'));
 
@@ -63,12 +72,6 @@ function _locale_translate_seek() {
       break;
   }
 
-  $limit_language = NULL;
-  if ($query['language'] != LANGUAGE_SYSTEM && $query['language'] != 'all') {
-    $sql_query->condition('language', $query['language']);
-    $limit_language = $query['language'];
-  }
-
   $sql_query = $sql_query->extend('PagerDefault')->limit(50);
   $locales = $sql_query->execute();
 
@@ -91,12 +94,24 @@ function _locale_translate_seek() {
 
   $rows = array();
   foreach ($strings as $lid => $string) {
+    $links = array();
+    $links['edit'] = array(
+      'title' => t('Edit'),
+      'href' => "admin/config/regional/translate/edit/$lid",
+      'query' => drupal_get_destination(),
+      'class' => array('nowrap'),
+    );
+    $links['delete'] = array(
+      'title' => t('Delete'),
+      'href' => "admin/config/regional/translate/delete/$lid",
+      'query' => drupal_get_destination(),
+      'class' => array('nowrap'),
+    );
     $rows[] = array(
       array('data' => check_plain(truncate_utf8($string['source'], 150, FALSE, TRUE)) . '<br /><small>' . $string['location'] . '</small>'),
       $string['context'],
       array('data' => _locale_translate_language_list($string['languages'], $limit_language), 'align' => 'center'),
-      array('data' => l(t('edit'), "admin/config/regional/translate/edit/$lid", array('query' => drupal_get_destination())), 'class' => array('nowrap')),
-      array('data' => l(t('delete'), "admin/config/regional/translate/delete/$lid", array('query' => drupal_get_destination())), 'class' => array('nowrap')),
+      array('data' => array('#type' => 'operations', '#links' => $links)),
     );
   }
 

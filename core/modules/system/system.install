@@ -6,30 +6,25 @@
  */
 
 /**
- * Test and report Drupal installation requirements.
- *
- * @param $phase
- *   The current system installation phase.
- * @return
- *   An array of system requirements.
+ * Implements hook_requirements().
  */
 function system_requirements($phase) {
   global $base_url;
   $requirements = array();
-  // Ensure translations don't break at install time
+  // Ensure translations don't break during installation.
   $t = get_t();
 
-  // Report Drupal version
+  // Report Backdrop version
   if ($phase == 'runtime') {
-    $requirements['drupal'] = array(
-      'title' => $t('Drupal'),
-      'value' => VERSION,
+    $requirements['backdrop'] = array(
+      'title' => $t('Backdrop CMS'),
+      'value' => BACKDROP_VERSION,
       'severity' => REQUIREMENT_INFO,
       'weight' => -10,
     );
 
-    // Display the currently active install profile, if the site
-    // is not running the default install profile.
+    // Display the currently active installation profile, if the site
+    // is not running the default installation profile.
     $profile = drupal_get_profile();
     if ($profile != 'standard') {
       $info = system_get_info('module', $profile);
@@ -199,7 +194,7 @@ function system_requirements($phase) {
     'value' => $memory_limit == -1 ? t('-1 (Unlimited)') : $memory_limit,
   );
 
-  if ($memory_limit && $memory_limit != -1 && parse_size($memory_limit) < parse_size(DRUPAL_MINIMUM_PHP_MEMORY_LIMIT)) {
+  if (!drupal_check_memory_limit(DRUPAL_MINIMUM_PHP_MEMORY_LIMIT, $memory_limit)) {
     $description = '';
     if ($phase == 'install') {
       $description = $t('Consider increasing your PHP memory limit to %memory_minimum_limit to help prevent errors in the installation process.', array('%memory_minimum_limit' => DRUPAL_MINIMUM_PHP_MEMORY_LIMIT));
@@ -249,6 +244,39 @@ function system_requirements($phase) {
     $requirements['settings.php']['title'] = $t('Configuration file');
   }
 
+  // Test the contents of the .htaccess files.
+  if ($phase == 'runtime') {
+    // Try to write the .htaccess files first, to prevent false alarms in case
+    // (for example) the /tmp directory was wiped.
+    file_ensure_htaccess();
+    $htaccess_files['public://.htaccess'] = array(
+      'title' => $t('Public files directory'),
+      'directory' => variable_get('file_public_path', conf_path() . '/files'),
+    );
+    if ($private_files_directory = variable_get('file_private_path')) {
+      $htaccess_files['private://.htaccess'] = array(
+        'title' => $t('Private files directory'),
+        'directory' => $private_files_directory,
+      );
+    }
+    $htaccess_files['temporary://.htaccess'] = array(
+      'title' => $t('Temporary files directory'),
+      'directory' => variable_get('file_temporary_path', file_directory_temp()),
+    );
+    foreach ($htaccess_files as $htaccess_file => $info) {
+      // Check for the string which was added to the recommended .htaccess file
+      // in the latest security update.
+      if (!file_exists($htaccess_file) || !($contents = @file_get_contents($htaccess_file)) || strpos($contents, 'Drupal_Security_Do_Not_Remove_See_SA_2013_003') === FALSE) {
+        $requirements[$htaccess_file] = array(
+          'title' => $info['title'],
+          'value' => $t('Not fully protected'),
+          'severity' => REQUIREMENT_ERROR,
+          'description' => $t('See <a href="@url">@url</a> for information about the recommended .htaccess file which should be added to the %directory directory to help protect against arbitrary code execution.', array('@url' => 'http://drupal.org/SA-CORE-2013-003', '%directory' => $info['directory'])),
+        );
+      }
+    }
+  }
+
   // Report cron status.
   if ($phase == 'runtime') {
     // Cron warning threshold defaults to two days.
@@ -259,9 +287,9 @@ function system_requirements($phase) {
     $help = $t('For more information, see the online handbook entry for <a href="@cron-handbook">configuring cron jobs</a>.', array('@cron-handbook' => 'http://drupal.org/cron'));
 
     // Determine when cron last ran.
-    $cron_last = variable_get('cron_last');
+    $cron_last = state_get('cron_last');
     if (!is_numeric($cron_last)) {
-      $cron_last = variable_get('install_time', 0);
+      $cron_last = state_get('install_time', 0);
     }
 
     // Determine severity based on time since cron last ran.
@@ -281,7 +309,7 @@ function system_requirements($phase) {
     }
 
     $description .= ' ' . $t('You can <a href="@cron">run cron manually</a>.', array('@cron' => url('admin/reports/status/run-cron')));
-    $description .= '<br />' . $t('To run cron from outside the site, go to <a href="!cron">!cron</a>', array('!cron' => url($base_url . '/core/cron.php', array('external' => TRUE, 'query' => array('cron_key' => variable_get('cron_key', 'drupal'))))));
+    $description .= '<br />' . $t('To run cron from outside the site, go to <a href="!cron">!cron</a>', array('!cron' => url($base_url . '/core/cron.php', array('external' => TRUE, 'query' => array('cron_key' => state_get('cron_key'))))));
 
     $requirements['cron'] = array(
       'title' => $t('Cron maintenance tasks'),
@@ -304,7 +332,7 @@ function system_requirements($phase) {
     variable_get('file_private_path', FALSE),
   );
 
-  // Do not check for the temporary files directory at install time
+  // Do not check for the temporary files directory during installation
   // unless it has been set in settings.php. In this case the user has
   // no alternative but to fix the directory if it is not writable.
   if ($phase == 'install') {
@@ -408,7 +436,7 @@ function system_requirements($phase) {
     $profile = drupal_get_profile();
     $files = system_rebuild_module_data();
     foreach ($files as $module => $file) {
-      // Ignore disabled modules and install profiles.
+      // Ignore disabled modules and installation profiles.
       if (!$file->status || $module == $profile) {
         continue;
       }
@@ -435,7 +463,7 @@ function system_requirements($phase) {
         // Check for an incompatible version.
         $required_file = $files[$required_module];
         $required_name = $required_file->info['name'];
-        $version = str_replace(DRUPAL_CORE_COMPATIBILITY . '-', '', $required_file->info['version']);
+        $version = str_replace(BACKDROP_CORE_COMPATIBILITY . '-', '', $required_file->info['version']);
         $compatibility = drupal_check_incompatibility($requirement, $version);
         if ($compatibility) {
           $compatibility = rtrim(substr($compatibility, 2), ')');
@@ -477,7 +505,7 @@ function system_requirements($phase) {
         'title' => $t('HTTP request status'),
         'value' => $t('Fails'),
         'severity' => REQUIREMENT_ERROR,
-        'description' => $t('Your system or network configuration does not allow Drupal to access web pages, resulting in reduced functionality. This could be due to your webserver configuration or PHP settings, and should be resolved in order to download information about available updates, fetch aggregator feeds, sign in via OpenID, or use other network-dependent services. If you are certain that Drupal can access web pages but you are still seeing this message, you may add <code>$conf[\'drupal_http_request_fails\'] = FALSE;</code> to the bottom of your settings.php file.'),
+        'description' => $t('Your system or network configuration does not allow Drupal to access web pages, resulting in reduced functionality. This could be due to your webserver configuration or PHP settings, and should be resolved in order to download information about available updates or use other network-dependent services. If you are certain that Drupal can access web pages but you are still seeing this message, you may add <code>$conf[\'drupal_http_request_fails\'] = FALSE;</code> to the bottom of your settings.php file.'),
       );
     }
   }
@@ -512,8 +540,8 @@ function system_install() {
     ->execute();
 
   // Populate the cron key variable.
-  $cron_key = drupal_hash_base64(drupal_random_bytes(55));
-  variable_set('cron_key', $cron_key);
+  $cron_key = drupal_random_key();
+  state_set('cron_key', $cron_key);
 }
 
 /**
@@ -663,8 +691,6 @@ function system_schema() {
   );
   $schema['cache_bootstrap'] = $schema['cache'];
   $schema['cache_bootstrap']['description'] = 'Cache table for data required to bootstrap Drupal, may be routed to a shared memory cache.';
-  $schema['cache_form'] = $schema['cache'];
-  $schema['cache_form']['description'] = 'Cache table for the form system to store recently built forms and their storage data, to be used in subsequent page requests.';
   $schema['cache_page'] = $schema['cache'];
   $schema['cache_page']['description'] = 'Cache table used to store compressed pages for anonymous users, if page caching is enabled.';
   $schema['cache_menu'] = $schema['cache'];
@@ -801,6 +827,7 @@ function system_schema() {
       'filesize' => array(
         'description' => 'The size of the file in bytes.',
         'type' => 'int',
+        'size' => 'big',
         'unsigned' => TRUE,
         'not null' => TRUE,
         'default' => 0,
@@ -1420,6 +1447,26 @@ function system_schema() {
     ),
   );
 
+  $schema['state'] = array(
+    'description' => 'Stores environment-specific state values.',
+    'fields' => array(
+      'name' => array(
+        'description' => 'The name of the state.',
+        'type' => 'varchar',
+        'length' => 128,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'value' => array(
+        'description' => 'The value of the state.',
+        'type' => 'blob',
+        'not null' => TRUE,
+        'size' => 'big',
+      ),
+    ),
+    'primary key' => array('name'),
+  );
+
   $schema['system'] = array(
     'description' => "A list of all modules, themes, and theme engines that are or have been installed in Drupal's file system.",
     'fields' => array(
@@ -1486,6 +1533,44 @@ function system_schema() {
     'indexes' => array(
       'system_list' => array('status', 'bootstrap', 'type', 'weight', 'name'),
       'type_name' => array('type', 'name'),
+    ),
+  );
+
+  $schema['tempstore'] = array(
+    'description' => 'Generic temporary key/value storage table with an expiration.',
+    'fields' => array(
+      'collection' => array(
+        'description' => 'A named collection of key and value pairs.',
+        'type' => 'varchar',
+        'length' => 128,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'name' => array(
+        // KEY is an SQL reserved word, so use 'name' as the key's field name.
+        'description' => 'The key of the key/value pair.',
+        'type' => 'varchar',
+        'length' => 128,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'value' => array(
+        'description' => 'The value of the key/value pair.',
+        'type' => 'blob',
+        'not null' => TRUE,
+        'size' => 'big',
+      ),
+      'expire' => array(
+        'description' => 'The time since Unix epoch in seconds when this item expires.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+    ),
+    'primary key' => array('collection', 'name'),
+    'indexes' => array(
+      'all' => array('name', 'collection', 'expire'),
+      'expire' => array('expire'),
     ),
   );
 
@@ -1581,9 +1666,160 @@ function system_update_8002() {
 }
 
 /**
- * Remove the registry and registry_file tables.
+ * Convert performance module settings to use configuration files.
  */
 function system_update_8003() {
+  config_install_default_config('system', 'system.performance');
+  $config = config('system.performance');
+  $config->set('cache', variable_get('cache', 0));
+  $config->set('cache_lifetime', variable_get('cache_lifetime', '0'));
+  $config->set('page_cache_maximum_age', variable_get('page_cache_maximum_age', '0'));
+  $config->set('page_compression', variable_get('page_compression', 1));
+  $config->set('preprocess_css', variable_get('preprocess_css', 0));
+  $config->set('preprocess_js', variable_get('preprocess_js', 0));
+  $config->save();
+}
+
+/**
+ * Create the "state" table for the state storage system.
+ */
+function system_update_8004() {
+  if (!db_table_exists('state')) {
+    $schema = array(
+      'description' => 'Stores environment-specific state values.',
+      'fields' => array(
+        'name' => array(
+          'description' => 'The name of the state.',
+          'type' => 'varchar',
+          'length' => 128,
+          'not null' => TRUE,
+          'default' => '',
+        ),
+        'value' => array(
+          'description' => 'The value of the state.',
+          'type' => 'blob',
+          'not null' => TRUE,
+          'size' => 'big',
+        ),
+      ),
+      'primary key' => array('name'),
+    );
+    db_create_table('state', $schema);
+  }
+}
+
+/**
+ * Convert basic system variables to the state system.
+ */
+function system_update_8005() {
+  $variables = array(
+    'install_time' => REQUEST_TIME,
+    'install_task' => 'done',
+    'maintenance_mode' => FALSE,
+    'cron_key' => NULL,
+    'cron_last' => REQUEST_TIME,
+    'css_js_query_string' => '',
+  );
+  foreach ($variables as $name => $default) {
+    state_set($name, variable_get($name, $default));
+    variable_del($name);
+  }
+}
+
+/**
+ * Delete unneeded actions for manually saving comments and nodes.
+ */
+function system_update_8006() {
+  db_delete('actions')
+    ->condition('aid', array('comment_save_action', 'node_save_action'), 'IN')
+    ->execute();
+}
+
+/**
+ * Create the tempstore table and remove the cache_form table.
+ */
+function system_update_8007() {
+  $schema = array(
+    'description' => 'Generic temporary key/value storage table with an expiration.',
+    'fields' => array(
+      'collection' => array(
+        'description' => 'A named collection of key and value pairs.',
+        'type' => 'varchar',
+        'length' => 128,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'name' => array(
+        // KEY is an SQL reserved word, so use 'name' as the key's field name.
+        'description' => 'The key of the key/value pair.',
+        'type' => 'varchar',
+        'length' => 128,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'value' => array(
+        'description' => 'The value of the key/value pair.',
+        'type' => 'blob',
+        'not null' => TRUE,
+        'size' => 'big',
+      ),
+      'expire' => array(
+        'description' => 'The time since Unix epoch in seconds when this item expires.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+    ),
+    'primary key' => array('collection', 'name'),
+    'indexes' => array(
+      'all' => array('name', 'collection', 'expire'),
+      'expire' => array('expire'),
+    ),
+  );
+  if (!db_table_exists('tempstore')) {
+    db_create_table('tempstore', $schema);
+  }
+  if (db_table_exists('cache_form')) {
+    db_drop_table('cache_form');
+  }
+}
+
+/**
+ * Convert the 'filesize' column in {file_managed} to a bigint.
+ */
+function system_update_8008() {
+  $spec = array(
+    'description' => 'The size of the file in bytes.',
+    'type' => 'int',
+    'size' => 'big',
+    'unsigned' => TRUE,
+    'not null' => TRUE,
+    'default' => 0,
+  );
+  db_change_field('file_managed', 'filesize', 'filesize', $spec);
+}
+
+/**
+ * Enable Admin Menu module.
+ */
+function system_update_8009() {
+  update_module_enable(array('admin_menu'));
+
+  // Install default config.
+  config_install_default_config('admin_menu', 'admin_menu.settings');
+
+  // Manually install schema, as update_module_enable() does not do this for us.
+  if (!db_table_exists('cache_admin_menu')) {
+    $cache_admin_menu = drupal_get_schema_unprocessed('system', 'cache');
+    $cache_admin_menu['description'] = 'Cache table for Administration menu to store client-side caching hashes.';
+    db_create_table('cache_admin_menu', $cache_admin_menu);
+  }
+}
+
+/**
+ * Remove the registry and registry_file tables.
+ */
+function system_update_8010() {
   if (db_table_exists('registry')) {
     db_drop_table('registry');
   }

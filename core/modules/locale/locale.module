@@ -153,7 +153,18 @@ function locale_permission() {
   return array(
     'translate interface' => array(
       'title' => t('Translate interface texts'),
+      'restrict access' => TRUE,
     ),
+  );
+}
+
+/**
+ * Implements hook_views_api().
+ */
+function locale_views_api() {
+  return array(
+    'api' => '3.0',
+    'path' => drupal_get_path('module', 'locale') . '/views',
   );
 }
 
@@ -231,9 +242,8 @@ function locale_form_node_form_alter(&$form, &$form_state) {
  */
 function locale_field_node_form_submit($form, &$form_state) {
   if (field_has_translation_handler('node', 'locale')) {
-    $node = (object) $form_state['values'];
-    $available_languages = field_content_languages();
-    list(, , $bundle) = entity_extract_ids('node', $node);
+    $bundle = $form_state['values']['type'];
+    $node_language = $form_state['values']['langcode'];
 
     foreach (field_info_instances('node', $bundle) as $instance) {
       $field_name = $instance['field_name'];
@@ -242,8 +252,8 @@ function locale_field_node_form_submit($form, &$form_state) {
 
       // Handle a possible language change: new language values are inserted,
       // previous ones are deleted.
-      if ($field['translatable'] && $previous_langcode != $node->langcode) {
-        $form_state['values'][$field_name][$node->langcode] = $node->{$field_name}[$previous_langcode];
+      if ($field['translatable'] && $previous_langcode != $node_language) {
+        $form_state['values'][$field_name][$node_language] = $form_state['values'][$field_name][$previous_langcode];
         $form_state['values'][$field_name][$previous_langcode] = array();
       }
     }
@@ -572,7 +582,7 @@ function locale($string = NULL, $context = NULL, $langcode = NULL) {
         // Refresh database stored cache of translations for given language.
         // We only store short strings used in current version, to improve
         // performance and consume less memory.
-        $result = db_query("SELECT s.source, s.context, t.translation, t.language FROM {locales_source} s LEFT JOIN {locales_target} t ON s.lid = t.lid AND t.language = :language WHERE s.version = :version AND LENGTH(s.source) < :length", array(':language' => $langcode, ':version' => VERSION, ':length' => variable_get('locale_cache_length', 75)));
+        $result = db_query("SELECT s.source, s.context, t.translation, t.language FROM {locales_source} s LEFT JOIN {locales_target} t ON s.lid = t.lid AND t.language = :language WHERE s.version = :version AND LENGTH(s.source) < :length", array(':language' => $langcode, ':version' => BACKDROP_VERSION, ':length' => variable_get('locale_cache_length', 75)));
         foreach ($result as $data) {
           $locale_t[$langcode][$data->context][$data->source] = (empty($data->translation) ? TRUE : $data->translation);
         }
@@ -596,12 +606,12 @@ function locale($string = NULL, $context = NULL, $langcode = NULL) {
       // Cache translation string or TRUE if no translation exists.
       $locale_t[$langcode][$context][$string] = (empty($translation->translation) ? TRUE : $translation->translation);
 
-      if ($translation->version != VERSION) {
+      if ($translation->version != BACKDROP_VERSION) {
         // This is the first use of this string under current Drupal version. Save version
         // and clear cache, to include the string into caching next time. Saved version is
         // also a string-history information for later pruning of the tables.
         db_update('locales_source')
-          ->fields(array('version' => VERSION))
+          ->fields(array('version' => BACKDROP_VERSION))
           ->condition('lid', $translation->lid)
           ->execute();
         cache()->deletePrefix('locale:');
@@ -609,12 +619,14 @@ function locale($string = NULL, $context = NULL, $langcode = NULL) {
     }
     else {
       // We don't have the source string, cache this as untranslated.
-      db_insert('locales_source')
-        ->fields(array(
+      db_merge('locales_source')
+        ->insertFields(array(
           'location' => request_uri(),
+          'version' => BACKDROP_VERSION,
+        ))
+        ->key(array(
           'source' => $string,
           'context' => (string) $context,
-          'version' => VERSION,
         ))
         ->execute();
       $locale_t[$langcode][$context][$string] = TRUE;
@@ -797,15 +809,22 @@ function locale_js_alter(&$javascript) {
  * Provides the language support for the jQuery UI Date Picker.
  */
 function locale_library_info_alter(&$libraries, $module) {
-  global $language_interface;
-  if ($module == 'system' && isset($libraries['system']['ui.datepicker'])) {
+  if ($module == 'system' && isset($libraries['ui.datepicker'])) {
+    global $language_interface;
+    // locale.datepicker.js should be added in the JS_LIBRARY group, so that
+    // this attach behavior will execute early. JS_LIBRARY is the default for
+    // hook_library_info_alter(), thus does not have to be specified explicitly.
     $datepicker = drupal_get_path('module', 'locale') . '/locale.datepicker.js';
-    $libraries['system']['ui.datepicker']['js'][$datepicker] = array('group' => JS_THEME);
-    $libraries['system']['ui.datepicker']['js'][] = array(
+    $libraries['ui.datepicker']['js'][$datepicker] = array();
+    $libraries['ui.datepicker']['js'][] = array(
       'data' => array(
-        'jqueryuidatepicker' => array(
-          'rtl' => $language_interface->direction == LANGUAGE_RTL,
-          'firstDay' => variable_get('date_first_day', 0),
+        'jquery' => array(
+          'ui' => array(
+            'datepicker' => array(
+              'isRTL' => $language_interface->direction == LANGUAGE_RTL,
+              'firstDay' => variable_get('date_first_day', 0),
+            ),
+          ),
         ),
       ),
       'type' => 'setting',
@@ -882,7 +901,7 @@ function locale_url_outbound_alter(&$path, &$options, $original_path) {
       include_once DRUPAL_ROOT . '/core/includes/language.inc';
 
       foreach (language_types_get_configurable() as $type) {
-        // Get url rewriter callbacks only from enabled language providers.
+        // Get URL rewriter callbacks only from enabled language providers.
         $negotiation = variable_get("language_negotiation_$type", array());
 
         foreach ($negotiation as $id => $provider) {

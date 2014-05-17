@@ -96,6 +96,16 @@ function search_permission() {
 }
 
 /**
+ * Implements hook_views_api().
+ */
+function search_views_api() {
+  return array(
+    'api' => '3.0',
+    'path' => drupal_get_path('module', 'search') . '/views',
+  );
+}
+
+/**
  * Implements hook_block_info().
  */
 function search_block_info() {
@@ -762,7 +772,7 @@ function search_touch_node($nid) {
 /**
  * Implements hook_node_update_index().
  */
-function search_node_update_index($node) {
+function search_node_update_index(Node $node) {
   // Transplant links to a node into the target node.
   $result = db_query("SELECT caption FROM {search_node_links} WHERE nid = :nid", array(':nid' => $node->nid), array('target' => 'slave'));
   $output = array();
@@ -777,7 +787,7 @@ function search_node_update_index($node) {
 /**
  * Implements hook_node_update().
  */
-function search_node_update($node) {
+function search_node_update(Node $node) {
   // Reindex the node when it is updated. The node is automatically indexed
   // when it is added, simply by being added to the node table.
   search_touch_node($node->nid);
@@ -1234,6 +1244,11 @@ function search_simplify_excerpt_match($key, $text, $offset, $boundary) {
   $pos = NULL;
   $simplified_key = search_simplify($key);
   $simplified_text = search_simplify($text);
+
+  // Return immediately if simplified key or text are empty.
+  if (!$simplified_key || !$simplified_text) {
+    return FALSE;
+  }
 
   // Check if we have a match after simplification in the text.
   if (!preg_match('/' . $boundary . $simplified_key . $boundary . '/iu', $simplified_text, $match, PREG_OFFSET_CAPTURE, $offset)) {

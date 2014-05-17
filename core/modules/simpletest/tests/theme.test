@@ -92,7 +92,7 @@ class ThemeUnitTest extends DrupalWebTestCase {
     // what is output to the HTML HEAD based on what is in a theme's .info file,
     // so it doesn't matter what page we get, as long as it is themed with the
     // test theme. First we test with CSS aggregation disabled.
-    variable_set('preprocess_css', 0);
+    config_set('system.performance', 'preprocess_css', 0);
     $this->drupalGet('theme-test/suggestion');
     $this->assertNoText('system.base.css', t('The theme\'s .info file is able to override a module CSS file from being added to the page.'));
 
@@ -100,9 +100,9 @@ class ThemeUnitTest extends DrupalWebTestCase {
     // triggered during drupal_build_css_cache() when a source file doesn't
     // exist. Then allow remaining tests to continue with aggregation disabled
     // by default.
-    variable_set('preprocess_css', 1);
+    config_set('system.performance', 'preprocess_css', 1);
     $this->drupalGet('theme-test/suggestion');
-    variable_set('preprocess_css', 0);
+    config_set('system.performance', 'preprocess_css', 0);
   }
 
   /**
@@ -143,6 +143,19 @@ class ThemeUnitTest extends DrupalWebTestCase {
     $this->assertIdentical(theme_get_setting('theme_test_setting'), 'default value', t('theme_get_setting() uses the default theme automatically.'));
     $this->assertNotEqual(theme_get_setting('subtheme_override', 'test_basetheme'), theme_get_setting('subtheme_override', 'test_subtheme'), t('Base theme\'s default settings values can be overridden by subtheme.'));
     $this->assertIdentical(theme_get_setting('basetheme_only', 'test_subtheme'), 'base theme value', t('Base theme\'s default settings values are inherited by subtheme.'));
+  }
+
+  /**
+   * Ensures the theme registry is rebuilt when modules are disabled/enabled.
+   */
+  function testRegistryRebuild() {
+    $this->assertIdentical(theme('theme_test_foo', array('foo' => 'a')), 'a', 'The theme registry contains theme_test_foo.');
+
+    module_disable(array('theme_test'), FALSE);
+    $this->assertIdentical(theme('theme_test_foo', array('foo' => 'b')), '', 'The theme registry does not contain theme_test_foo, because the module is disabled.');
+
+    module_enable(array('theme_test'), FALSE);
+    $this->assertIdentical(theme('theme_test_foo', array('foo' => 'c')), 'c', 'The theme registry contains theme_test_foo again after re-enabling the module.');
   }
 }
 
@@ -196,6 +209,20 @@ class ThemeTableUnitTest extends DrupalWebTestCase {
     $this->assertRaw('<thead><tr><th>Header 1</th>', t('Table header was printed.'));
   }
 
+  /**
+   * Tests that the 'no_striping' option works correctly.
+   */
+  function testThemeTableWithNoStriping() {
+    $rows = array(
+      array(
+        'data' => array(1),
+        'no_striping' => TRUE,
+      ),
+    );
+    $this->content = theme('table', array('rows' => $rows));
+    $this->assertNoRaw('class="odd"', t('Odd/even classes were not added because $no_striping = TRUE.'));
+    $this->assertNoRaw('no_striping', t('No invalid no_striping HTML attribute was printed.'));
+  }
 }
 
 /**

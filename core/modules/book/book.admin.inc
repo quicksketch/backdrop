@@ -2,11 +2,14 @@
 
 /**
  * @file
- * Admin page callbacks for the book module.
+ * Administration page callbacks for the Book module.
  */
 
 /**
- * Page callback: Returns an administrative overview of all books.
+ * Returns an administrative overview of all books.
+ *
+ * @return string
+ *   A HTML-formatted string with the administrative page content.
  *
  * @see book_menu()
  */
@@ -17,7 +20,21 @@ function book_admin_overview() {
 
   // Add any recognized books to the table list.
   foreach (book_get_books() as $book) {
-    $rows[] = array(l($book['title'], $book['href'], $book['options']), l(t('edit order and titles'), 'admin/content/book/' . $book['nid']));
+    $row = array(
+      l($book['title'], $book['href'], $book['options']),
+    );
+    $links = array();
+    $links['edit'] = array(
+      'title' => t('edit order and titles'),
+      'href' => 'admin/content/book/' . $book['nid'],
+    );
+    $row[] = array(
+      'data' => array(
+        '#type' => 'operations',
+        '#links' => $links,
+      ),
+    );
+    $rows[] = $row;
   }
 
   return theme('table', array('header' => $headers, 'rows' => $rows, 'empty' => t('No books available.')));
@@ -55,6 +72,8 @@ function book_admin_settings() {
 
 /**
  * Form validation handler for book_admin_settings().
+ *
+ * @see book_admin_settings_submit()
  */
 function book_admin_settings_validate($form, &$form_state) {
   $child_type = $form_state['values']['book_child_type'];
@@ -66,7 +85,7 @@ function book_admin_settings_validate($form, &$form_state) {
 /**
  * Form constructor for administering a single book's hierarchy.
  *
- * @param $node
+ * @param Node $node
  *   The node of the top-level page in the book.
  *
  * @see book_menu()
@@ -74,7 +93,7 @@ function book_admin_settings_validate($form, &$form_state) {
  * @see book_admin_edit_submit()
  * @ingroup forms
  */
-function book_admin_edit($form, $form_state, $node) {
+function book_admin_edit($form, $form_state, Node $node) {
   drupal_set_title($node->title);
   $form['#node'] = $node;
   _book_admin_table($node, $form);
@@ -135,7 +154,7 @@ function book_admin_edit_submit($form, &$form_state) {
         $node->revision = 1;
         $node->log = t('Title changed from %original to %current.', array('%original' => $node->title, '%current' => $values['title']));
 
-        node_save($node);
+        $node->save();
         watchdog('content', 'book: updated %title.', array('%title' => $node->title), WATCHDOG_NOTICE, l(t('view'), 'node/' . $node->nid));
       }
     }
@@ -147,14 +166,14 @@ function book_admin_edit_submit($form, &$form_state) {
 /**
  * Builds the table portion of the form for the book administration page.
  *
- * @param $node
+ * @param Node $node
  *   The node of the top-level page in the book.
  * @param $form
- *   The form that is being modified.
+ *   The form that is being modified, passed by reference.
  *
  * @see book_admin_edit()
  */
-function _book_admin_table($node, &$form) {
+function _book_admin_table(Node $node, &$form) {
   $form['table'] = array(
     '#theme' => 'book_admin_table',
     '#tree' => TRUE,
@@ -185,10 +204,10 @@ function _book_admin_table($node, &$form) {
  * @param $tree
  *   A subtree of the book menu hierarchy.
  * @param $form
- *   The form that is being modified.
+ *   The form that is being modified, passed by reference.
  *
  * @return
- *   The form that is being modified.
+ *   The modified form array.
  *
  * @see book_admin_edit()
  */
@@ -249,7 +268,7 @@ function theme_book_admin_table($variables) {
   drupal_add_tabledrag('book-outline', 'match', 'parent', 'book-plid', 'book-plid', 'book-mlid', TRUE, MENU_MAX_DEPTH - 2);
   drupal_add_tabledrag('book-outline', 'order', 'sibling', 'book-weight');
 
-  $header = array(t('Title'), t('Weight'), t('Parent'), array('data' => t('Operations'), 'colspan' => '3'));
+  $header = array(t('Title'), t('Weight'), t('Parent'), t('Operations'));
 
   $rows = array();
   $destination = drupal_get_destination();
@@ -267,9 +286,29 @@ function theme_book_admin_table($variables) {
       theme('indentation', array('size' => $form[$key]['depth']['#value'] - 2)) . drupal_render($form[$key]['title']),
       drupal_render($form[$key]['weight']),
       drupal_render($form[$key]['plid']) . drupal_render($form[$key]['mlid']),
-      l(t('view'), $href),
-      $access ? l(t('edit'), 'node/' . $nid . '/edit', array('query' => $destination)) : '&nbsp;',
-      $access ? l(t('delete'), 'node/' . $nid . '/delete', array('query' => $destination) )  : '&nbsp;',
+    );
+    $links = array();
+    $links['view'] = array(
+      'title' => t('view'),
+      'href' => $href,
+    );
+    if ($access) {
+      $links['edit'] = array(
+        'title' => t('Edit'),
+        'href' => "node/$nid/edit",
+        'query' => $destination,
+      );
+      $links['delete'] = array(
+        'title' => t('Delete'),
+        'href' => "node/$nid/delete",
+        'query' => $destination,
+      );
+    }
+    $data[] = array(
+      'data' => array(
+        '#type' => 'operations',
+        '#links' => $links,
+      ),
     );
     $row = array('data' => $data);
     if (isset($form[$key]['#attributes'])) {
@@ -279,5 +318,5 @@ function theme_book_admin_table($variables) {
     $rows[] = $row;
   }
 
-  return theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => array('id' => 'book-outline')));
+  return theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => array('id' => 'book-outline'), 'empty' => t('No book content available.')));
 }

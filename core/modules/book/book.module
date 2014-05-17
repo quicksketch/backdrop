@@ -57,14 +57,24 @@ function book_permission() {
 }
 
 /**
+ * Implements hook_views_api().
+ */
+function book_views_api() {
+  return array(
+    'api' => '3.0',
+    'path' => drupal_get_path('module', 'book') . '/views',
+  );
+}
+
+/**
  * Adds relevant book links to the node's links.
  *
- * @param $node
+ * @param Node $node
  *   The book page node to add links to.
  * @param $view_mode
  *   The view mode of the node.
  */
-function book_node_view_link($node, $view_mode) {
+function book_node_view_link(Node $node, $view_mode) {
   $links = array();
 
   if (isset($node->book['depth'])) {
@@ -174,24 +184,24 @@ function book_menu() {
  * - admin/content/book/%node
  * - node/%node/outline
  *
- * @param $node
+ * @param Node $node
  *   The node whose outline tab is to be viewed.
  *
  * @see book_menu()
  */
-function _book_outline_access($node) {
+function _book_outline_access(Node $node) {
   return user_access('administer book outlines') && node_access('view', $node);
 }
 
 /**
  * Access callback: Determines if the user can remove nodes from the outline.
  *
- * @param $node
+ * @param Node $node
  *   The node to remove from the outline.
  *
  * @see book_menu()
  */
-function _book_outline_remove_access($node) {
+function _book_outline_remove_access(Node $node) {
   return _book_node_is_removable($node) && _book_outline_access($node);
 }
 
@@ -200,6 +210,9 @@ function _book_outline_remove_access($node) {
  *
  * A node can be removed from a book if it is actually in a book and it either
  * is not a top-level page or is a top-level page with no children.
+ *
+ * @param $node
+ *   The node to remove from the outline.
  */
 function _book_node_is_removable($node) {
   return (!empty($node->book['bid']) && (($node->book['bid'] != $node->nid) || !$node->book['has_children']));
@@ -292,7 +305,7 @@ function book_block_view($delta = '') {
       $tree = menu_tree_all_data($node->book['menu_name'], $node->book);
       // There should only be one element at the top level.
       $data = array_shift($tree);
-      $block['subject'] = theme('book_title_link', array('link' => $data['link']));
+      $block['subject'] = l($data['link']['link_title'], $data['link']['link_path'], array('attributes' => array('class' => array('book-title'))));
       $block['content'] = ($data['below']) ? menu_tree_output($data['below']) : '';
     }
   }
@@ -326,23 +339,6 @@ function book_block_configure($delta = '') {
 function book_block_save($delta = '', $edit = array()) {
   $block = array();
   variable_set('book_block_mode', $edit['book_block_mode']);
-}
-
-/**
- * Returns HTML for a link to a book title when used as a block title.
- *
- * @param $variables
- *   An associative array containing:
- *   - link: An array containing title, href and options for the link.
- *
- * @ingroup themeable
- */
-function theme_book_title_link($variables) {
-  $link = $variables['link'];
-
-  $link['options']['attributes']['class'] = array('book-title');
-
-  return l($link['title'], $link['href'], $link['options']);
 }
 
 /**
@@ -493,10 +489,10 @@ function _book_parent_select($book_link) {
 /**
  * Builds the common elements of the book form for the node and outline forms.
  *
- * @param $node
+ * @param Node $node
  *   The node whose form is being viewed.
  */
-function _book_add_form_elements(&$form, &$form_state, $node) {
+function _book_add_form_elements(&$form, &$form_state, Node $node) {
   // If the form is being processed during the Ajax callback of our book bid
   // dropdown, then $form_state will hold the value that was selected.
   if (isset($form_state['values']['book'])) {
@@ -511,13 +507,12 @@ function _book_add_form_elements(&$form, &$form_state, $node) {
     '#collapsed' => TRUE,
     '#group' => 'additional_settings',
     '#attributes' => array(
-      'class' => array('book-form'),
+      'class' => array('book-outline-form'),
     ),
     '#attached' => array(
       'js' => array(drupal_get_path('module', 'book') . '/book.js'),
     ),
     '#tree' => TRUE,
-    '#attributes' => array('class' => array('book-outline-form')),
   );
   foreach (array('menu_name', 'mlid', 'nid', 'router_path', 'has_children', 'options', 'module', 'original_bid', 'parent_depth_limit') as $key) {
     $form['book'][$key] = array(
@@ -598,13 +593,13 @@ function book_form_update($form, $form_state) {
  * outline through node addition, node editing, node deletion, or the outline
  * tab.
  *
- * @param $node
+ * @param Node $node
  *   The node that is being saved, added, deleted, or moved.
  *
  * @return
  *   TRUE if the menu link was saved; FALSE otherwise.
  */
-function _book_update_outline($node) {
+function _book_update_outline(Node $node) {
   if (empty($node->book['bid'])) {
     return FALSE;
   }
@@ -718,7 +713,7 @@ function book_get_flat_menu($book_link) {
  * @param $tree
  *   A tree of menu links in an array.
  * @param $flat
- *   A flat array of the menu links from $tree.
+ *   A flat array of the menu links from $tree, passed by reference.
  *
  * @see book_get_flat_menu().
  */
@@ -862,7 +857,7 @@ function book_node_load($nodes, $types) {
 /**
  * Implements hook_node_view().
  */
-function book_node_view($node, $view_mode) {
+function book_node_view(Node $node, $view_mode) {
   if ($view_mode == 'full') {
     if (!empty($node->book['bid']) && empty($node->in_preview)) {
       $node->content['book_navigation'] = array(
@@ -894,14 +889,10 @@ function book_page_alter(&$page) {
 /**
  * Implements hook_node_presave().
  */
-function book_node_presave($node) {
+function book_node_presave(Node $node) {
   // Always save a revision for non-administrators.
   if (!empty($node->book['bid']) && !user_access('administer nodes')) {
     $node->revision = 1;
-    // The database schema requires a log message for every revision.
-    if (!isset($node->log)) {
-      $node->log = '';
-    }
   }
   // Make sure a new node gets a new menu link.
   if (empty($node->nid)) {
@@ -912,7 +903,7 @@ function book_node_presave($node) {
 /**
  * Implements hook_node_insert().
  */
-function book_node_insert($node) {
+function book_node_insert(Node $node) {
   if (!empty($node->book['bid'])) {
     if ($node->book['bid'] == 'new') {
       // New nodes that are their own book.
@@ -927,7 +918,7 @@ function book_node_insert($node) {
 /**
  * Implements hook_node_update().
  */
-function book_node_update($node) {
+function book_node_update(Node $node) {
   if (!empty($node->book['bid'])) {
     if ($node->book['bid'] == 'new') {
       // New nodes that are their own book.
@@ -942,7 +933,7 @@ function book_node_update($node) {
 /**
  * Implements hook_node_predelete().
  */
-function book_node_predelete($node) {
+function book_node_predelete(Node $node) {
   if (!empty($node->book['bid'])) {
     if ($node->nid == $node->book['bid']) {
       // Handle deletion of a top-level post.
@@ -966,7 +957,7 @@ function book_node_predelete($node) {
 /**
  * Implements hook_node_prepare().
  */
-function book_node_prepare($node) {
+function book_node_prepare(Node $node) {
   // Prepare defaults for the add/edit form.
   if (empty($node->book) && (user_access('add content to books') || user_access('administer book outlines'))) {
     $node->book = array();
@@ -1055,8 +1046,9 @@ function book_preprocess_block(&$variables) {
  * to the structured data but can also simply iterate over all elements and
  * render them (as in the default template).
  *
- * The $variables array contains the following elements:
- * - book_menus
+ * @param $variables
+ *   An associative array containing the following key:
+ *   - book_menus
  *
  * @see book-all-books-block.tpl.php
  */
@@ -1072,8 +1064,9 @@ function template_preprocess_book_all_books_block(&$variables) {
 /**
  * Processes variables for book-navigation.tpl.php.
  *
- * The $variables array contains the following elements:
- * - book_link
+ * @param $variables
+ *   An associative array containing the following key:
+ *   - book_link
  *
  * @see book-navigation.tpl.php
  */
@@ -1144,8 +1137,9 @@ function template_preprocess_book_navigation(&$variables) {
  *   Reference to the table of contents array. This is modified in place, so the
  *   function does not have a return value.
  * @param $exclude
- *   Optional array of menu link ID values. Any link whose menu link ID is in
- *   this array will be excluded (along with its children).
+ *   (optional) An array of menu link ID values. Any link whose menu link ID is
+ *   in this array will be excluded (along with its children). Defaults to an
+ *   empty array.
  * @param $depth_limit
  *   Any link deeper than this value will be excluded (along with its children).
  */
@@ -1191,10 +1185,11 @@ function book_toc($bid, $depth_limit, $exclude = array()) {
 /**
  * Preprocesses variables for book-export-html.tpl.php.
  *
- * The $variables array contains the following elements:
- * - title
- * - contents
- * - depth
+ * @param $variables
+ *   An associative array containing the following keys:
+ *   - title
+ *   - contents
+ *   - depth
  *
  * @see book-export-html.tpl.php
  */
@@ -1264,17 +1259,18 @@ function book_export_traverse($tree, $visit_func) {
 /**
  * Generates printer-friendly HTML for a node.
  *
- * @param $node
+ * @param Node $node
  *   The node that will be output.
  * @param $children
- *   All the rendered child nodes within the current node.
+ *   (optional) All the rendered child nodes within the current node. Defaults
+ *   to an empty string.
  *
  * @return
  *   The HTML generated for the given node.
  *
  * @see book_export_traverse()
  */
-function book_node_export($node, $children = '') {
+function book_node_export(Node $node, $children = '') {
   $build = node_view($node, 'print');
   unset($build['#theme']);
   // @todo Rendering should happen in the template using render().
@@ -1286,9 +1282,10 @@ function book_node_export($node, $children = '') {
 /**
  * Processes variables for book-node-export-html.tpl.php.
  *
- * The $variables array contains the following elements:
- * - node
- * - children
+ * @param $variables
+ *   An associative array containing the following keys:
+ *   - node
+ *   - children
  *
  * @see book-node-export-html.tpl.php
  */
@@ -1299,7 +1296,13 @@ function template_preprocess_book_node_export_html(&$variables) {
 }
 
 /**
- * Determines if a given node type is in the list of types allowed for books.
+ * Determine if a given node type is in the list of types allowed for books.
+ *
+ * @param $type
+ *   A node type.
+ *
+ * @return
+ *   A Boolean TRUE if the node type can be included in books; otherwise, FALSE.
  */
 function book_type_is_allowed($type) {
   return in_array($type, variable_get('book_allowed_types', array('book')));
@@ -1342,7 +1345,7 @@ function book_node_type_update($type) {
  *
  * @return
  *   A menu link, with the link translated for rendering and data added from the
- *   {book} table.
+ *   {book} table. FALSE if there is an error.
  */
 function book_link_load($mlid) {
   if ($item = db_query("SELECT * FROM {menu_links} ml INNER JOIN {book} b ON b.mlid = ml.mlid LEFT JOIN {menu_router} m ON m.path = ml.router_path WHERE ml.mlid = :mlid", array(
@@ -1366,7 +1369,7 @@ function book_link_load($mlid) {
  *   A fully loaded menu link.
  *
  * @return
- *   An subtree of menu links in an array, in the order they should be rendered.
+ *   A subtree of menu links in an array, in the order they should be rendered.
  */
 function book_menu_subtree_data($link) {
   $tree = &drupal_static(__FUNCTION__, array());

@@ -28,6 +28,7 @@ class DatabaseTestCase extends DrupalWebTestCase {
 
     $schema['test'] = drupal_get_schema('test');
     $schema['test_people'] = drupal_get_schema('test_people');
+    $schema['test_people_copy'] = drupal_get_schema('test_people_copy');
     $schema['test_one_blob'] = drupal_get_schema('test_one_blob');
     $schema['test_two_blobs'] = drupal_get_schema('test_two_blobs');
     $schema['test_task'] = drupal_get_schema('test_task');
@@ -274,6 +275,36 @@ class DatabaseConnectionTestCase extends DatabaseTestCase {
     // Get a fresh copy of the default connection options.
     $connectionOptions = $db->getConnectionOptions();
     $this->assertNotEqual($connection_info['default']['database'], $connectionOptions['database'], t('The test connection info database does not match the current connection options database.'));
+  }
+}
+
+/**
+ * Test cloning Select queries.
+ */
+class DatabaseSelectCloneTest extends DatabaseTestCase {
+  /**
+   * Test that subqueries as value within conditions are cloned properly.
+   */
+  function testSelectConditionSubQueryCloning() {
+    $subquery = db_select('test', 't');
+    $subquery->addField('t', 'id', 'id');
+    $subquery->condition('age', 28, '<');
+
+    $query = db_select('test', 't');
+    $query->addField('t', 'name', 'name');
+    $query->condition('id', $subquery, 'IN');
+
+    $clone = clone $query;
+    // Cloned query should not be altered by the following modification
+    // happening on original query.
+    $subquery->condition('age', 25, '>');
+
+    $clone_result = $clone->countQuery()->execute()->fetchField();
+    $query_result = $query->countQuery()->execute()->fetchField();
+
+    // Make sure the cloned query has not been modified
+    $this->assertEqual(3, $clone_result, 'The cloned query returns the expected number of rows');
+    $this->assertEqual(2, $query_result, 'The query returns the expected number of rows');
   }
 }
 
@@ -529,9 +560,9 @@ class DatabaseInsertTestCase extends DatabaseTestCase {
   }
 
   /**
-   * Test that the INSERT INTO ... SELECT ... syntax works.
+   * Test that the INSERT INTO ... SELECT (fields) ... syntax works.
    */
-  function testInsertSelect() {
+  function testInsertSelectFields() {
     $query = db_select('test_people', 'tp');
     // The query builder will always append expressions after fields.
     // Add the expression first to test that the insert fields are correctly
@@ -552,6 +583,27 @@ class DatabaseInsertTestCase extends DatabaseTestCase {
 
     $saved_age = db_query('SELECT age FROM {test} WHERE name = :name', array(':name' => 'Meredith'))->fetchField();
     $this->assertIdentical($saved_age, '30', t('Can retrieve after inserting.'));
+  }
+
+  /**
+   * Tests that the INSERT INTO ... SELECT * ... syntax works.
+   */
+  function testInsertSelectAll() {
+    $query = db_select('test_people', 'tp')
+      ->fields('tp')
+      ->condition('tp.name', 'Meredith');
+
+    // The resulting query should be equivalent to:
+    // INSERT INTO test_people_copy
+    // SELECT *
+    // FROM test_people tp
+    // WHERE tp.name = 'Meredith'
+    db_insert('test_people_copy')
+      ->from($query)
+      ->execute();
+
+    $saved_age = db_query('SELECT age FROM {test_people_copy} WHERE name = :name', array(':name' => 'Meredith'))->fetchField();
+    $this->assertIdentical($saved_age, '30', 'Can retrieve after inserting.');
   }
 }
 
@@ -746,6 +798,20 @@ class DatabaseUpdateTestCase extends DatabaseTestCase {
       ->expression('age', 'age * age')
       ->execute();
     $this->assertIdentical($num_rows, 3, t('Number of affected rows are returned.'));
+  }
+
+  /**
+   * Confirm that we can update the primary key of a record successfully.
+   */
+  function testPrimaryKeyUpdate() {
+    $num_updated = db_update('test')
+      ->fields(array('id' => 42, 'name' => 'John'))
+      ->condition('id', 1)
+      ->execute();
+    $this->assertIdentical($num_updated, 1, t('Updated 1 record.'));
+
+    $saved_name= db_query('SELECT name FROM {test} WHERE id = :id', array(':id' => 42))->fetchField();
+    $this->assertIdentical($saved_name, 'John', t('Updated primary key successfully.'));
   }
 }
 
@@ -1945,6 +2011,7 @@ class DatabaseSelectComplexTestCase extends DatabaseTestCase {
   function testHavingCountQuery() {
     $query = db_select('test')
       ->extend('PagerDefault')
+      ->groupBy('age')
       ->having('age + 1 > 0');
     $query->addField('test', 'age');
     $query->addExpression('age + 1');
@@ -2613,14 +2680,17 @@ class DatabaseLoggingTestCase extends DatabaseTestCase {
    * Test that we can log the existence of a query.
    */
   function testEnableLogging() {
-    Database::startLog('testing');
+    $log = Database::startLog('testing');
 
     db_query('SELECT name FROM {test} WHERE age > :age', array(':age' => 25))->fetchCol();
     db_query('SELECT age FROM {test} WHERE name = :name', array(':name' => 'Ringo'))->fetchCol();
 
+    // Trigger a call that does not have file in the backtrace.
+    call_user_func_array('db_query', array('SELECT age FROM {test} WHERE name = :name', array(':name' => 'Ringo')))->fetchCol();
+
     $queries = Database::getLog('testing', 'default');
 
-    $this->assertEqual(count($queries), 2, t('Correct number of queries recorded.'));
+    $this->assertEqual(count($queries), 3, t('Correct number of queries recorded.'));
 
     foreach ($queries as $query) {
       $this->assertEqual($query['caller']['function'], __FUNCTION__, t('Correct function in query log.'));
@@ -2892,6 +2962,31 @@ class DatabaseBasicSyntaxTestCase extends DatabaseTestCase {
       ->execute()
       ->fetchField();
     $this->assertIdentical($num_matches, '1', t('Found 1 record.'));
+  }
+}
+
+/**
+ * Test case sensitivity handling.
+ */
+class DatabaseCaseSensitivityTestCase extends DatabaseTestCase {
+  /**
+   * Test BINARY collation in MySQL.
+   */
+  function testCaseSensitiveInsert() {
+    $num_records_before = db_query('SELECT COUNT(*) FROM {test}')->fetchField();
+
+    $john = db_insert('test')
+      ->fields(array(
+        'name' => 'john', // <- A record already exists with name 'John'.
+        'age' => 2,
+        'job' => 'Baby',
+      ))
+      ->execute();
+
+    $num_records_after = db_query('SELECT COUNT(*) FROM {test}')->fetchField();
+    $this->assertIdentical($num_records_before + 1, (int) $num_records_after, t('Record inserts correctly.'));
+    $saved_age = db_query('SELECT age FROM {test} WHERE name = :name', array(':name' => 'john'))->fetchField();
+    $this->assertIdentical($saved_age, '2', t('Can retrieve after inserting.'));
   }
 }
 
@@ -3503,4 +3598,215 @@ class DatabaseEmptyStatementTestCase extends DrupalWebTestCase {
 
     $this->assertEqual($result->fetchAll(), array(), t('Empty array returned from empty result set.'));
   }
+}
+
+/**
+ * Tests management of database connections.
+ */
+class ConnectionUnitTest extends DrupalUnitTestCase {
+
+  protected $key;
+  protected $target;
+
+  protected $monitor;
+  protected $originalCount;
+
+  function setUp() {
+    parent::setUp();
+
+    $this->key = 'default';
+    $this->originalTarget = 'default';
+    $this->target = 'DatabaseConnectionUnitTest';
+
+    // Determine whether the database driver is MySQL. If it is not, the test
+    // methods will not be executed.
+    // @todo Make this test driver-agnostic, or find a proper way to skip it.
+    // @see http://drupal.org/node/1273478
+    $connection_info = Database::getConnectionInfo('default');
+    $this->skipTest = (bool) $connection_info['default']['driver'] != 'mysql';
+    if ($this->skipTest) {
+      // Insert an assertion to prevent Simpletest from interpreting the test
+      // as failure.
+      $this->pass('This test is only compatible with MySQL.');
+    }
+
+    // Create an additional connection to monitor the connections being opened
+    // and closed in this test.
+    // @see TestBase::changeDatabasePrefix()
+    $connection_info = Database::getConnectionInfo('default');
+    Database::addConnectionInfo('default', 'monitor', $connection_info['default']);
+    global $databases;
+    $databases['default']['monitor'] = $connection_info['default'];
+    $this->monitor = Database::getConnection('monitor');
+  }
+
+  /**
+   * Adds a new database connection info to Database.
+   */
+  protected function addConnection() {
+    // Add a new target to the connection, by cloning the current connection.
+    $connection_info = Database::getConnectionInfo($this->key);
+    Database::addConnectionInfo($this->key, $this->target, $connection_info[$this->originalTarget]);
+
+    // Verify that the new target exists.
+    $info = Database::getConnectionInfo($this->key);
+    // Note: Custom assertion message to not expose database credentials.
+    $this->assertIdentical($info[$this->target], $connection_info[$this->key], 'New connection info found.');
+  }
+
+  /**
+   * Returns the connection ID of the current test connection.
+   *
+   * @return integer
+   */
+  protected function getConnectionID() {
+    return (int) Database::getConnection($this->target, $this->key)->query('SELECT CONNECTION_ID()')->fetchField();
+  }
+
+  /**
+   * Asserts that a connection ID exists.
+   *
+   * @param integer $id
+   *   The connection ID to verify.
+   */
+  protected function assertConnection($id) {
+    $list = $this->monitor->query('SHOW PROCESSLIST')->fetchAllKeyed(0, 0);
+    return $this->assertTrue(isset($list[$id]), format_string('Connection ID @id found.', array('@id' => $id)));
+  }
+
+  /**
+   * Asserts that a connection ID does not exist.
+   *
+   * @param integer $id
+   *   The connection ID to verify.
+   */
+  protected function assertNoConnection($id) {
+    $list = $this->monitor->query('SHOW PROCESSLIST')->fetchAllKeyed(0, 0);
+    return $this->assertFalse(isset($list[$id]), format_string('Connection ID @id not found.', array('@id' => $id)));
+  }
+
+  /**
+   * Tests Database::closeConnection() without query.
+   *
+   * @todo getConnectionID() executes a query.
+   */
+  function testOpenClose() {
+    if ($this->skipTest) {
+      return;
+    }
+    // Add and open a new connection.
+    $this->addConnection();
+    $id = $this->getConnectionID();
+    Database::getConnection($this->target, $this->key);
+
+    // Verify that there is a new connection.
+    $this->assertConnection($id);
+
+    // Close the connection.
+    Database::closeConnection($this->target, $this->key);
+    // Wait 20ms to give the database engine sufficient time to react.
+    usleep(20000);
+
+    // Verify that we are back to the original connection count.
+    $this->assertNoConnection($id);
+  }
+
+  /**
+   * Tests Database::closeConnection() with a query.
+   */
+  function testOpenQueryClose() {
+    if ($this->skipTest) {
+      return;
+    }
+    // Add and open a new connection.
+    $this->addConnection();
+    $id = $this->getConnectionID();
+    Database::getConnection($this->target, $this->key);
+
+    // Verify that there is a new connection.
+    $this->assertConnection($id);
+
+    // Execute a query.
+    Database::getConnection($this->target, $this->key)->query('SHOW TABLES');
+
+    // Close the connection.
+    Database::closeConnection($this->target, $this->key);
+    // Wait 20ms to give the database engine sufficient time to react.
+    usleep(20000);
+
+    // Verify that we are back to the original connection count.
+    $this->assertNoConnection($id);
+  }
+
+  /**
+   * Tests Database::closeConnection() with a query and custom prefetch method.
+   */
+  function testOpenQueryPrefetchClose() {
+    if ($this->skipTest) {
+      return;
+    }
+    // Add and open a new connection.
+    $this->addConnection();
+    $id = $this->getConnectionID();
+    Database::getConnection($this->target, $this->key);
+
+    // Verify that there is a new connection.
+    $this->assertConnection($id);
+
+    // Execute a query.
+    Database::getConnection($this->target, $this->key)->query('SHOW TABLES')->fetchCol();
+
+    // Close the connection.
+    Database::closeConnection($this->target, $this->key);
+    // Wait 20ms to give the database engine sufficient time to react.
+    usleep(20000);
+
+    // Verify that we are back to the original connection count.
+    $this->assertNoConnection($id);
+  }
+
+  /**
+   * Tests Database::closeConnection() with a select query.
+   */
+  function testOpenSelectQueryClose() {
+    if ($this->skipTest) {
+      return;
+    }
+    // Add and open a new connection.
+    $this->addConnection();
+    $id = $this->getConnectionID();
+    Database::getConnection($this->target, $this->key);
+
+    // Verify that there is a new connection.
+    $this->assertConnection($id);
+
+    // Create a table.
+    $name = 'foo';
+    Database::getConnection($this->target, $this->key)->schema()->createTable($name, array(
+      'fields' => array(
+        'name' => array(
+          'type' => 'varchar',
+          'length' => 255,
+        ),
+      ),
+    ));
+
+    // Execute a query.
+    Database::getConnection($this->target, $this->key)->select('foo', 'f')
+      ->fields('f', array('name'))
+      ->execute()
+      ->fetchAll();
+
+    // Drop the table.
+    Database::getConnection($this->target, $this->key)->schema()->dropTable($name);
+
+    // Close the connection.
+    Database::closeConnection($this->target, $this->key);
+    // Wait 20ms to give the database engine sufficient time to react.
+    usleep(20000);
+
+    // Verify that we are back to the original connection count.
+    $this->assertNoConnection($id);
+  }
+
 }

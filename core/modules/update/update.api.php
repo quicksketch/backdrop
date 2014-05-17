@@ -2,7 +2,7 @@
 
 /**
  * @file
- * Hooks provided by the Update Status module.
+ * Hooks provided by the Update Manager module.
  */
 
 /**
@@ -14,23 +14,22 @@
  * Alter the list of projects before fetching data and comparing versions.
  *
  * Most modules will never need to implement this hook. It is for advanced
- * interaction with the update status module: mere mortals need not apply.
- * The primary use-case for this hook is to add projects to the list, for
- * example, to provide update status data on disabled modules and themes. A
- * contributed module might want to hide projects from the list, for example,
- * if there is a site-specific module that doesn't have any official releases,
- * that module could remove itself from this list to avoid "No available
- * releases found" warnings on the available updates report. In rare cases, a
- * module might want to alter the data associated with a project already in
- * the list.
+ * interaction with the Update Manager module. The primary use-case for this
+ * hook is to add projects to the list; for example, to provide update status
+ * data on disabled modules and themes. A contributed module might want to hide
+ * projects from the list; for example, if there is a site-specific module that
+ * doesn't have any official releases, that module could remove itself from this
+ * list to avoid "No available releases found" warnings on the available updates
+ * report. In rare cases, a module might want to alter the data associated with
+ * a project already in the list.
  *
  * @param $projects
  *   Reference to an array of the projects installed on the system. This
- *   includes all the metadata documented in the comments below for each
- *   project (either module or theme) that is currently enabled. The array is
- *   initially populated inside update_get_projects() with the help of
- *   _update_process_info_list(), so look there for examples of how to
- *   populate the array with real values.
+ *   includes all the metadata documented in the comments below for each project
+ *   (either module or theme) that is currently enabled. The array is initially
+ *   populated inside update_get_projects() with the help of
+ *   _update_process_info_list(), so look there for examples of how to populate
+ *   the array with real values.
  *
  * @see update_get_projects()
  * @see _update_process_info_list()
@@ -49,7 +48,7 @@ function hook_update_projects_alter(&$projects) {
       'name' => 'Some disabled module',
       'description' => 'A module not enabled on the site that you want to see in the available updates report.',
       'version' => '8.x-1.0',
-      'core' => '8.x',
+      'backdrop' => '8.x',
       // The maximum file change time (the "ctime" returned by the filectime()
       // PHP method) for all of the .info files included in this project.
       '_info_file_ctime' => 1243888165,
@@ -118,6 +117,7 @@ function hook_update_status_alter(&$projects) {
  *   no problems, return an empty array.
  *
  * @see update_manager_archive_verify()
+ * @ingroup update_manager_file
  */
 function hook_verify_update_archive($project, $archive_file, $directory) {
   $errors = array();

@@ -6,7 +6,10 @@
  */
 
 /**
- * Page callback: Prints a listing of all books.
+ * Menu callback: Prints a listing of all books.
+ *
+ * @return string
+ *   A HTML-formatted string with the listing of all books content.
  *
  * @see book_menu()
  */
@@ -42,6 +45,15 @@ function book_render() {
  * @see book_menu()
  */
 function book_export($type, $nid) {
+  // Check that the node exists and that the current user has access to it.
+  $node = node_load($nid);
+  if (!$node) {
+    return MENU_NOT_FOUND;
+  }
+  if (!node_access('view', $node)) {
+    return MENU_ACCESS_DENIED;
+  }
+
   $type = drupal_strtolower($type);
 
   $export_function = 'book_export_' . $type;
@@ -74,7 +86,6 @@ function book_export($type, $nid) {
  */
 function book_export_html($nid) {
   if (user_access('access printer-friendly version')) {
-    $export_data = array();
     $node = node_load($nid);
     if (isset($node->book)) {
       $tree = book_menu_subtree_data($node->book);
@@ -93,12 +104,15 @@ function book_export_html($nid) {
 /**
  * Page callback: Shows the outline form for a single node.
  *
- * @param $node
+ * @param Node $node
  *   The book node for which to show the outline.
+ *
+ * @return string
+ *   A HTML-formatted string with the outline form for a single node.
  *
  * @see book_menu()
  */
-function book_outline($node) {
+function book_outline(Node $node) {
   drupal_set_title($node->title);
   return drupal_get_form('book_outline_form', $node);
 }
@@ -108,14 +122,14 @@ function book_outline($node) {
  *
  * Allows handling of all book outline operations via the outline tab.
  *
- * @param $node
+ * @param Node $node
  *   The book node for which to show the outline.
  *
  * @see book_outline_form_submit()
  * @see book_remove_button_submit()
  * @ingroup forms
  */
-function book_outline_form($form, &$form_state, $node) {
+function book_outline_form($form, &$form_state, Node $node) {
   if (!isset($node->book)) {
     // The node is not part of any book yet - set default options.
     $node->book = _book_link_defaults($node->nid);
@@ -197,14 +211,14 @@ function book_outline_form_submit($form, &$form_state) {
 /**
  * Form constructor to confirm removal of a node from a book.
  *
- * @param $node
+ * @param Node $node
  *   The node to delete.
  *
  * @see book_remove_form_submit()
  * @see book_menu()
  * @ingroup forms
  */
-function book_remove_form($form, &$form_state, $node) {
+function book_remove_form($form, &$form_state, Node $node) {
   $form['#node'] = $node;
   $title = array('%title' => $node->title);
 
