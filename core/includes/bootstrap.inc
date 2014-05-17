@@ -3211,54 +3211,6 @@ function drupal_autoload($class) {
 }
 
 /**
- * Rescans all enabled modules and rebuilds the registry.
- *
- * Rescans all code in modules or includes directories, storing the location of
- * each interface or class in the database.
- */
-function registry_rebuild() {
-  system_rebuild_module_data();
-  registry_update();
-}
-
-/**
- * Updates the registry based on the latest files listed in the database.
- *
- * This function should be used when system_rebuild_module_data() does not need
- * to be called, because it is already known that the list of files in the
- * {system} table matches those in the file system.
- *
- * @return
- *   TRUE if the registry was rebuilt, FALSE if another thread was rebuilding
- *   in parallel and the current thread just waited for completion.
- *
- * @see registry_rebuild()
- */
-function registry_update() {
-  // install_system_module() calls module_enable() which calls into this
-  // function during initial system installation, so the lock system is neither
-  // loaded nor does its storage exist yet.
-  $in_installer = drupal_installation_attempted();
-  if (!$in_installer && !lock_acquire(__FUNCTION__)) {
-    // Another request got the lock, wait for it to finish.
-    lock_wait(__FUNCTION__);
-    return FALSE;
-  }
-
-  require_once DRUPAL_ROOT . '/core/includes/registry.inc';
-  _registry_update();
-
-  if (!$in_installer) {
-    lock_release(__FUNCTION__);
-  }
-  return TRUE;
-}
-
-/**
- * @} End of "addtogroup registry".
- */
-
-/**
  * Provides central static variable storage.
  *
  * All functions requiring a static variable to persist or cache data within
