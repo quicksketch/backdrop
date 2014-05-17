@@ -239,6 +239,64 @@ function views_break_phrase($str, &$handler = NULL) {
   return $handler;
 }
 
+/**
+ * Trim the field down to the specified length.
+ *
+ * @param $alter
+ *   - max_length: Maximum lenght of the string, the rest gets truncated.
+ *   - word_boundary: Trim only on a word boundary.
+ *   - ellipsis: Show an ellipsis (...) at the end of the trimmed string.
+ *   - html: Take sure that the html is correct.
+ *
+ * @param $value
+ *   The string which should be trimmed.
+ */
+function views_trim_text($alter, $value) {
+  if (drupal_strlen($value) > $alter['max_length']) {
+    $value = drupal_substr($value, 0, $alter['max_length']);
+    if (!empty($alter['word_boundary'])) {
+      $regex = "(.*)\b.+";
+      if (function_exists('mb_ereg')) {
+        mb_regex_encoding('UTF-8');
+        $found = mb_ereg($regex, $value, $matches);
+      }
+      else {
+        $found = preg_match("/$regex/us", $value, $matches);
+      }
+      if ($found) {
+        $value = $matches[1];
+      }
+    }
+    // Remove scraps of HTML entities from the end of a strings
+    $value = rtrim(preg_replace('/(?:<(?!.+>)|&(?!.+;)).*$/us', '', $value));
+
+    if (!empty($alter['ellipsis'])) {
+      $value .= t('...');
+    }
+  }
+  if (!empty($alter['html'])) {
+    $value = _filter_htmlcorrector($value);
+  }
+
+  return $value;
+}
+
+/**
+ * Adds one to each key of the array.
+ *
+ * For example array(0 => 'foo') would be array(1 => 'foo').
+ */
+function views_array_key_plus($array) {
+  $keys = array_keys($array);
+  rsort($keys);
+  foreach ($keys as $key) {
+    $array[$key+1] = $array[$key];
+    unset($array[$key]);
+  }
+  asort($array);
+  return $array;
+}
+
 // --------------------------------------------------------------------------
 // Date helper functions
 
@@ -478,82 +536,6 @@ function views_date_sql_extract($extract_type, $field, $field_type = 'int', $set
           return "EXTRACT(DOY FROM($field))";
       }
   }
-}
-
-
-/**
- * Provide a list of views object types used in a view, with some information
- * about them.
- */
-function views_object_types() {
-  static $retval = NULL;
-
-  // statically cache this so t() doesn't run a bajillion times.
-  if (!isset($retval)) {
-    $retval = array(
-      'field' => array(
-        'title' => t('Fields'), // title
-        'ltitle' => t('fields'), // lowercase title for mid-sentence
-        'stitle' => t('Field'), // singular title
-        'lstitle' => t('field'), // singular lowercase title for mid sentence
-        'plural' => 'fields',
-      ),
-      'argument' => array(
-        'title' => t('Contextual filters'),
-        'ltitle' => t('contextual filters'),
-        'stitle' => t('Contextual filter'),
-        'lstitle' => t('contextual filter'),
-        'plural' => 'arguments',
-      ),
-      'sort' => array(
-        'title' => t('Sort criteria'),
-        'ltitle' => t('sort criteria'),
-        'stitle' => t('Sort criterion'),
-        'lstitle' => t('sort criterion'),
-        'plural' => 'sorts',
-      ),
-      'filter' => array(
-        'title' => t('Filter criteria'),
-        'ltitle' => t('filter criteria'),
-        'stitle' => t('Filter criterion'),
-        'lstitle' => t('filter criterion'),
-        'plural' => 'filters',
-      ),
-      'relationship' => array(
-        'title' => t('Relationships'),
-        'ltitle' => t('relationships'),
-        'stitle' => t('Relationship'),
-        'lstitle' => t('Relationship'),
-        'plural' => 'relationships',
-      ),
-      'header' => array(
-        'title' => t('Header'),
-        'ltitle' => t('header'),
-        'stitle' => t('Header'),
-        'lstitle' => t('Header'),
-        'plural' => 'header',
-        'type' => 'area',
-      ),
-      'footer' => array(
-        'title' => t('Footer'),
-        'ltitle' => t('footer'),
-        'stitle' => t('Footer'),
-        'lstitle' => t('Footer'),
-        'plural' => 'footer',
-        'type' => 'area',
-      ),
-      'empty' => array(
-        'title' => t('No results behavior'),
-        'ltitle' => t('no results behavior'),
-        'stitle' => t('No results behavior'),
-        'lstitle' => t('No results behavior'),
-        'plural' => 'empty',
-        'type' => 'area',
-      ),
-    );
-  }
-
-  return $retval;
 }
 
 /**

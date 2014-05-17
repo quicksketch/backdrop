@@ -321,7 +321,6 @@ function views_ui_edit_page_title($view) {
 function views_ui_cache_load($name) {
   global $user;
 
-  views_include('view');
   $view = tempstore_get('views.view', $name);
   $original_view = views_get_view($name);
 
