@@ -3190,7 +3190,7 @@ function drupal_autoload($class) {
     // Loop through all modules to build the list of classes. We avoid
     // module_invoke_all() because it uses array_merge_recursive(), which is an
     // expensive O(n^2) operation. Instead we use module_implements() and merge
-    // the array with +=, which is O(n).
+    // the array manually, which is O(n).
     foreach (module_implements('autoload_info') as $module) {
       $module_classes = module_invoke($module, 'autoload_info');
       $module_path = drupal_get_path('module', $module);
