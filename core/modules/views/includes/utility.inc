@@ -7,7 +7,6 @@
  * Instantiate and construct a new handler
  */
 function _views_create_handler($definition, $type = 'handler', $handler_type = NULL) {
-//  debug('Instantiating handler ' . $definition['handler']);
   if (empty($definition['handler'])) {
     watchdog('views', '_views_create_handler - type: @type - failed: handler has not been provided.',
       array('@type' => isset($handler_type) ? ( $type . '(handler type: ' . $handler_type . ')' ) : $type)
@@ -16,8 +15,7 @@ function _views_create_handler($definition, $type = 'handler', $handler_type = N
   }
 
   // class_exists will automatically load the code file.
-  if (!empty($definition['override handler']) &&
-      !class_exists($definition['override handler'])) {
+  if (!empty($definition['override handler']) && !class_exists($definition['override handler'])) {
     watchdog('views',
       '_views_create_handler - loading override handler @type failed: class @override_handler could not be loaded. ' .
       'Verify the class file has been registered in the corresponding .info-file (files[]).',
@@ -59,7 +57,7 @@ function _views_create_handler($definition, $type = 'handler', $handler_type = N
     $handler->plugin_name = $definition['name'];
   }
 
-  // let the handler have something like a constructor.
+  // Let the handler have something like a constructor.
   $handler->construct();
 
   return $handler;

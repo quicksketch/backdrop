@@ -1,4 +1,5 @@
 <?php
+
 /**
  * @file
  * Entity classes and controllers for Taxonomy module.
@@ -158,7 +159,6 @@ class TaxonomyTermController extends EntityDatabaseStorageController {
     $query->addField('v', 'machine_name', 'vocabulary_machine_name');
     return $query;
   }
-
 
   /**
    * Overrides EntityDatabaseStorageController::cacheGet().

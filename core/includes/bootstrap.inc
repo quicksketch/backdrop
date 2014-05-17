@@ -239,16 +239,6 @@ const CHECK_PLAIN = 0;
 const PASS_THROUGH = -1;
 
 /**
- * Signals that the registry lookup cache should be reset.
- */
-const REGISTRY_RESET_LOOKUP_CACHE = 1;
-
-/**
- * Signals that the registry lookup cache should be written to storage.
- */
-const REGISTRY_WRITE_LOOKUP_CACHE = 2;
-
-/**
  * Regular expression to match PHP function names.
  *
  * @see http://php.net/manual/en/language.functions.php

@@ -3080,8 +3080,6 @@ function hook_disable() {
  *
  * @param $class_registry
  *   List of classes in the registry.
- *
- * @see simpletest_test_get_all()
  */
 function hook_class_registry_alter(&$class_registry, $modules) {
   // Replace the database cache with a different database cache.
