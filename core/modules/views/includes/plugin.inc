@@ -1,10 +1,4 @@
 <?php
-
-/**
- * @file
- * Built in plugins for Views output handling.
- */
-
 /**
  * Abstract base class to provide interface common to all plugins.
  */

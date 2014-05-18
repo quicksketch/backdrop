@@ -1,5 +1,6 @@
 <?php
 /**
+ * @file
  * Utility functions for assembling Views queries.
  */
 

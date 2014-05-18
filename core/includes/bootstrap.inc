@@ -2538,7 +2538,7 @@ function _drupal_bootstrap_database() {
   // The database autoload routine comes first so that we can load the database
   // system without hitting the database. That is especially important during
   // the install or upgrade process.
-  spl_autoload_register('drupal_autoload');
+  spl_autoload_register('backdrop_autoload');
 }
 
 /**
@@ -3171,7 +3171,7 @@ function drupal_get_complete_schema($rebuild = FALSE) {
  * @return
  *   TRUE if the class is currently available, FALSE otherwise.
  */
-function drupal_autoload($class) {
+function backdrop_autoload($class) {
   $class_registry = &drupal_static(__FUNCTION__, NULL);
 
   if (!isset($class_registry)) {

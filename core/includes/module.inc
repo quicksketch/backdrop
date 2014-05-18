@@ -27,7 +27,7 @@ function module_load_all($bootstrap = FALSE) {
     // includes classes provided by non-bootstrap modules.
     if (!$bootstrap) {
       $has_run = TRUE;
-      drupal_static_reset('drupal_autoload');
+      drupal_static_reset('backdrop_autoload');
     }
   }
   return $has_run;
@@ -449,7 +449,7 @@ function module_enable($module_list, $enable_dependencies = TRUE) {
       module_implements_reset();
       _system_update_bootstrap_status();
       // Update the registry to include it.
-      drupal_static_reset('drupal_autoload');
+      drupal_static_reset('backdrop_autoload');
       // Refresh the schema to include it.
       drupal_get_schema(NULL, TRUE);
       // Update the theme registry to include it.
@@ -574,7 +574,7 @@ function module_disable($module_list, $disable_dependents = TRUE) {
     // so we can still call module hooks to get information.
     module_invoke_all('modules_disabled', $invoke_modules);
     // Update the registry to remove the newly-disabled module.
-    drupal_static_reset('drupal_autoload');
+    drupal_static_reset('backdrop_autoload');
     _system_update_bootstrap_status();
     // Update the theme registry to remove the newly-disabled module.
     drupal_theme_rebuild();
