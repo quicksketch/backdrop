@@ -1329,8 +1329,14 @@ class DrupalWebTestCase extends DrupalTestCase {
    */
   protected function prepareDatabasePrefix() {
 
-    // Generate a temporary prefixed database to ensure that tests have a clean starting point.
-    $this->databasePrefix = 'simpletest' . mt_rand(1000, 1000000);
+    // Generate a temporary prefixed database to ensure that tests have a clean
+    // starting point and confirm that random prefix isn't already in use.
+    do {
+      $prefix = 'simpletest' . mt_rand(1000, 1000000);
+      $prefix_exists = db_query("SELECT COUNT(*) FROM {simpletest_test_id} WHERE last_prefix = :prefix", array(':prefix' => $prefix))->fetchField();
+    } while ($prefix_exists);
+    $this->databasePrefix = $prefix;
+
     // As soon as the database prefix is set, the test might start to execute.
     // All assertions as well as the SimpleTest batch operations are associated
     // with the testId, so the database prefix has to be associated with it.
@@ -1399,7 +1405,7 @@ class DrupalWebTestCase extends DrupalTestCase {
     // Set to English to prevent exceptions from utf8_truncate() from t()
     // during install if the current language is not 'en'.
     // The following array/object conversion is copied from language_default().
-    $language = (object) array(
+    $language_interface = (object) array(
       'langcode' => 'en',
       'name' => 'English',
       'direction' => 0,
@@ -1528,6 +1534,9 @@ class DrupalWebTestCase extends DrupalTestCase {
     // @see drupal_system_listing()
     // @todo This may need to be primed like 'install_profile' above.
     variable_set('simpletest_parent_profile', $this->originalProfile);
+
+    // Ensure schema versions are recalculated.
+    drupal_static_reset('drupal_get_schema_versions');
 
     // Include the testing profile.
     variable_set('install_profile', $this->profile);
