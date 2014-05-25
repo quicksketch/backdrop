@@ -1328,9 +1328,9 @@ class DrupalWebTestCase extends DrupalTestCase {
    * @see DrupalWebTestCase::setUp()
    */
   protected function prepareDatabasePrefix() {
-
     // Generate a temporary prefixed database to ensure that tests have a clean
     // starting point and confirm that random prefix isn't already in use.
+    db_transaction();
     do {
       $prefix = 'simpletest' . mt_rand(1000, 1000000);
       $prefix_exists = db_query("SELECT COUNT(*) FROM {simpletest_test_id} WHERE last_prefix = :prefix", array(':prefix' => $prefix))->fetchField();
