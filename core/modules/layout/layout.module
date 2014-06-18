@@ -5,7 +5,7 @@
  * The page manager module provides a UI and API to manage pages.
  *
  * It defines pages, both for system pages, overrides of system pages, and
- * custom pages using Drupal's normal menu system. It allows complex
+ * custom pages using Backdrop's normal menu system. It allows complex
  * manipulations of these pages, their content, and their hierarchy within
  * the site. These pages can be exported to code for superior revision
  * control.
@@ -74,14 +74,14 @@ function layout_menu() {
 
   $items['admin/structure/layouts/reorder'] = array(
     'title' => 'List',
-    'page callback' => 'drupal_get_form',
+    'page callback' => 'backdrop_get_form',
     'page arguments' => array('layout_reorder_form'),
     'type' => MENU_CALLBACK,
   ) + $base;
 
   $items['admin/structure/layouts/manage/%layout_cache'] = array(
     'title' => 'Edit layout settings',
-    'page callback' => 'drupal_get_form',
+    'page callback' => 'backdrop_get_form',
     'page arguments' => array('layout_settings_form', 4),
     'type' => MENU_CALLBACK,
   ) + $base;
@@ -93,7 +93,7 @@ function layout_menu() {
 
   $items['admin/structure/layouts/manage/%layout_cache/settings'] = array(
     'title' => 'Settings',
-    'page callback' => 'drupal_get_form',
+    'page callback' => 'backdrop_get_form',
     'page arguments' => array('layout_settings_form', 4),
     'type' => MENU_LOCAL_TASK,
   ) + $base;
@@ -106,7 +106,7 @@ function layout_menu() {
 
   $items['admin/structure/layouts/manage/%layout_cache/clone'] = array(
     'title' => 'Clone layout',
-    'page callback' => 'drupal_get_form',
+    'page callback' => 'backdrop_get_form',
     'page arguments' => array('layout_clone_form', 4),
     'type' => MENU_CALLBACK,
   ) + $base;
@@ -124,7 +124,7 @@ function layout_menu() {
   ) + $base;
 
   $items['admin/structure/layouts/manage/%layout_cache/delete'] = array(
-    'page callback' => 'drupal_get_form',
+    'page callback' => 'backdrop_get_form',
     'page arguments' => array('layout_delete_form', 4),
     'type' => MENU_CALLBACK,
   ) + $base;
@@ -139,7 +139,7 @@ function layout_menu() {
   $items['admin/structure/layouts/menu/%layout_cache'] = array(
     'title' => 'Menu settings',
     'load arguments' => array('menu_item'),
-    'page callback' => 'drupal_get_form',
+    'page callback' => 'backdrop_get_form',
     'page arguments' => array('layout_menu_item_settings_form', 4),
     'type' => MENU_CALLBACK,
   ) + $base;
@@ -147,7 +147,7 @@ function layout_menu() {
   $items['admin/structure/layouts/menu/%layout_cache/arguments'] = array(
     'title' => 'Arguments',
     'load arguments' => array('menu_item'),
-    'page callback' => 'drupal_get_form',
+    'page callback' => 'backdrop_get_form',
     'page arguments' => array('layout_menu_item_arguments_form', 4),
     'type' => MENU_CALLBACK,
   ) + $base;
@@ -155,8 +155,25 @@ function layout_menu() {
   $items['admin/structure/layouts/menu/%layout_cache/access'] = array(
     'title' => 'Access control',
     'load arguments' => array('menu_item'),
-    'page callback' => 'drupal_get_form',
+    'page callback' => 'backdrop_get_form',
     'page arguments' => array('layout_menu_item_access_form', 4),
+    'type' => MENU_CALLBACK,
+  ) + $base;
+
+  $items['admin/structure/layouts/manage/%layout_cache/condition/add'] = array(
+    'title' => 'Add condition',
+    'page callback' => 'backdrop_get_form',
+    'page arguments' => array('layout_condition_add_form', 4),
+    'type' => MENU_CALLBACK,
+  ) + $base;
+
+
+  $items['admin/structure/layouts/manage/%layout_cache/condition/edit/%'] = array(
+    'title' => 'Configure condition',
+    'title callback' => 'layout_condition_edit_title',
+    'title arguments' => array(4, 7),
+    'page callback' => 'backdrop_get_form',
+    'page arguments' => array('layout_condition_edit_form', 4, 7),
     'type' => MENU_CALLBACK,
   ) + $base;
 
@@ -375,10 +392,31 @@ function layout_layout_api() {
 }
 
 /**
+ * Implements hook_autoload_info().
+ */
+function layout_autoload_info() {
+  return array(
+    'LayoutHandler' => 'includes/layout_handler.class.inc',
+    'LayoutHandlerBroken' => 'includes/layout_handler.class.inc',
+    'Layout' => 'includes/layout.class.inc',
+    'LayoutAccess' => 'includes/layout_access.class.inc',
+    'LayoutAccessBroken' => 'includes/layout_access.class.inc',
+    'LayoutAccessNegatable' => 'includes/layout_access.class.inc',
+    'LayoutContext' => 'includes/layout_context.class.inc',
+    'LayoutContextBroken' => 'includes/layout_context.class.inc',
+    'LayoutStringContext' => 'includes/layout_context.class.inc',
+    'LayoutMenuItem' => 'includes/layout_menu_item.class.inc',
+
+    'NodeLayoutContext' => 'plugins/node_layout_context_handler.inc',
+    'LayoutAccessFront' => 'plugins/layout_access_front.inc',
+  );
+}
+
+/**
  * Return an array of all layouts as fully loaded Layout objects.
  */
 function layout_get_all_layouts() {
-  $layouts = &drupal_static(__FUNCTION__);
+  $layouts = &backdrop_static(__FUNCTION__);
   if (!isset($layouts)) {
     $layouts = array();
     $menu_items = layout_get_all_layout_menu_items();
@@ -434,7 +472,7 @@ function layout_get_all_layouts() {
  * Return an array of all menu items as fully loaded LayoutMenuItem objects.
  */
 function layout_get_all_layout_menu_items() {
-  $menu_items = &drupal_static(__FUNCTION__);
+  $menu_items = &backdrop_static(__FUNCTION__);
   if (!isset($menu_items)) {
 
     // Cache the raw config files once read.
@@ -516,21 +554,21 @@ function layout_reset_caches() {
   cache()->delete('layout:layouts:config');
   cache()->delete('layout:menu_items:config');
 
-  drupal_static_reset('layout_get_all_layouts');
-  drupal_static_reset('layout_get_all_layout_menu_items');
+  backdrop_static_reset('layout_get_all_layouts');
+  backdrop_static_reset('layout_get_all_layout_menu_items');
 }
 
 /**
  * Load all include files for modules that implement hook_layout_api().
  */
 function _layout_include_files() {
-  $included = &drupal_static(__FUNCTION__, FALSE);
+  $included = &backdrop_static(__FUNCTION__, FALSE);
   if (!$included) {
     foreach (module_implements('layout_api') as $module) {
       $function = $module . '_layout_api';
       $api_info = $function();
       if (isset($api_info['file'])) {
-        include_once(DRUPAL_ROOT . '/' . drupal_get_path('module', $module) . '/' . $api_info['file']);
+        include_once(DRUPAL_ROOT . '/' . backdrop_get_path('module', $module) . '/' . $api_info['file']);
       }
     }
     $included = TRUE;
@@ -541,7 +579,7 @@ function _layout_include_files() {
  * Load a layout-related information from modules.
  */
 function _layout_get_all_info($data_type) {
-  $all_info = &drupal_static(__FUNCTION__);
+  $all_info = &backdrop_static(__FUNCTION__);
   if (!isset($all_info[$data_type])) {
     _layout_include_files();
     if ($cached_info = cache()->get($data_type . '_info')) {
@@ -572,10 +610,17 @@ function layout_get_layout_info() {
 }
 
 /**
- * Load all layout information from modules.
+ * Load all layout context information from modules.
  */
 function layout_get_context_info() {
   return _layout_get_all_info('layout_context');
+}
+
+/**
+ * Load all layout access information from modules.
+ */
+function layout_get_access_info() {
+  return _layout_get_all_info('layout_access');
 }
 
 /**
@@ -604,17 +649,30 @@ function layout_get_handler_name($plugin_type, $plugin_name) {
  *   The name of the plugin, as keyed by that plugin type's info hooks.
  * @param array $config
  *   The configuration options for the handler being created.
+ * @return
+ *   A handler object instance of the specified plugin type.
  */
 function layout_create_handler($plugin_type, $plugin_name, array $config = array()) {
   $handler_name = layout_get_handler_name($plugin_type, $plugin_name);
-  return new $handler_name($config);
+  return new $handler_name($plugin_name, $config);
 }
 
 /**
  * Helper function to create a Layout Context.
+ *
+ * @return LayoutContext
  */
 function layout_create_context($context_name, $config = array()) {
   return layout_create_handler('context', $context_name, $config);
+}
+
+/**
+ * Helper function to create a Layout Access.
+ *
+ * @return LayoutAccess
+ */
+function layout_create_access($context_name, $config = array()) {
+  return layout_create_handler('access', $context_name, $config);
 }
 
 /**
@@ -631,7 +689,7 @@ function layout_create_context($context_name, $config = array()) {
  *   The type of item to load. Must be either "layout" or "menu_item".
  */
 function layout_get_layout_cache($name, $type = 'layout') {
-  $caches = &drupal_static(__FUNCTION__, array());
+  $caches = &backdrop_static(__FUNCTION__, array());
   if (!isset($caches[$type][$name])) {
     // Try loading from tempstore first to get in-progress changes.
     $item = tempstore_get('layout.' . $type, $name);

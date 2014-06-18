@@ -1,14 +1,5 @@
 name = Layout
 description = Provides a drag and drop page building tool.
 package = Core
-version = VERSION
-core = 8.x
-
-; Files that contain classes.
-files[] = includes/layout.handler.inc
-files[] = includes/layout.class.inc
-files[] = includes/layout.context.inc
-files[] = includes/layout_menu_item.class.inc
-
-; Temporarily included in Layout until it can be moved.
-files[] = plugins/node_layout_context_handler.inc
+version = BACKDROP_VERSION
+backdrop = 1.x

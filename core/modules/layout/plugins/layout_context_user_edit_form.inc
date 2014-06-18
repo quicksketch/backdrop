@@ -73,13 +73,13 @@ function ctools_context_create_user_edit_form($empty, $user = NULL, $conf = FALS
 
     $form_state = array('want form' => TRUE, 'build_info' => array('args' => array($user, $category)));
 
-    $file = drupal_get_path('module', 'user') . '/user.pages.inc';
+    $file = backdrop_get_path('module', 'user') . '/user.pages.inc';
     require_once DRUPAL_ROOT . '/' . $file;
     // This piece of information can let other modules know that more files
     // need to be included if this form is loaded from cache:
     $form_state['build_info']['files'] = array($file);
 
-    $form = drupal_build_form($form_id, $form_state);
+    $form = backdrop_build_form($form_id, $form_state);
 
     // Fill in the 'node' portion of the context
     $context->data     = $user;

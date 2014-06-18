@@ -5,11 +5,92 @@
  */
 
 (function ($) {
-Drupal.settings.layout = Drupal.settings.layout || {};
 
-Drupal.layout = {};
+"use strict";
 
-Drupal.layout.changed = function($item) {
+/**
+ * Behavior for creating/configuring layout settings.
+ */
+Backdrop.behaviors.layoutConfigure = {
+  attach: function(context) {
+    var $form = $('#layout-settings-form').once('layout-settings');
+    if ($form.length) {
+      $('#edit-path-update').addClass('js-hide');
+      $('#edit-path').on('change', function() {
+        $('#edit-path-update').triggerHandler('mousedown');
+      }).triggerHandler('change');
+    }
+
+    // Convert AJAX buttons to links.
+    var $linkButtons = $(context).find('.layout-link-button').once('link-button');
+    if ($linkButtons.length) {
+      $linkButtons.each(function() {
+        var $self = $(this).addClass('js-hide');
+        $('<a class="layout-button-link" href="#"></a>')
+          .insertBefore(this)
+          // Copy over the title of the button as the link text.
+          .text(this.value)
+          // Copy over classes.
+          .addClass(this.className)
+          .removeClass('layout-link-button form-submit ajax-processed link-button-processed js-hide')
+          .on('click', function(event) {
+            $self.triggerHandler('mousedown');
+            event.preventDefault();
+          });
+      });
+    }
+  }
+};
+
+/**
+ * Behavior for editing layouts.
+ */
+Backdrop.behaviors.layoutDisplayEditor = {
+  attach: function(context) {
+    $('#layout-edit-main').find('div.layout-block:not(.layout-portlet)')
+        .addClass('layout-portlet')
+        .each(Backdrop.layout.bindPortlet);
+
+    // The above doesn't work if context IS the block, so do this to catch that.
+    if ($(context).hasClass('layout-block') && !$(context).hasClass('layout-portlet')) {
+      $(context)
+          .addClass('layout-portlet')
+          .each(Backdrop.layout.bindPortlet);
+    }
+
+    // Make draggables and make sure their positions are saved.
+    $(context).find('div.grabber:not(.layout-draggable)').layoutDraggable();
+    Backdrop.layout.Draggable.savePositions();
+
+    Backdrop.layout.bindClickDelete(context);
+
+    var setTitleClass = function () {
+      if ($('#edit-display-title-hide-title').val() == 2) {
+        $('#layout-edit-main').removeClass('layout-set-title-hide');
+      }
+      else {
+        $('#layout-edit-main').addClass('layout-set-title-hide');
+      }
+    }
+
+    // The blocks have an option to set the display title, but only if
+    // a select is set to the proper value. This sets a class on the
+    // main edit div so that the option to set the display title
+    // is hidden if that is not selected, and visible if it is.
+    $('#edit-display-title-hide-title:not(.layout-title-processed)')
+        .addClass('layout-title-processed')
+        .change(setTitleClass);
+
+    setTitleClass();
+  }
+};
+
+
+Backdrop.settings.layout = Backdrop.settings.layout || {};
+
+Backdrop.layout = {};
+
+Backdrop.layout.changed = function($item) {
   if (!$item.is('.changed')) {
     $item.addClass('changed');
     $item.find('div.grabber span.text').find('.star').remove();
@@ -17,29 +98,29 @@ Drupal.layout.changed = function($item) {
   }
 };
 
-Drupal.layout.restripeTable = function(table) {
+Backdrop.layout.restripeTable = function(table) {
   // :even and :odd are reversed because jquery counts from 0 and
   // we count from 1, so we're out of sync.
   $('tbody tr:not(:hidden)', $(table))
-    .removeClass('even odd')
-    .filter(':even').addClass('odd').end()
-    .filter(':odd').addClass('even');
+      .removeClass('even odd')
+      .filter(':even').addClass('odd').end()
+      .filter(':odd').addClass('even');
 };
 
-Drupal.layout.bindClickDelete = function(context) {
+Backdrop.layout.bindClickDelete = function(context) {
   $('a.block-delete:not(.block-delete-processed)', context)
-    .addClass('block-delete-processed')
-    .click(function() {
-      if (confirm('Remove this block?')) {
-        var id = '#' + $(this).attr('id').replace('block-delete-', '');
-        $(id).remove();
-        Drupal.layout.Draggable.savePositions();
-      }
-      return false;
-    });
+      .addClass('block-delete-processed')
+      .click(function() {
+        if (confirm('Remove this block?')) {
+          var id = '#' + $(this).attr('id').replace('block-delete-', '');
+          $(id).remove();
+          Backdrop.layout.Draggable.savePositions();
+        }
+        return false;
+      });
 };
 
-Drupal.layout.bindPortlet = function() {
+Backdrop.layout.bindPortlet = function() {
   var handle = $(this).find('.layout-block-collapsible > div.block-title');
   var content = $(this).find('.layout-block-collapsible > div.block-content');
   if (content.length) {
@@ -57,7 +138,7 @@ Drupal.layout.bindPortlet = function() {
   }
 };
 
-Drupal.layout.Draggable = {
+Backdrop.layout.Draggable = {
   // The draggable object
   object: null,
 
@@ -133,7 +214,7 @@ Drupal.layout.Draggable = {
   },
 
   calculateDropZones: function(event, dropzone) {
-    var draggable = Drupal.layout.Draggable;
+    var draggable = Backdrop.layout.Draggable;
     var dropzones = [];
     $(this.accept).each(function() {
       var offset = $(this).offset();
@@ -241,7 +322,7 @@ Drupal.layout.Draggable = {
 
   /** save button clicked, or block deleted **/
   savePositions: function() {
-    var draggable = Drupal.layout.Draggable;
+    var draggable = Backdrop.layout.Draggable;
     $(draggable.accept).each(function() {
       var val = '';
       $(this).find(draggable.draggable).each(function() {
@@ -258,9 +339,9 @@ Drupal.layout.Draggable = {
   }
 };
 
-Drupal.layout.DraggableHandler = function() {
+Backdrop.layout.DraggableHandler = function() {
   $(this).addClass('layout-draggable');
-  var draggable = Drupal.layout.Draggable;
+  var draggable = Backdrop.layout.Draggable;
   var scrollBuffer = 10;
   var scrollDistance = 10;
   var scrollTimer = 30;
@@ -313,7 +394,7 @@ Drupal.layout.DraggableHandler = function() {
     if (draggable.current_pad) {
       // Drop the object where we're hovering
       $(draggable.object).insertAfter($(draggable.current_pad.obj));
-      Drupal.layout.changed($(draggable.object));
+      Backdrop.layout.changed($(draggable.object));
     }
     else {
       // or put it back where it came from
@@ -436,9 +517,9 @@ Drupal.layout.DraggableHandler = function() {
     draggable.timeoutId = setTimeout('timer()', scrollTimer);
 
     // If locking to a particular set of regions, set that:
-    if (Drupal.settings.layout && Drupal.settings.layout.RegionLock && Drupal.settings.layout.RegionLock[draggable.blockId]) {
+    if (Backdrop.settings.layout && Backdrop.settings.layout.RegionLock && Backdrop.settings.layout.RegionLock[draggable.blockId]) {
       draggable.regionLock = true;
-      draggable.regionLockRegions = Drupal.settings.layout.RegionLock[draggable.blockId];
+      draggable.regionLockRegions = Backdrop.settings.layout.RegionLock[draggable.blockId];
     }
     else {
       draggable.regionLock = false;
@@ -486,50 +567,6 @@ Drupal.layout.DraggableHandler = function() {
 };
 
 $.fn.extend({
-  layoutDraggable: Drupal.layout.DraggableHandler
+  layoutDraggable: Backdrop.layout.DraggableHandler
 });
-
-/**
- * Implement Drupal behavior for autoattach
- */
-Drupal.behaviors.layoutDisplayEditor = {
-  attach: function(context) {
-    $('#layout-edit-main').find('div.layout-block:not(.layout-portlet)')
-        .addClass('layout-portlet')
-        .each(Drupal.layout.bindPortlet);
-
-    // The above doesn't work if context IS the block, so do this to catch that.
-    if ($(context).hasClass('layout-block') && !$(context).hasClass('layout-portlet')) {
-      $(context)
-          .addClass('layout-portlet')
-          .each(Drupal.layout.bindPortlet);
-    }
-
-    // Make draggables and make sure their positions are saved.
-    $(context).find('div.grabber:not(.layout-draggable)').layoutDraggable();
-    Drupal.layout.Draggable.savePositions();
-
-    Drupal.layout.bindClickDelete(context);
-
-    var setTitleClass = function () {
-      if ($('#edit-display-title-hide-title').val() == 2) {
-        $('#layout-edit-main').removeClass('layout-set-title-hide');
-      }
-      else {
-        $('#layout-edit-main').addClass('layout-set-title-hide');
-      }
-    }
-
-    // The blocks have an option to set the display title, but only if
-    // a select is set to the proper value. This sets a class on the
-    // main edit div so that the option to set the display title
-    // is hidden if that is not selected, and visible if it is.
-    $('#edit-display-title-hide-title:not(.layout-title-processed)')
-        .addClass('layout-title-processed')
-        .change(setTitleClass);
-
-    setTitleClass();
-  }
-};
-
 })(jQuery);

@@ -59,8 +59,8 @@ function ctools_string_equal_ctools_access_check($conf, $context) {
 
   $value = $conf['value'];
   if (empty($conf['case'])) {
-    $string = drupal_strtolower($string);
-    $value = drupal_strtolower($value);
+    $string = backdrop_strtolower($string);
+    $value = backdrop_strtolower($value);
   }
 
   switch ($conf['operator']) {

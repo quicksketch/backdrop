@@ -161,7 +161,7 @@ function page_manager_schema_1() {
       'menu' => array(
         'type' => 'text',
         'size' => 'big',
-        'description' => 'Serialized configuration of Drupal menu visibility settings for this item.',
+        'description' => 'Serialized configuration of Backdrop menu visibility settings for this item.',
         'not null' => TRUE,
         'serialize' => TRUE,
         'object default' => array(),

@@ -629,6 +629,9 @@ function _menu_check_access(&$item, $map) {
       $item['access'] = (count($arguments) == 1) ? user_access($arguments[0]) : user_access($arguments[0], $arguments[1]);
     }
     else {
+      if (!empty($item['include_file']) && !function_exists($callback)) {
+        require_once BACKDROP_ROOT . '/' . $item['include_file'];
+      }
       $item['access'] = call_user_func_array($callback, $arguments);
     }
   }
@@ -689,6 +692,9 @@ function _menu_item_localize(&$item, $map, $link_translate = FALSE) {
       }
     }
     elseif ($callback) {
+      if (!empty($item['include_file']) && !function_exists($callback)) {
+        require_once BACKDROP_ROOT . '/' . $item['include_file'];
+      }
       if (empty($item['title_arguments'])) {
         $item['title'] = $callback($item['title']);
       }

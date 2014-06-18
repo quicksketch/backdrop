@@ -2485,8 +2485,10 @@ function backdrop_http_header_attributes(array $attributes = array()) {
  */
 function backdrop_attributes(array $attributes = array()) {
   foreach ($attributes as $attribute => &$data) {
-    $data = implode(' ', (array) $data);
-    $data = $attribute . '="' . check_plain($data) . '"';
+    if (!is_null($data)) {
+      $data = implode(' ', (array) $data);
+      $data = $attribute . '="' . check_plain($data) . '"';
+    }
   }
   return $attributes ? ' ' . implode(' ', $attributes) : '';
 }

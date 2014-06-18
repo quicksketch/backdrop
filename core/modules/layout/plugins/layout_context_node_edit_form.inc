@@ -61,13 +61,13 @@ function ctools_context_create_node_edit_form($empty, $node = NULL, $conf = FALS
 
     $form_state = array('want form' => TRUE, 'build_info' => array('args' => array($node)));
 
-    $file = drupal_get_path('module', 'node') . '/node.pages.inc';
+    $file = backdrop_get_path('module', 'node') . '/node.pages.inc';
     require_once DRUPAL_ROOT . '/' . $file;
     // This piece of information can let other modules know that more files
     // need to be included if this form is loaded from cache:
     $form_state['build_info']['files'] = array($file);
 
-    $form = drupal_build_form($form_id, $form_state);
+    $form = backdrop_build_form($form_id, $form_state);
 
     // Fill in the 'node' portion of the context
     $context->data     = $node;

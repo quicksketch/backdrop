@@ -413,18 +413,18 @@ class LayoutRendererStandard {
    * Add CSS information to the renderer.
    *
    * To facilitate previews over Views, CSS can now be added in a manner
-   * that does not necessarily mean just using drupal_add_css. Therefore,
+   * that does not necessarily mean just using backdrop_add_css. Therefore,
    * during the panel rendering process, this method can be used to add
    * css and make certain that ti gets to the proper location.
    *
-   * The arguments should exactly match drupal_add_css().
+   * The arguments should exactly match backdrop_add_css().
    *
-   * @see drupal_add_css
+   * @see backdrop_add_css
    */
   function add_css($filename) {
     switch ($this->meta_location) {
       case 'standard':
-        drupal_add_css($filename);
+        backdrop_add_css($filename);
         break;
       case 'inline':
         $url = base_path() . $filename;
@@ -525,8 +525,8 @@ class LayoutRendererStandard {
     }
     else {
       if ($caching) {
-        // This is created before rendering so that calls to drupal_add_js
-        // and drupal_add_css will be captured.
+        // This is created before rendering so that calls to backdrop_add_js
+        // and backdrop_add_css will be captured.
         $cache = new panels_cache_object();
       }
 

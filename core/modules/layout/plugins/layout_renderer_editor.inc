@@ -33,17 +33,17 @@ class LayoutRendererEditor extends LayoutRendererStandard {
       'cache key' => $this->display->cache_key,
     );
 
-    $output = drupal_build_form('panels_edit_display_form', $form_state);
+    $output = backdrop_build_form('panels_edit_display_form', $form_state);
     if (empty($form_state['executed']) || !empty($form_state['clicked_button']['preview'])) {
       return $output;
     }
 
     if (!empty($form_state['clicked_button']['#save-display'])) {
-      drupal_set_message(t('Panel content has been updated.'));
+      backdrop_set_message(t('Panel content has been updated.'));
       panels_save_display($this->display);
     }
     else {
-      drupal_set_message(t('Your changes have been discarded.'));
+      backdrop_set_message(t('Your changes have been discarded.'));
     }
 
     panels_cache_clear('display', $this->display->did);
@@ -133,7 +133,7 @@ class LayoutRendererEditor extends LayoutRendererStandard {
     if (!empty($pane->locks['type'])) {
       if ($pane->locks['type'] == 'regions') {
         $settings['Panels']['RegionLock'][$pane->pid] = $pane->locks['regions'];
-        drupal_add_js($settings, 'setting');
+        backdrop_add_js($settings, 'setting');
       }
       else if ($pane->locks['type'] == 'immovable') {
         $grabber_class = 'grab-title not-grabber';

@@ -87,7 +87,13 @@ function layout_layout_context_info() {
  * Implements hook_layout_access_info().
  */
 function layout_layout_access_info() {
-  $info = array();
+  $info = array(
+    'front' => array(
+      'title' => t('Front page'),
+      'description' => t('Is this the front page.'),
+      'class' => 'LayoutAccessFront',
+    ),
+  );
   return $info;
 }
 

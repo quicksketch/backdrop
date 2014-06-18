@@ -163,7 +163,7 @@ class Layout {
       foreach ($data[$config_type] as $config_type_key => $config_type_data) {
         unset($config_type_data->is_new);
         $data[$config_type][$config_type_key] = array(
-          'plugin' => $config_type_data->type(),
+          'plugin' => $config_type_data->plugin,
           'data' => $config_type_data->toArray(),
         );
       }

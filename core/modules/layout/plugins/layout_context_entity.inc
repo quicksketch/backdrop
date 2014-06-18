@@ -43,10 +43,10 @@ function ctools_context_entity_get_children($plugin, $parent) {
     $child_plugin['name'] = $parent . ':' . $entity_type;
     $child_plugin['description'] = t('Creates @entity context from an entity ID.', array('@entity' => $entity_type));
     $child_plugin_id = $parent . ':' . $entity_type;
-    drupal_alter('ctools_entity_context', $child_plugin, $entity, $child_plugin_id);
+    backdrop_alter('ctools_entity_context', $child_plugin, $entity, $child_plugin_id);
     $plugins[$child_plugin_id] = $child_plugin;
   }
-  drupal_alter('ctools_entity_contexts', $plugins);
+  backdrop_alter('ctools_entity_contexts', $plugins);
   return $plugins;
 }
 

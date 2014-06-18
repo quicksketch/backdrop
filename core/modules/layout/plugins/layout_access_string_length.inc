@@ -51,7 +51,7 @@ function ctools_string_length_ctools_access_check($conf, $context) {
     $length = 0;
   }
   else {
-    $length = drupal_strlen($context->data);
+    $length = backdrop_strlen($context->data);
   }
 
   switch ($conf['operator']) {

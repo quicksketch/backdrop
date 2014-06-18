@@ -7,6 +7,7 @@ class NodeLayoutContext extends LayoutContext {
   function type() {
     return 'node';
   }
+
   function humanLabel() {
     if (isset($this->options['nid'])) {
       if ($node = node_load($this->options['nid'])) {

@@ -72,7 +72,7 @@ function ctools_context_create_node_add_form($empty, $data = NULL, $conf = FALSE
       // Use module_load_include so that caches and stuff can know to load this.
       form_load_include($form_state, 'inc', 'node', 'node.pages');
 
-      $form = drupal_build_form($form_id, $form_state);
+      $form = backdrop_build_form($form_id, $form_state);
 
       // In a form, $data is the object being edited.
       $context->data     = $node;

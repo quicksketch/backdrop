@@ -1,46 +1,20 @@
 <?php
-
 /**
  * @file
- * Plugin to provide access control based on drupal_is_front_page.
+ * Class for loading, modifying, and saving a layout access rule (condition).
  */
-
-/**
- * Plugins are described by creating a $plugin array which will be used
- * by the system that includes this file.
- */
-$plugin = array(
-  'title' => t('Front page'),
-  'description' => t('Is this the front page.'),
-  'callback' => 'ctools_front_ctools_access_check',
-  'default' => array('negate' => 0),
-  'settings form' => 'ctools_front_ctools_access_settings',
-  'summary' => 'ctools_front_ctools_access_summary',
-);
-
-/**
- * Settings form for the 'by parent term' access plugin
- */
-function ctools_front_ctools_access_settings($form, &$form_state, $conf) {
-  // No additional configuration necessary.
-  return $form;
-}
-
-/**
- * Check for access.
- */
-function ctools_front_ctools_access_check($conf, $context) {
-  if (drupal_is_front_page()) {
-    return TRUE;
+class LayoutAccessFront extends LayoutAccessNegatable {
+  /**
+   * {@inheritdoc}
+   */
+  function checkAccess($context) {
+    return backdrop_is_front_page();
   }
-  else {
-    return FALSE;
-  }
-}
 
-/**
- * Provide a summary description based upon the checked terms.
- */
-function ctools_front_ctools_access_summary($conf, $context) {
-  return t('The front page');
+  /**
+   * {@inheritdoc}
+   */
+  function summary() {
+    return $this->settings['not'] ? t('Is not the front page') : t('Is the front page');
+  }
 }

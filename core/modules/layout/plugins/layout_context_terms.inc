@@ -72,7 +72,7 @@ function ctools_context_terms_convert($context, $type) {
     case 'name':
       return $context->data->name;
     case 'name_dashed':
-      return drupal_strtolower(str_replace(' ', '-', $context->data->name));
+      return backdrop_strtolower(str_replace(' ', '-', $context->data->name));
     case 'names':
     case 'names_dashed':
       // We only run this query if this item was requested:
@@ -85,7 +85,7 @@ function ctools_context_terms_convert($context, $type) {
           foreach ($result as $term) {
             $names[$term->tid] = $term->name;
             if ($type == 'names_dashed') {
-              $names[$term->tid] = drupal_strtolower(str_replace(' ', '-', $names[$term->tid]));
+              $names[$term->tid] = backdrop_strtolower(str_replace(' ', '-', $names[$term->tid]));
             }
           }
           $context->names = implode($context->operator == 'or' ? ' + ' : ', ', $names);

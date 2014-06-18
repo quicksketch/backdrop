@@ -11,7 +11,7 @@
  */
 $plugin = array(
   'title' => t("Node: accessible"),
-  'description' => t('Control access with built in Drupal node access test.'),
+  'description' => t('Control access with built in Backdrop node access test.'),
   'callback' => 'ctools_node_access_ctools_access_check',
   'default' => array('type' => 'view'),
   'settings form' => 'ctools_node_access_ctools_access_settings',
@@ -36,7 +36,7 @@ function ctools_node_access_ctools_access_settings($form, &$form_state, $conf) {
       'delete' => t('Delete'),
       'create' => t('Create nodes of the same type'),
     ),
-    '#description' => t('Using built in Drupal node access rules, determine if the user can perform the selected operation on the node.'),
+    '#description' => t('Using built in Backdrop node access rules, determine if the user can perform the selected operation on the node.'),
     '#default_value' => $conf['type'],
   );
   return $form;

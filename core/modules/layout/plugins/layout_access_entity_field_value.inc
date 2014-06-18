@@ -18,7 +18,7 @@ $plugin = array(
 );
 function ctools_entity_field_value_ctools_access_get_child($plugin, $parent, $child) {
 
-  $plugins = &drupal_static(__FUNCTION__, array());
+  $plugins = &backdrop_static(__FUNCTION__, array());
   if (empty($plugins[$parent . ':' . $child])) {
     list($entity_type, $bundle_type, $field_name) = explode(':', $child);
     $plugins[$parent . ':' . $child] = _ctools_entity_field_value_ctools_access_get_child($plugin, $parent, $entity_type, $bundle_type, $field_name);
@@ -28,7 +28,7 @@ function ctools_entity_field_value_ctools_access_get_child($plugin, $parent, $ch
 }
 
 function ctools_entity_field_value_ctools_access_get_children($plugin, $parent) {
-  $plugins = &drupal_static(__FUNCTION__, array());
+  $plugins = &backdrop_static(__FUNCTION__, array());
   if (!empty($plugins)) {
     return $plugins;
   }

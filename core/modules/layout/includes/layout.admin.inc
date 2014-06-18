@@ -28,7 +28,7 @@ function layout_list_page() {
     );
     $row = array();
     $row[] = array('data' => check_plain($path), 'colspan' => 2);
-    $row[] = drupal_render($operations);
+    $row[] = backdrop_render($operations);
     $rows[] = array('data' => $row, 'class' => array('layout-group'));
 
     foreach ($group as $layout) {
@@ -39,7 +39,7 @@ function layout_list_page() {
       $row = array();
       $row[] = theme('layout_info', array('layout' => $layout));
       $row[] = strpos($layout->path, '%') === FALSE ? l($layout->path, $layout->path) : check_plain($layout->path);
-      $row[] = drupal_render($operations);
+      $row[] = backdrop_render($operations);
       $rows[] = array('data' => $row, 'class' => array('layout-row'));
     }
   }
@@ -51,7 +51,7 @@ function layout_list_page() {
   );
 
   $page = array();
-  $page['#attached']['css'][] = drupal_get_path('module', 'layout') . '/css/layout-admin.css';
+  $page['#attached']['css'][] = backdrop_get_path('module', 'layout') . '/css/layout.admin.css';
   $page['table'] = array(
     '#theme' => 'table',
     '#header' => $header,
@@ -70,7 +70,7 @@ function _layout_get_operations(Layout $layout) {
     $links['enable'] = array(
       'title' => t('Enable'),
       'href' => 'admin/structure/layouts/manage/' . $layout->name . '/enable',
-      'query' => array('token' => drupal_get_token($layout->name)),
+      'query' => array('token' => backdrop_get_token($layout->name)),
     );
   }
   $links['edit'] = array(
@@ -85,7 +85,7 @@ function _layout_get_operations(Layout $layout) {
     $links['disable'] = array(
       'title' => t('Disable'),
       'href' => 'admin/structure/layouts/manage/' . $layout->name . '/disable',
-      'query' => array('token' => drupal_get_token($layout->name)),
+      'query' => array('token' => backdrop_get_token($layout->name)),
     );
   }
   if ($layout->storage == LAYOUT_STORAGE_NORMAL) {
@@ -149,7 +149,7 @@ function layout_add_page() {
     );
     $layout = new Layout($config);
   }
-  return drupal_get_form('layout_settings_form', $layout);
+  return backdrop_get_form('layout_settings_form', $layout);
 }
 
 /**
@@ -159,7 +159,8 @@ function layout_settings_form($form, &$form_state, Layout $layout) {
   $form_state['layout'] = &$layout;
   $form['#tree'] = TRUE;
 
-  $form['#attached']['css'][] = drupal_get_path('module', 'layout') . '/css/layout-admin.css';
+  $form['#attached']['js'][] = backdrop_get_path('module', 'layout') . '/js/layout.admin.js';
+  $form['#attached']['css'][] = backdrop_get_path('module', 'layout') . '/css/layout.admin.css';
 
   $form['title'] = array(
     '#title' => t('Layout title'),
@@ -206,11 +207,16 @@ function layout_settings_form($form, &$form_state, Layout $layout) {
       'layout_settings_form_path_check'
     ),
     '#limit_validation' => array('path'),
+    '#ajax' => array(
+      'callback' => 'layout_settings_form_path_ajax',
+      'wrapper' => 'layout-contexts',
+    ),
   );
   $form['context'] = array(
     '#title' => t('Contexts'),
-    '#theme_wrappers' => array('form_element'),
-    '#description' => t('Contexts define what blocks are available within this layout. Most wildcards in the path will be associated with a context automatically.')
+    '#type' => 'item',
+    '#description' => t('Contexts define what blocks are available within this layout. Most wildcards in the path will be associated with a context automatically.'),
+    '#id' => 'layout-contexts',
   );
 
   $all_context_info = layout_get_context_info();
@@ -222,90 +228,77 @@ function layout_settings_form($form, &$form_state, Layout $layout) {
     if ($layout_context->locked) {
       $form['context']['active'][$context_key]['label'] = array(
         '#type' => 'item',
-        '#title' => t('Position @count', array('@count' => $layout_context->position + 1)),
+        '#title' => t('Path position @count', array('@count' => $layout_context->position + 1)),
         '#markup' => $layout_context->label(),
       );
     }
     elseif ($layout_context->required) {
       $form['context']['active'][$context_key]['type'] = array(
         '#type' => 'select',
-        '#title' => t('Position @count', array('@count' => $layout_context->position + 1)),
+        '#title' => t('Path position @count', array('@count' => $layout_context->position + 1)),
         '#options' => $context_options,
         '#default_value' => $layout_context->type(),
-        '#description' => t('The wildcard in position @count of the path cannot be automatically determined. Select a context or use a string pass-through to ignore this wildcard.', array('@count' => $layout_context->position + 1)),
+        '#description' => t('Select a context or use a string pass-through to ignore this wildcard.', array('@count' => $layout_context->position + 1)),
       );
     }
     else {
-      $extra_context_count = !isset($extra_context_count) ? 1 : $extra_context_count + 1;
-      $form['context']['active'][$context_key]['label'] = array(
-        '#type' => 'item',
-        '#title' => t('Additional context @count', array('@count' => $extra_context_count)),
-        '#markup' => $layout_context->label(),
-      );
-      $form['context']['active'][$context_key]['configure'] = array(
-        '#type' => 'submit',
-        '#value' => t('Configure'),
-        '#layout_form' => 'layout_context_form',
-        '#layout_form_arguments' => array($context_key),
-        '#validate' => array(
-          'layout_settings_form_validate',
-        ),
-        '#submit' => array(
-          'layout_settings_form_update_layout',
-          'layout_settings_form_open_child_form',
-        ),
-      );
-      $form['context']['active'][$context_key]['delete'] = array(
-        '#type' => 'submit',
-        '#value' => t('Delete'),
-        '#validate' => array(
-          'layout_settings_form_validate',
-        ),
-        '#submit' => array(
-          'layout_settings_form_update_layout',
-          'layout_settings_form_context_remove',
-        ),
-      );
+      // @todo: Support adding and removing custom contexts not based on path.
+      // e.g. Adding a Node context based on a hard-coded ID.
     }
   }
-  $form['context']['add'] = array(
-    '#type' => 'submit',
-    '#value' => t('Add context'),
-    '#validate' => array(
-      'layout_settings_form_validate',
-    ),
-    '#submit' => array(
-      'layout_settings_form_update_layout',
-      'layout_settings_form_context_add',
-    ),
-    '#limit_validation' => array('context'),
-  );
 
   $form['access'] = array(
     '#title' => t('Conditions'),
-    '#theme_wrappers' => array('form_element'),
+    '#type' => 'item',
     '#description' => t('Conditions allow this layout to selectively apply to different situations, such as different types of content at the same wildcard path.'),
+    '#id' => 'layout-access',
   );
   foreach ($layout->access as $access_key => $layout_access) {
+    $form['access']['active'][$access_key] = array(
+      '#type' => 'container',
+      '#attributes' => array('class' => array('layout-condition')),
+      '#id' => NULL,
+    );
     $form['access']['active'][$access_key]['label'] = array(
-      '#markup' => $layout_access->label(),
+      '#markup' => $layout_access->summary(),
     );
     $form['access']['active'][$access_key]['remove'] = array(
       '#type' => 'submit',
       '#value' => t('Remove'),
+      '#attributes' => array('class' => array('layout-link-button', 'layout-access-remove')),
+      '#validate' => array(
+        'layout_settings_form_validate',
+      ),
+      '#submit' => array(
+        'layout_settings_form_condition_remove',
+        'layout_settings_form_update_layout',
+      ),
+      '#ajax' => array(
+        'callback' => 'layout_settings_form_ajax_update',
+      ),
+      '#limit_validation' => array('access'),
+    );
+    $form['access']['active'][$access_key]['configure'] = array(
+      '#type' => 'submit',
+      '#value' => t('Configure'),
+      '#attributes' => array('class' => array('layout-link-button', 'layout-access-configure')),
       '#validate' => array(
         'layout_settings_form_validate',
       ),
       '#submit' => array(
         'layout_settings_form_update_layout',
-        'layout_settings_form_condition_remove',
+        'layout_settings_form_condition_edit',
       ),
-      '#limit_validation' => array('conditions'),
+      '#ajax' => array(
+        'callback' => 'layout_settings_form_open_dialog',
+      ),
+      '#limit_validation' => array('access'),
     );
   }
   $form['access']['add'] = array(
     '#type' => 'submit',
     '#value' => t('Add condition'),
+    '#attributes' => array('class' => array('layout-link-button', 'layout-access-add')),
     '#validate' => array(
       'layout_settings_form_validate',
     ),
@@ -313,7 +306,10 @@ function layout_settings_form($form, &$form_state, Layout $layout) {
       'layout_settings_form_update_layout',
       'layout_settings_form_condition_add',
     ),
-    '#limit_validation' => array('conditions'),
+    '#limit_validation' => array('access'),
+    '#ajax' => array(
+      'callback' => 'layout_settings_form_open_dialog',
+    ),
   );
 
   $form['actions'] = array('#type' => 'actions');
@@ -421,34 +417,127 @@ function layout_settings_form_path_check($form, &$form_state) {
 }
 
 /**
- * Submit handler for layout_settings_form() that lets the user add a context.
+ * AJAX handler for layout_settings_form() the returns updated contexts.
  */
-function layout_settings_form_context_add($form, &$form_state) {
-  $form_state['rebuild'] = TRUE;
-}
-
-/**
- * Submit handler for layout_settings_form() that removes a context.
- */
-function layout_settings_form_context_remove($form, &$form_state) {
-  $removed_context = $form_state['clicked_button']['#array_parents'][1];
-  unset($form_state['layout']->context[$removed_context]);
-  $form_state['rebuild'] = TRUE;
+function layout_settings_form_path_ajax($form, &$form_state) {
+  return $form['context'];
 }
 
 /**
  * Submit handler for layout_settings_form() that lets the user add a context.
  */
 function layout_settings_form_condition_add($form, &$form_state) {
-  $form_state['rebuild'] = TRUE;
+  $form_state['redirect'] = 'admin/structure/layouts/manage/' . $form_state['layout']->name . '/condition/add';
 }
 
 /**
  * Submit handler for layout_settings_form() that removes an access item.
  */
 function layout_settings_form_condition_remove($form, &$form_state) {
-  $removed_condition = $form_state['clicked_button']['#array_parents'][1];
+  $removed_condition = $form_state['clicked_button']['#array_parents'][2];
   unset($form_state['layout']->access[$removed_condition]);
+  layout_set_layout_cache($form_state['layout']);
+  $form_state['ajax_update'] = array('access');
+}
+
+/**
+ * Submit handler for layout_settings_form() that edits an access item.
+ */
+function layout_settings_form_condition_edit($form, &$form_state) {
+  $edit_condition = $form_state['clicked_button']['#array_parents'][2];
+  $form_state['redirect'] = 'admin/structure/layouts/manage/' . $form_state['layout']->name . '/condition/edit/' . $edit_condition;
+}
+
+/**
+ * AJAX handler for layout_settings_form() that opens a form in a dialog.
+ */
+function layout_settings_form_open_dialog($form, &$form_state) {
+  // Get the dialog path as set in the redirect.
+  $dialog_path = $form_state['redirect'];
+  if ($router_item = menu_get_item($dialog_path)) {
+    if ($router_item['access']) {
+      if ($router_item['include_file']) {
+        require_once BACKDROP_ROOT . '/' . $router_item['include_file'];
+      }
+      $page_callback_result = call_user_func_array($router_item['page_callback'], $router_item['page_arguments']);
+    }
+  }
+  $html = is_string($page_callback_result) ? $page_callback_result : drupal_render($page_callback_result);
+  if (isset($page_callback_result['#title'])) {
+    $title = $page_callback_result['#title'];
+  }
+  else {
+    $title = $router_item['title'];
+  }
+  $commands[] = ajax_command_open_modal_dialog($title, $html);
+  return array('#type' => 'ajax', '#commands' => $commands);
+}
+
+/**
+ * AJAX handler for layout_settings_form() that saves a from from a dialog.
+ */
+function layout_settings_form_save_dialog($form, $form_state) {
+  $commands = array();
+
+  $commands[] = ajax_command_close_modal_dialog();
+
+  // If errors occurred in the dialog, show messages and re-display.
+  if (form_get_errors()) {
+    $html = '';
+    $html .= theme('status_messages');
+    $html .= drupal_render($form);
+    $title = isset($form['#title']) ? $form['#title'] : backdrop_get_title();
+    $commands[] = ajax_command_open_modal_dialog($title, $html);
+  }
+  // If no errors, close the dialog and update the page.
+  else {
+    $commands[] = ajax_command_close_modal_dialog();
+
+    // If there is a part of the page that needs to be updated, update it.
+    if (!empty($form_state['ajax_update'])) {
+      $update_ajax = layout_settings_form_ajax_update($form, $form_state);
+      $commands = array_merge($commands, $update_ajax['#commands']);
+    }
+
+    // If there is a second action that needs to be executed, open the next page.
+    if (!empty($form_state['redirect'])) {
+      $dialog_ajax = layout_settings_form_open_dialog($form, $form_state);
+      $commands = array_merge($commands, $dialog_ajax['#commands']);
+    }
+  }
+
+  return array('#type' => 'ajax', '#commands' => $commands);
+}
+
+/**
+ * AJAX handler for layout_settings_form() that updates a portion of the form.
+ */
+function layout_settings_form_ajax_update($form, $form_state) {
+  if (!isset($form_state['ajax_update'])) {
+    return;
+  }
+
+  $replace_form = backdrop_rebuild_form('layout_settings_form', $form_state, $form);
+  $replace_portion = $form_state['ajax_update'];
+  foreach ($replace_portion as $parent) {
+    if (isset($replace_form[$parent])) {
+      $replace_form = $replace_form[$parent];
+    }
+    else {
+      $replace_form = FALSE;
+      break;
+    }
+  }
+
+  if ($replace_form) {
+    $html = drupal_render($replace_form);
+    $commands[] = ajax_command_replace('#' . $replace_form['#id'], $html);
+  }
+  else {
+    // @todo: Provide an error message if the target is not found.
+  }
+
+  return array('#type' => 'ajax', '#commands' => $commands);
 }
 
 /**
@@ -482,7 +571,7 @@ function layout_settings_form_reset($form, &$form_state) {
     unset($_SESSION['layout_new_name']);
   }
   layout_clear_layout_cache($layout->name);
-  drupal_set_message(t('Layout changes discarded.'));
+  backdrop_set_message(t('Layout changes discarded.'));
   if (empty($layout->is_new)) {
     $form_state['redirect'] = 'admin/structure/layouts';
   }
@@ -498,8 +587,155 @@ function layout_settings_form_save_submit($form, &$form_state) {
   }
   layout_clear_layout_cache($layout->name);
   $layout->save();
-  drupal_set_message(t('Layout saved.'));
+  backdrop_set_message(t('Layout saved.'));
   $form_state['redirect'] = 'admin/structure/layouts';
+}
+
+/**
+ * Form callback; provides the form for adding new contexts to a layout.
+ */
+function layout_condition_add_form($form, &$form_state, Layout $layout) {
+  $form_state['layout'] = $layout;
+  form_load_include($form_state, 'inc', 'layout', 'includes/layout.admin');
+
+  $form['#title'] = t('Add condition');
+  $form['#redirect'] = 'admin/structure/layouts/manage/' . $layout->name;
+  $form['help'] = array(
+    '#markup' => '<p>' . t('Add a new condition to limit the situations in which this layout will apply.') . '</p>',
+  );
+
+  $all_access_info = layout_get_access_info();
+  $form['condition'] = array(
+    '#type' => 'select',
+    '#title' => t('Add condition'),
+    '#options' => array(),
+    '#required' => TRUE,
+  );
+  foreach ($all_access_info as $access_info) {
+    $form['condition']['#options'][$access_info['name']] = $access_info['title'];
+  }
+  $form['actions'] = array(
+    '#type' => 'actions',
+  );
+  $form['actions']['cancel'] = array(
+    '#type' => 'submit',
+    '#value' => t('Cancel'),
+    '#attributes' => array('class' => array('dialog-cancel')),
+    '#validate' => array(),
+    '#submit' => array(),
+  );
+  $form['actions']['add'] = array(
+    '#type' => 'submit',
+    '#value' => t('Add condition'),
+    '#submit' => array(
+      'layout_condition_add_form_submit',
+    ),
+    '#ajax' => array(
+      'callback' => 'layout_settings_form_save_dialog',
+    ),
+  );
+
+  return $form;
+}
+
+/**
+ * Submit handler for layout_condition_add_form().
+ */
+function layout_condition_add_form_submit($form, &$form_state) {
+  $layout = $form_state['layout'];
+  $form_state['redirect'] = 'admin/structure/layouts/manage/' . $layout->name . '/condition/edit/' . $form_state['values']['condition'];
+}
+
+/**
+ * Title callback; Provide the page title for configuring a layout condition.
+ */
+function layout_condition_edit_title(Layout $layout, $handler_id) {
+  if (is_numeric($handler_id) && isset($layout->access[$handler_id])) {
+    $plugin_name = $layout->access[$handler_id]->plugin;
+  }
+  else {
+    $plugin_name = $handler_id;
+  }
+  $access_info = layout_get_access_info();
+  if (isset($access_info[$plugin_name]['title'])) {
+    return t('Configure condition "@condition"', array('@condition' => $access_info[$plugin_name]['title']));
+  }
+}
+
+/**
+ * Form callback; Creates a form for editing a new or existing condition.
+ */
+function layout_condition_edit_form($form, &$form_state, Layout $layout, $handler_id) {
+  if (is_numeric($handler_id) && isset($layout->access[$handler_id])) {
+    $handler = $layout->access[$handler_id];
+  }
+  else {
+    $handler = layout_create_access($handler_id);
+    $handler->is_new = TRUE;
+  }
+  form_load_include($form_state, 'inc', 'layout', 'includes/layout.admin');
+
+  $form['#title'] = layout_condition_edit_title($layout, $handler_id);
+  $form_state['layout'] = $layout;
+  $form_state['handler'] = $handler;
+
+  $handler->form($form, $form_state);
+
+
+  $form['actions'] = array(
+    '#type' => 'actions',
+    '#weight' => 100,
+  );
+  $form['actions']['cancel'] = array(
+    '#type' => 'submit',
+    '#value' => t('Cancel'),
+    '#attributes' => array('class' => array('dialog-cancel')),
+    '#validate' => array(),
+    '#submit' => array(),
+  );
+  $form['actions']['submit'] = array(
+    '#type' => 'submit',
+    '#value' => $handler->is_new ? t('Add condition') : t('Save condition'),
+    '#validate' => array(
+      'layout_condition_edit_form_validate',
+    ),
+    '#submit' => array(
+      'layout_condition_edit_form_submit',
+    ),
+    '#ajax' => array(
+      'callback' => 'layout_settings_form_save_dialog',
+    ),
+  );
+  return $form;
+}
+
+/**
+ * Validation handler for layout_condition_edit_form().
+ */
+function layout_condition_edit_form_validate($form, &$form_state) {
+  $handler = $form_state['handler'];
+  $handler->formValidate($form, $form_state);
+}
+
+/**
+ * Submit handler for layout_condition_edit_form().
+ */
+function layout_condition_edit_form_submit($form, &$form_state) {
+  $layout = $form_state['layout'];
+  $handler = $form_state['handler'];
+  $handler->formSubmit($form, $form_state);
+
+  $excluded = backdrop_map_assoc(array('cancel', 'submit', 'form_build_id', 'form_token', 'form_id', 'op'));
+  $settings = array_diff_key($form_state['values'], $excluded);
+  $handler->settings = $settings;
+  if (!empty($handler->is_new)) {
+    $handler->is_new = FALSE;
+    $layout->access[] = $handler;
+  }
+  layout_set_layout_cache($layout);
+
+  // Set the portion of the page to be updated.
+  $form_state['ajax_update'] = array('access');
 }
 
 /**
@@ -694,8 +930,8 @@ function layout_edit_page_operation() {
   // Since this form should never be submitted to this page, process it late so
   // that we can be sure it notices changes.
   $form_state = array('page' => &$page);
-  $built_form = drupal_build_form('layout_save_page_form', $form_state);
-  $form = drupal_render($built_form);
+  $built_form = backdrop_build_form('layout_save_page_form', $form_state);
+  $form = backdrop_render($built_form);
 
   $output = theme('layout_edit_page', array('page' => $page, 'save' => $form, 'operations' => $rendered_operations, 'content' => $content));
 
@@ -708,7 +944,7 @@ function layout_edit_page_operation() {
     return;
   }
 
-  drupal_set_title($page->subtask['admin title']);
+  backdrop_set_title($page->subtask['admin title']);
   return $output;
 }
 
@@ -843,7 +1079,7 @@ function layout_handler_add_submit(&$form, &$form_state) {
   $form_state['no_rerender'] = TRUE;
   if (!empty($cache->forms)) {
     // Tell the form to go to the config page.
-    drupal_set_message(t('Before this variant can be added, it must be configured. When you are finished, click "Create variant" at the end of this wizard to add this to your page.'));
+    backdrop_set_message(t('Before this variant can be added, it must be configured. When you are finished, click "Create variant" at the end of this wizard to add this to your page.'));
     $form_state['new trail'] = array('actions', 'configure');
   }
   else {
@@ -871,12 +1107,12 @@ function layout_reorder_form($form, &$form_state) {
 
   // Sanity check.
   if (empty($layouts)) {
-    drupal_set_message(t('No layouts specified to reorder.'));
+    backdrop_set_message(t('No layouts specified to reorder.'));
     return $form;
   }
 
   $form['help'] = array(
-    '#markup' => '<p>' . t('Layouts at the same path are selected based on the first layout that matches its conditions. Reorder the layouts on this page to affect the layout that will be used first.') . '</p>',
+    '#markup' => '<p class="help">' . t('Layouts at the same path are selected based on the first layout that matches its conditions. Reorder the layouts on this page to affect the layout that will be used first.') . '</p>',
   );
 
   $form['layouts'] = array(
@@ -912,7 +1148,7 @@ function layout_reorder_form_submit(&$form, &$form_state) {
     $layout->weight = (int) $form_state['values']['layouts'][$name]['weight'];
     $layout->save();
   }
-  drupal_set_message(t('Layout order saved.'));
+  backdrop_set_message(t('Layout order saved.'));
   $form_state['redirect'] = 'admin/structure/layouts';
 }
 
@@ -957,7 +1193,7 @@ function layout_break_lock_submit(&$form, &$form_state) {
   $form_state['page']->locked = FALSE;
   ctools_object_cache_clear_all('layout_page', $page->task_name);
   $form_state['do not cache'] = TRUE;
-  drupal_set_message(t('The lock has been cleared and all changes discarded. You may now make changes to this page.'));
+  backdrop_set_message(t('The lock has been cleared and all changes discarded. You may now make changes to this page.'));
 
   $form_state['new trail'] = array('summary');
 }
@@ -1079,15 +1315,15 @@ function layout_page_summary($form, &$form_state) {
  * Menu callback to enable or disable a page
  */
 function layout_enable_page($disable, $js, $page) {
-  if (!isset($_GET['token']) || !drupal_valid_token($_GET['token'], $page->task_name)) {
+  if (!isset($_GET['token']) || !backdrop_valid_token($_GET['token'], $page->task_name)) {
     return MENU_ACCESS_DENIED;
   }
   if ($page->locked) {
     if ($disable) {
-      drupal_set_message(t('Unable to disable due to lock.'));
+      backdrop_set_message(t('Unable to disable due to lock.'));
     }
     else {
-      drupal_set_message(t('Unable to enable due to lock.'));
+      backdrop_set_message(t('Unable to enable due to lock.'));
     }
   }
   else {
@@ -1104,7 +1340,7 @@ function layout_enable_page($disable, $js, $page) {
   }
 
   // For now $js is not actually in use on this.
-  drupal_goto('admin/structure/pages');
+  backdrop_goto('admin/structure/pages');
 }
 
 /**
@@ -1332,11 +1568,11 @@ function layout_delete_form_submit(&$form, &$form_state) {
 
   if ($layout->storage === LAYOUT_STORAGE_NORMAL) {
     $layout->delete();
-    drupal_set_message(t('The layout has been deleted.'));
+    backdrop_set_message(t('The layout has been deleted.'));
   }
   else {
     $layout->revert();
-    drupal_set_message(t('The page has been reverted.'));
+    backdrop_set_message(t('The page has been reverted.'));
   }
   $form_state['redirect'] = 'admin/structure/layouts';
 }
@@ -1490,7 +1726,7 @@ function layout_menu_item_settings_form_submit($form, &$form_state) {
   $menu_item = $form_state['menu_item'];
   $menu_item->menu = $form_state['values']['menu'];
   $menu_item->save();
-  drupal_set_message(t('Menu settings saved for @path.', array('@path' => $menu_item->path)));
+  backdrop_set_message(t('Menu settings saved for @path.', array('@path' => $menu_item->path)));
   $form_state['redirect'] = 'admin/structure/layouts';
 }
 
@@ -1509,7 +1745,7 @@ function layout_menu_item_arguments_form($form, &$form_state, $menu_item) {
   module_load_include('inc', 'layout', 'includes/layout.context');
   $required_contexts = layout_context_required_by_path($menu_item->path);
 
-  $form['#attached']['css'][] = drupal_get_path('module', 'layout') . '/css/layout-admin.css';
+  $form['#attached']['css'][] = backdrop_get_path('module', 'layout') . '/css/layout.admin.css';
 
   $form['help'] = array(
     '#type' => 'markup',

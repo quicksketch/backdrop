@@ -63,10 +63,10 @@ function theme_layout_reorder_layouts($variables) {
     t('Weight'),
   );
 
-  drupal_add_tabledrag('layout-reorder', 'order', 'sibling', 'weight');
+  backdrop_add_tabledrag('layout-reorder', 'order', 'sibling', 'weight');
 
   $output = theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => array('id' => 'layout-reorder')));
-  $output .= drupal_render_children($element);
+  $output .= backdrop_render_children($element);
   return $output;
 }
 
@@ -103,7 +103,7 @@ function theme_layout_info($variables) {
  */
 function theme_layout_option($variables) {
   $layout_info = $variables['layout_info'];
-  $icon_path = drupal_get_path('module', $layout_info['module']);
+  $icon_path = backdrop_get_path('module', $layout_info['module']);
   $icon_path .= (isset($layout_info['file path']) ? '/' . $layout_info['file path'] : '');
   $icon_path .= '/' . $layout_info['icon'];
 
@@ -136,8 +136,8 @@ function theme_layout_menu_item_arguments_table($variables) {
     $argument_parts[$key] = '<strong>' . $argument_parts[$key] . '</strong>';
     $row = array();
     $row[] = t('Position @index:', array('@index' => $key)) . ' ' . implode('/', $argument_parts);
-    $row[] = drupal_render($element[$key]['context']);
-    $row[] = drupal_render($element[$key]['operations']);
+    $row[] = backdrop_render($element[$key]['context']);
+    $row[] = backdrop_render($element[$key]['operations']);
     $rows[] = $row;
   }
   return theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => array('id' => 'layout-arguments')));

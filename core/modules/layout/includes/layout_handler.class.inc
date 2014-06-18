@@ -16,18 +16,16 @@ abstract class LayoutHandler {
   var $title = '';
 
   /**
-   * The machine-readable name of this object.
-   *
-   * @var string
-   */
-  var $name;
-
-  /**
    * Indicator if this object has not yet been saved.
    *
    * @var Boolean
    */
-  var $is_new;
+  var $is_new = FALSE;
+
+  /**
+   * The name of this plugin.
+   */
+  var $plugin;
 
   /**
    * Assemble a human-readable label of this object.
@@ -44,7 +42,9 @@ abstract class LayoutHandler {
    * Convert this object's properties to an array.
    */
   function toArray() {
-    return (array) $this;
+    $array = (array) $this;
+    unset($array['plugin']);
+    return $array;
   }
 }
 
@@ -52,7 +52,8 @@ abstract class LayoutHandler {
  * Handler to hold configuration of handlers that seemingly have been removed.
  */
 class LayoutHandlerBroken extends LayoutHandler {
-  function __construct(array $config = array()) {
+  function __construct($plugin_name, array $config = array()) {
+    $this->plugin = $plugin_name;
     foreach ($config as $key => $value) {
       $this->$key = $value;
     }

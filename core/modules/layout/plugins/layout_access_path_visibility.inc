@@ -36,7 +36,7 @@ function ctools_path_visibility_ctools_access_settings($form, &$form_state, $con
     '#type' => 'textarea',
     '#title' => t('Paths'),
     '#default_value' => $conf['paths'],
-    '#description' => t("Enter one page per line as Drupal paths. The '*' character is a wildcard. Example paths are %blog for the blog page and %blog-wildcard for every personal blog. %front is the front page.", array('%blog' => 'blog', '%blog-wildcard' => 'blog/*', '%front' => '<front>')),
+    '#description' => t("Enter one page per line as Backdrop paths. The '*' character is a wildcard. Example paths are %blog for the blog page and %blog-wildcard for every personal blog. %front is the front page.", array('%blog' => 'blog', '%blog-wildcard' => 'blog/*', '%front' => '<front>')),
   );
   return $form;
 }
@@ -52,13 +52,13 @@ function ctools_path_visibility_ctools_access_check($conf, $context) {
     $base_path = $_GET['q'];
   }
 
-  $path = drupal_get_path_alias($base_path);
-  $page_match = drupal_match_path($path, $conf['paths']);
+  $path = backdrop_get_path_alias($base_path);
+  $page_match = backdrop_match_path($path, $conf['paths']);
 
   // If there's a path alias, we may still be at the un-aliased path
   // so check that as well.
   if (!isset($context->data) && $path != $base_path) {
-    $page_match = $page_match || drupal_match_path($base_path, $conf['paths']);
+    $page_match = $page_match || backdrop_match_path($base_path, $conf['paths']);
   }
 
   // When $conf['visibility_setting'] has a value of 0, the block is displayed

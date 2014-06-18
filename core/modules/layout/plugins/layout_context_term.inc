@@ -157,7 +157,7 @@ function ctools_context_term_convert($context, $type) {
     case 'name':
       return $context->data->name;
     case 'name_dashed':
-      return drupal_strtolower(str_replace(' ', '-', $context->data->name));
+      return backdrop_strtolower(str_replace(' ', '-', $context->data->name));
     case 'vid':
       return $context->data->vid;
     case 'description':
