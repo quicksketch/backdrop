@@ -15,6 +15,6 @@ class LayoutAccessFront extends LayoutAccessNegatable {
    * {@inheritdoc}
    */
   function summary() {
-    return $this->settings['not'] ? t('Is not the front page') : t('Is the front page');
+    return $this->settings['negate'] ? t('Is not the front page') : t('Is the front page');
   }
 }

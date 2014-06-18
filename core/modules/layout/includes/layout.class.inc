@@ -36,11 +36,12 @@ class Layout {
   /**
    * The internal path of a layout.
    *
-   * The layout path must match the provided menu item path.
+   * The layout path must match the provided menu item path. Set and get this
+   * variable's value with Layout::getPath() and Layout::setPath().
    *
    * @var string
    */
-  var $path;
+  private $path;
 
   /**
    * The weight of this layout compared with other layouts at the same path.
@@ -80,21 +81,21 @@ class Layout {
    *
    * @var array
    */
-  var $context = array();
+  //var $context = array();
 
   /**
-   * An array of all access rules used by this layout.
+   * An array of all conditional rules used by this layout.
    *
    * @var array
    */
-  var $access = array();
+  var $conditions = array();
 
   /**
    * An array of all relationships used by this layout.
    *
    * @var array
    */
-  var $relationship = array();
+  //var $relationship = array();
 
   /**
    * A LayoutMenuItem containing menu properties for this layout.
@@ -130,11 +131,11 @@ class Layout {
       $this->storage = LAYOUT_STORAGE_NORMAL;
     }
 
-    // Convert all stored contexts, access, and relationships to their
+    // Convert all stored contexts, conditions, and relationships to their
     // handler equivalents.
-    foreach (array('context', 'access', 'relationship') as $plugin_type) {
-      foreach ($this->{$plugin_type} as $plugin_type_key => $plugin_data) {
-        $this->{$plugin_type}[$plugin_type_key] = layout_create_handler($plugin_type, $plugin_data['plugin'], $plugin_data['data']);
+    foreach (array('conditions' => 'access') as $property_key => $plugin_type) {
+      foreach ($this->{$property_key} as $plugin_type_key => $plugin_data) {
+        $this->{$property_key}[$plugin_type_key] = layout_create_handler($plugin_type, $plugin_data['plugin'], $plugin_data['data']);
       }
     }
   }
@@ -143,8 +144,13 @@ class Layout {
    * Save a layout to config.
    */
   function save() {
-    // Convert all properties to an array.
+    // Convert all properties to an array. The "path" property needs special
+    // consideration because of it's "private" declaration.
+    $path = $this->path;
+    unset($this->path);
     $data = (array) $this;
+    $data = array_merge(array('path' => $path), $data);
+    $this->path = $path;
 
     // Remove unnecessary properties.
     $remove_properties = array(
@@ -158,8 +164,14 @@ class Layout {
       }
     }
 
-    // Convert all stored contexts, access, and relationships to arrays.
-    foreach (array('context', 'access', 'relationship') as $config_type) {
+    // Convert all stored conditions to arrays.
+    // @todo: Save per-layout contexts and relationships.
+    $sub_parts = array(
+      'conditions',
+      // 'contexts',
+      // 'relationships',
+    );
+    foreach ($sub_parts as $config_type) {
       foreach ($data[$config_type] as $config_type_key => $config_type_data) {
         unset($config_type_data->is_new);
         $data[$config_type][$config_type_key] = array(
@@ -198,15 +210,9 @@ class Layout {
           $this->menu_item = $new_menu_item;
           $this->menu_item->save();
         }
-      }
-      else {
-        // If this layout doesn't have a menu item, make one.
-        $menu_item_settings = array(
-          'path' => $this->path,
-          'name' => $this->name,
-        );
-        $this->menu_item = new LayoutMenuItem($menu_item_settings);
-        $this->menu_item->save();
+        else {
+          $this->menu_item->save();
+        }
       }
     }
     layout_reset_caches();
@@ -269,6 +275,61 @@ class Layout {
     if ($this->menu_item->name === $this->name) {
       $this->menu_item->reassign();
     }
+  }
+
+  /**
+   * Set a layout path.
+   */
+  function setPath($path) {
+    if (empty($this->menu_item) || $this->menu_item->path !== $path) {
+      // Use an existing menu item if existing.
+      if ($existing_item = layout_menu_item_load_by_path($path)) {
+        $this->menu_item = $existing_item;
+      }
+      // If this layout doesn't have a menu item, make one. If the path is
+      // provided by another module, no menu item is necessary.
+      elseif (layout_provides_path($path) === NULL) {
+        $menu_item_settings = array(
+          'path' => $path,
+          'name' => $this->name,
+        );
+        $this->menu_item = new LayoutMenuItem($menu_item_settings);
+      }
+      else {
+        if ($this->menu_item) {
+          $this->menu_item->delete();
+        }
+        $this->menu_item = NULL;
+      }
+    }
+    $this->path = $path;
+  }
+
+  /**
+   * Return a layout's path based on its assigned menu item.
+   *
+   * @return string
+   */
+  function getPath() {
+    if ($this->menu_item) {
+      return $this->menu_item->path;
+    }
+  }
+
+  /**
+   * Return all contexts (from both the layout and menu item) for this Layout.
+   */
+  function getContexts() {
+    if ($this->menu_item) {
+      $contexts = $this->menu_item->getContexts();
+    }
+    elseif ($this->path) {
+      $contexts = layout_context_required_by_path($this->path);
+    }
+    else {
+      $contexts = array();
+    }
+    return $contexts;
   }
 }
 

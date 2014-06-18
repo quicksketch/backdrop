@@ -17,7 +17,9 @@ Backdrop.behaviors.layoutConfigure = {
     if ($form.length) {
       $('#edit-path-update').addClass('js-hide');
       $('#edit-path').on('change', function() {
-        $('#edit-path-update').triggerHandler('mousedown');
+        if (this.value) {
+          $('#edit-path-update').triggerHandler('mousedown');
+        }
       }).triggerHandler('change');
     }
 

@@ -505,11 +505,12 @@ function layout_get_path_layout_names($path) {
   $path_map = array();
   $layouts = layout_get_all_layouts();
   foreach ($layouts as $name => $layout) {
-    $path_map[$layout->path][] = $name;
+    $path_map[$layout->getPath()][] = $name;
   }
 
   return isset($path_map[$path]) ? $path_map[$path] : array();
 }
+
 /**
  * Load an individual layout.
  */
@@ -528,11 +529,23 @@ function layout_menu_item_load($menu_item_name) {
 }
 
 /**
+ * Load an individual Layout menu item based on its path.
+ */
+function layout_menu_item_load_by_path($path) {
+  $menu_items = layout_get_all_layout_menu_items($path);
+  return isset($menu_items[$path]) ? $menu_items[$path] : FALSE;
+}
+
+/**
  * Check if a path is provided by Layout module, as in a custom layout path.
+ *
+ * @return
+ *   Boolean TRUE if Layout module provides a path, FALSE if another module
+ *   specified the path, or NULL if a path does not exist in the system.
  */
 function layout_provides_path($path) {
   $result = db_query('SELECT * FROM {menu_router} WHERE path = :path', array(':path' => $path));
-  $return = FALSE;
+  $return = NULL;
 
   // If any page callback exists at this path, allow it to trump custom layouts.
   foreach ($result as $router) {
@@ -630,13 +643,23 @@ function layout_get_handler_name($plugin_type, $plugin_name) {
   switch ($plugin_type) {
     case 'access':
       $info = layout_get_access_info();
-      return isset($info[$plugin_name]['class']) ? $info[$plugin_name]['class'] : 'LayoutAccessBroken';
+      $broken_class = 'LayoutAccessBroken';
+      break;
     case 'context':
       $info = layout_get_context_info();
-      return isset($info[$plugin_name]['class']) ? $info[$plugin_name]['class'] : 'LayoutContextBroken';
+      $broken_class = 'LayoutContextBroken';
+      break;
     case 'renderer':
       $info = layout_get_renderer_info();
-      return isset($info[$plugin_name]['class']) ? $info[$plugin_name]['class'] : 'LayoutRendererBroken';
+      $broken_class = 'LayoutRendererBroken';
+      break;
+  }
+
+  if (isset($info[$plugin_name]['class']) && class_exists($info[$plugin_name]['class'])) {
+    return $info[$plugin_name]['class'];
+  }
+  else {
+    return $broken_class;
   }
 }
 
@@ -826,3 +849,69 @@ function page_manager_new_task_handler($plugin) {
   return $handler;
 }
 
+
+/**
+ * Given a path with wildcard placeholders (%), determine the required contexts.
+ *
+ * @param string $path
+ *   The path for which required contexts should be retrieved.
+ * @return array
+ *   An array of required contexts that match the given path.
+ */
+function layout_context_required_by_path($path) {
+  $required_context_info = array();
+
+  // Populate each required context on the available known handlers.
+  $all_info = layout_get_context_info();
+  foreach ($all_info as $context_info) {
+    foreach ($context_info['menu paths'] as $context_path) {
+      // Remove named placeholders to just match on % symbols.
+      $cleaned_path = preg_replace('/%[a-z0-9_]+/', '%', $context_path);
+      // If the path matches based on % wildcards, add this context as a
+      // required context info in the correct order.
+      if (strpos($path, $cleaned_path) === 0) {
+        // Get the first named argument.
+        $loader_part = key($context_info['menu loaders']);
+        // Determine the argument placement within the path
+        $parts = explode('/', $context_path);
+        foreach ($parts as $part_index => $part) {
+          if ($part === $loader_part) {
+            $required_context_info[$part_index] = array(
+              'plugin' => $context_info['name'],
+              'position' => $part_index,
+            );
+          }
+        }
+      }
+    }
+  }
+
+  // If any wildcards are not filled, populate with a placeholder context
+  // that can be modified.
+  $parts = explode('/', $path);
+  foreach ($parts as $part_index => $part) {
+    if ($part === '%' && !isset($required_context_info[$part_index])) {
+      $required_context_info[$part_index] = array(
+        'plugin' => 'string',
+        'position' => $part_index,
+      );
+    }
+  }
+
+  // Put the required contexts in order based on the path.
+  ksort($required_context_info);
+
+  // Convert required context info into objects.
+  $required_contexts = array();
+  foreach ($required_context_info as $context_position => $context_info) {
+    $context = layout_create_handler('context', $context_info['plugin']);
+    $context->required = TRUE;
+    // String placeholders are not locked, allowing a new value to be set.
+    $context->locked = $context_info['plugin'] !== 'string';
+    $context->position = $context_position;
+    $context->plugin = $context_info['plugin'];
+    $required_contexts[$context_position] = $context;
+  }
+
+  return $required_contexts;
+}

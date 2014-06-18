@@ -66,8 +66,10 @@ class LayoutMenuItem {
    * node/%/view would have an argument in index 1. Each argument has the
    * following properties:
    *
-   * - name: The context name to which this argument maps.
-   * - label: The human-readable label for this argument.
+   * - plugin: The context plugin to which this argument maps.
+   * - name: A machine name used for token references.
+   * - position: The position in the path, indexed from 0.
+   * - uuid: A unique machine identifier for this argument.
    *
    * @var array
    */
@@ -119,25 +121,6 @@ class LayoutMenuItem {
       'weight' => 0,
       'name' => 'navigation',
     );
-
-    // Ensure all arguments have basic values and non-dynamic parts of the path
-    // do not have arguments.
-    $arguments = $this->arguments;
-    $this->arguments = array();
-    if (strpos($this->path, '%')) {
-      $parts = explode('/', $this->path);
-      foreach ($parts as $index => $part) {
-        if (!isset($arguments[$index])) {
-          $this->arguments[$index] = array(
-            'name' => 'string',
-            'label' => '',
-          );
-        }
-        else {
-          $this->arguments[$index] = $arguments[$index];
-        }
-      }
-    }
   }
 
   /**
@@ -206,5 +189,24 @@ class LayoutMenuItem {
 
     layout_reset_caches();
     menu_rebuild();
+  }
+
+  /**
+   * Get all contexts required or configured for this menu path.
+   */
+  function getContexts() {
+    // Required contexts are generated on-demand.
+    $contexts = layout_context_required_by_path($this->path);
+    // Then add in customized contexts.
+    foreach ($contexts as $key => $context) {
+      if (!$context->locked && isset($this->arguments[$key])) {
+        $argument = $this->arguments[$key];
+        $contexts[$key] = layout_create_context($this->arguments[$key]['plugin']);
+        $contexts[$key]->position = $argument['position'];
+        $contexts[$key]->plugin = $argument['plugin'];
+        $contexts[$key]->required = TRUE;
+      }
+    }
+    return $contexts;
   }
 }

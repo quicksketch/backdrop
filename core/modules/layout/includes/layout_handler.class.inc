@@ -1,6 +1,7 @@
 <?php
 /**
  * @file
+ *
  * Base classes used by all Layout handlers.
  */
 abstract class LayoutHandler {
@@ -40,10 +41,19 @@ abstract class LayoutHandler {
 
   /**
    * Convert this object's properties to an array.
+   *
+   * This is used to convert this handler's configuration to a storage-safe
+   * array, such as to be stored by the config management system as JSON.
    */
   function toArray() {
     $array = (array) $this;
+    // Plugin is always saved manually.
     unset($array['plugin']);
+
+    // Don't bother saving empty titles, since they are optional.
+    if (empty($array['title'])) {
+      unset($array['title']);
+    }
     return $array;
   }
 }

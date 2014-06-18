@@ -17,9 +17,12 @@ class LayoutAccess extends LayoutHandler {
    * @param array $settings
    *   An array of configuration data.
    */
-  function __construct($plugin_name, array $settings = array()) {
+  function __construct($plugin_name, array $config = array()) {
+    $config += array(
+      'settings' => array(),
+    );
     $this->plugin = $plugin_name;
-    $this->settings = $settings;
+    $this->settings = $config['settings'];
   }
 
   /**
@@ -113,21 +116,23 @@ class LayoutAccess extends LayoutHandler {
  * A common base class used for access handlers that may be negated.
  */
 class LayoutAccessNegatable extends LayoutAccess {
-  function __construct($plugin_name, array $settings = array()) {
-    $settings += array(
+  function __construct($plugin_name, array $config = array()) {
+    parent::__construct($plugin_name, $config);
+    // Ensure a setting always exists for negation.
+    $this->settings += array(
       'negate' => FALSE,
     );
-    parent::__construct($plugin_name, $settings);
   }
 
   /**
    * {@inheritdoc}
    */
   function form(&$form, &$form_state) {
-    $form['not'] = array(
+    $form['negate'] = array(
       '#type' => 'checkbox',
       '#title' => t('Reverse (NOT)'),
       '#weight' => 100,
+      '#default_value' => $this->settings['negate'],
     );
   }
 }

@@ -4,10 +4,18 @@
  * @file
  * Class that holds information relating to a layouts context.
  *
- * The contents of this object are usually stored in a Layout object, within the
- * $layout->context array.
+ * This class does not extend the LayoutHandler class because contexts are not
+ * stored directly within configuration. Instead contexts are determined based
+ * on the Layout's path
  */
-abstract class LayoutContext extends LayoutHandler {
+abstract class LayoutContext {
+  /**
+   * The name of the plugin that provides this context.
+   *
+   * @var string
+   */
+  var $plugin;
+
   /**
    * Indicator as to whether this context is required and cannot be removed.
    *
@@ -25,7 +33,7 @@ abstract class LayoutContext extends LayoutHandler {
   /**
    * The order of this context in its containing layout.
    *
-   * If this context is bound to an argument in a path, this  will match that
+   * If this context is bound to an argument in a path, this will match that
    * position in the path.
    */
   var $position;
@@ -62,17 +70,11 @@ abstract class LayoutContext extends LayoutHandler {
   abstract function type();
 
   /**
-   * Return this object as an array for storage to config.
-   *
-   * @return array
+   * Assemble a human-readable label of this object.
    */
-  function toArray() {
-    // Remove protected/private variables before serializing.
-    $data = $this->data;
-    unset($this->data);
-    $array = parent::toArray();
-    $this->data = $data;
-    return $array;
+  function label() {
+    $info = layout_get_context_info();
+    return $info[$this->plugin]['title'];
   }
 }
 
@@ -84,7 +86,7 @@ class LayoutContextBroken extends LayoutContext {
     return 'broken';
   }
   function label() {
-    return t('Broken or missing context');
+    return t('Broken or missing context (@plugin)', array('@plugin' => $this->plugin));
   }
 }
 
@@ -98,63 +100,4 @@ class LayoutStringContext extends LayoutContext {
   function label() {
     return t('String pass-through');
   }
-}
-
-/**
- * Given a path with wildcard placeholders (%), determine the required contexts.
- *
- * @param string $path
- *   The path for which required contexts should be retrieved.
- * @return array
- *   An array of required contexts that match the given path.
- */
-function layout_context_required_by_path($path) {
-  $required_context_info = array();
-
-  // Populate each required context on the available known handlers.
-  $all_info = layout_get_context_info();
-  foreach ($all_info as $context_info) {
-    foreach ($context_info['menu paths'] as $context_path) {
-      // Remove named placeholders to just match on % symbols.
-      $cleaned_path = preg_replace('/%[a-z0-9_]+/', '%', $context_path);
-      // If the path matches based on % wildcards, add this context as a
-      // required context info in the correct order.
-      if (strpos($path, $cleaned_path) === 0) {
-        // Get the first named argument.
-        $loader_part = key($context_info['menu loaders']);
-        // Determine the argument placement within the path
-        $parts = explode('/', $context_path);
-        foreach ($parts as $part_index => $part) {
-          if ($part === $loader_part) {
-            $required_context_info[$part_index] = $context_info;
-          }
-        }
-      }
-    }
-  }
-
-  // If any wildcards are not filled, populate with a placeholder context
-  // that can be modified.
-  $parts = explode('/', $path);
-  foreach ($parts as $part_index => $part) {
-    if ($part === '%' && !isset($required_context_info[$part_index])) {
-      $required_context_info[$part_index] = $all_info['string'];
-    }
-  }
-
-  // Put the required contexts in order based on the path.
-  ksort($required_context_info);
-
-  // Convert required context info into objects.
-  $required_contexts = array();
-  foreach ($required_context_info as $context_position => $context_info) {
-    $context = layout_create_handler('context', $context_info['name']);
-    $context->required = TRUE;
-    // String placeholders are not locked, allowing a new value to be set.
-    $context->locked = $context_info['name'] !== 'string';
-    $context->position = $context_position;
-    $required_contexts[$context_position] = $context;
-  }
-
-  return $required_contexts;
 }

@@ -14,8 +14,9 @@ function layout_list_page() {
   $layouts = layout_get_all_layouts();
 
   // Group layouts by path.
+  $path_groups = array();
   foreach ($layouts as $layout) {
-    $path_groups[$layout->path][$layout->name] = $layout;
+    $path_groups[$layout->getPath()][$layout->name] = $layout;
   }
 
   // Assmeble the rows of the table.
@@ -36,9 +37,10 @@ function layout_list_page() {
         '#type' => 'dropbutton',
         '#links' => _layout_get_operations($layout),
       );
+      $path = $layout->getPath();
       $row = array();
       $row[] = theme('layout_info', array('layout' => $layout));
-      $row[] = strpos($layout->path, '%') === FALSE ? l($layout->path, $layout->path) : check_plain($layout->path);
+      $row[] = strpos($path, '%') === FALSE ? l($path, $path) : check_plain($path);
       $row[] = backdrop_render($operations);
       $rows[] = array('data' => $row, 'class' => array('layout-row'));
     }
@@ -57,6 +59,7 @@ function layout_list_page() {
     '#header' => $header,
     '#rows' => $rows,
     '#attributes' => array('id' => 'layout-list'),
+    '#empty' => t('No layouts have been created yet.'),
   );
   return $page;
 }
@@ -193,7 +196,7 @@ function layout_settings_form($form, &$form_state, Layout $layout) {
   $form['path'] = array(
     '#title' => t('Path'),
     '#type' => 'textfield',
-    '#default_value' => $layout->path,
+    '#default_value' => $layout->getPath(),
     '#description' => t('Use the "%" (percent) symbol to indicate a wildcard in the path. i.e. "node/%" or "node/%/edit".'),
   );
   $form['path_update'] = array(
@@ -212,28 +215,33 @@ function layout_settings_form($form, &$form_state, Layout $layout) {
       'wrapper' => 'layout-contexts',
     ),
   );
-  $form['context'] = array(
+
+  $contexts = $layout->getContexts();
+  $form['context_wrapper']['#prefix'] = '<div id="layout-contexts">';
+  $form['context_wrapper']['#suffix'] = '</div>';
+  $form['context_wrapper']['context'] = array(
     '#title' => t('Contexts'),
     '#type' => 'item',
     '#description' => t('Contexts define what blocks are available within this layout. Most wildcards in the path will be associated with a context automatically.'),
-    '#id' => 'layout-contexts',
+    '#parents' => array('context'),
+    '#access' => count($contexts) > 0,
   );
 
   $all_context_info = layout_get_context_info();
-  foreach ($all_context_info as $context_name => $context_info) {
-    $context_options[$context_name] = $context_info['title'];
+  foreach ($all_context_info as $plugin_name => $context_info) {
+    $context_options[$plugin_name] = $context_info['title'];
   }
 
-  foreach ($layout->context as $context_key => $layout_context) {
+  foreach ($contexts as $context_key => $layout_context) {
     if ($layout_context->locked) {
-      $form['context']['active'][$context_key]['label'] = array(
+      $form['context_wrapper']['context']['required'][$context_key]['label'] = array(
         '#type' => 'item',
         '#title' => t('Path position @count', array('@count' => $layout_context->position + 1)),
         '#markup' => $layout_context->label(),
       );
     }
     elseif ($layout_context->required) {
-      $form['context']['active'][$context_key]['type'] = array(
+      $form['context_wrapper']['context']['required'][$context_key]['plugin'] = array(
         '#type' => 'select',
         '#title' => t('Path position @count', array('@count' => $layout_context->position + 1)),
         '#options' => $context_options,
@@ -247,22 +255,22 @@ function layout_settings_form($form, &$form_state, Layout $layout) {
     }
   }
 
-  $form['access'] = array(
+  $form['conditions'] = array(
     '#title' => t('Conditions'),
     '#type' => 'item',
     '#description' => t('Conditions allow this layout to selectively apply to different situations, such as different types of content at the same wildcard path.'),
     '#id' => 'layout-access',
   );
-  foreach ($layout->access as $access_key => $layout_access) {
-    $form['access']['active'][$access_key] = array(
+  foreach ($layout->conditions as $access_key => $layout_access) {
+    $form['conditions']['active'][$access_key] = array(
       '#type' => 'container',
       '#attributes' => array('class' => array('layout-condition')),
       '#id' => NULL,
     );
-    $form['access']['active'][$access_key]['label'] = array(
+    $form['conditions']['active'][$access_key]['label'] = array(
       '#markup' => $layout_access->summary(),
     );
-    $form['access']['active'][$access_key]['remove'] = array(
+    $form['conditions']['active'][$access_key]['remove'] = array(
       '#type' => 'submit',
       '#value' => t('Remove'),
       '#attributes' => array('class' => array('layout-link-button', 'layout-access-remove')),
@@ -276,9 +284,10 @@ function layout_settings_form($form, &$form_state, Layout $layout) {
       '#ajax' => array(
         'callback' => 'layout_settings_form_ajax_update',
       ),
-      '#limit_validation' => array('access'),
+      '#limit_validation' => array('conditions'),
+      '#name' => 'conditions_' . $access_key . '_configure',
     );
-    $form['access']['active'][$access_key]['configure'] = array(
+    $form['conditions']['active'][$access_key]['configure'] = array(
       '#type' => 'submit',
       '#value' => t('Configure'),
       '#attributes' => array('class' => array('layout-link-button', 'layout-access-configure')),
@@ -286,16 +295,16 @@ function layout_settings_form($form, &$form_state, Layout $layout) {
         'layout_settings_form_validate',
       ),
       '#submit' => array(
-        'layout_settings_form_update_layout',
         'layout_settings_form_condition_edit',
       ),
       '#ajax' => array(
         'callback' => 'layout_settings_form_open_dialog',
       ),
-      '#limit_validation' => array('access'),
+      '#limit_validation' => array('conditions'),
+      '#name' => 'conditions_' . $access_key . '_configure',
     );
   }
-  $form['access']['add'] = array(
+  $form['conditions']['add'] = array(
     '#type' => 'submit',
     '#value' => t('Add condition'),
     '#attributes' => array('class' => array('layout-link-button', 'layout-access-add')),
@@ -306,10 +315,12 @@ function layout_settings_form($form, &$form_state, Layout $layout) {
       'layout_settings_form_update_layout',
       'layout_settings_form_condition_add',
     ),
-    '#limit_validation' => array('access'),
+    '#limit_validation' => array('conditions'),
     '#ajax' => array(
       'callback' => 'layout_settings_form_open_dialog',
     ),
+    '#prefix' => '<ul class="action-links"><li>',
+    '#suffix' => '</li></ul>',
   );
 
   $form['actions'] = array('#type' => 'actions');
@@ -393,26 +404,7 @@ function layout_settings_form_validate(&$form, &$form_state) {
  * Submit handler for layout_settings_form() that updates available contexts.
  */
 function layout_settings_form_path_check($form, &$form_state) {
-  $layout = $form_state['layout'];
-
-  // Get the list of new required contexts that are associate with the path.
-  module_load_include('inc', 'layout', 'includes/layout.context');
-  $required_contexts = layout_context_required_by_path($form_state['values']['path']);
-
-  // Remove the existing required contexts that no longer apply.
-  foreach ($layout->context as $context_key => $context) {
-    if ($context->required && !array_key_exists($context_key, $required_contexts)) {
-      unset($layout->context[$context_key]);
-    }
-  }
-  // Add new required contexts.
-  foreach ($required_contexts as $context_key => $required_context) {
-    if (!isset($layout->context[$context_key])) {
-      $layout->context[$context_key] = $required_context;
-    }
-  }
-  ksort($layout->context);
-
+  $form_state['layout']->setPath($form_state['values']['path']);
   $form_state['rebuild'] = TRUE;
 }
 
@@ -420,7 +412,7 @@ function layout_settings_form_path_check($form, &$form_state) {
  * AJAX handler for layout_settings_form() the returns updated contexts.
  */
 function layout_settings_form_path_ajax($form, &$form_state) {
-  return $form['context'];
+  return $form['context_wrapper'];
 }
 
 /**
@@ -435,9 +427,9 @@ function layout_settings_form_condition_add($form, &$form_state) {
  */
 function layout_settings_form_condition_remove($form, &$form_state) {
   $removed_condition = $form_state['clicked_button']['#array_parents'][2];
-  unset($form_state['layout']->access[$removed_condition]);
+  unset($form_state['layout']->conditions[$removed_condition]);
   layout_set_layout_cache($form_state['layout']);
-  $form_state['ajax_update'] = array('access');
+  $form_state['ajax_update'] = array('conditions');
 }
 
 /**
@@ -454,6 +446,7 @@ function layout_settings_form_condition_edit($form, &$form_state) {
 function layout_settings_form_open_dialog($form, &$form_state) {
   // Get the dialog path as set in the redirect.
   $dialog_path = $form_state['redirect'];
+  $page_callback_result = NULL;
   if ($router_item = menu_get_item($dialog_path)) {
     if ($router_item['access']) {
       if ($router_item['include_file']) {
@@ -518,6 +511,7 @@ function layout_settings_form_ajax_update($form, $form_state) {
   }
 
   $replace_form = backdrop_rebuild_form('layout_settings_form', $form_state, $form);
+  $build_id = drupal_render($replace_form['form_build_id']);
   $replace_portion = $form_state['ajax_update'];
   foreach ($replace_portion as $parent) {
     if (isset($replace_form[$parent])) {
@@ -530,8 +524,11 @@ function layout_settings_form_ajax_update($form, $form_state) {
   }
 
   if ($replace_form) {
+    // Update the portion of the form.
     $html = drupal_render($replace_form);
     $commands[] = ajax_command_replace('#' . $replace_form['#id'], $html);
+    // And update the build ID so these new values are included when saving.
+    $commands[] = ajax_command_replace('#layout-settings-form input[name="form_build_id"]', $build_id);
   }
   else {
     // @todo: Provide an error message if the target is not found.
@@ -546,10 +543,41 @@ function layout_settings_form_ajax_update($form, $form_state) {
 function layout_settings_form_update_layout($form, &$form_state) {
   $layout = $form_state['layout'];
 
+  // Update main properties.
   $layout->title = $form_state['values']['title'];
   $layout->name = $form_state['values']['name'];
   $layout->layout = $form_state['values']['layout'];
-  $layout->path = $form_state['values']['path'];
+  $layout->setPath($form_state['values']['path']);
+
+  // Update contexts.
+  // @todo: Provide methods/API for setting menu item arguments.
+  if ($layout->menu_item && isset($form_state['values']['context'])) {
+    $plugin_counts = array();
+    $arguments = array();
+    foreach ($form_state['values']['context']['required'] as $position => $argument_config) {
+      $plugin = $argument_config['plugin'];
+      $plugin_counts[$plugin] = isset($plugin_counts[$plugin]) ? $plugin_counts[$plugin] + 1 : 1;
+      // Give an automatically generated name such as "node1" or "string2".
+      $name = $plugin . $plugin_counts[$plugin];
+      $uuid = new Uuid();
+      $uuid = $uuid->generate();
+      // Check if a machine name already exists for this context.
+      if (isset($layout->menu_item->arguments[$position])) {
+        $existing_context = $layout->menu_item->arguments[$position];
+        if ($existing_context['plugin'] === $plugin) {
+          $name = $existing_context['name'];
+          $uuid = $existing_context['uuid'];
+        }
+      }
+      $arguments[$position] = array(
+        'plugin' => $plugin,
+        'name' => $name,
+        'position' => $position,
+        'uuid' => $uuid,
+      );
+      $layout->menu_item->arguments = $arguments;
+    }
+  }
 
   if (!empty($layout->is_new)) {
     $_SESSION['layout_new_name'] = $layout->name;
@@ -599,7 +627,7 @@ function layout_condition_add_form($form, &$form_state, Layout $layout) {
   form_load_include($form_state, 'inc', 'layout', 'includes/layout.admin');
 
   $form['#title'] = t('Add condition');
-  $form['#redirect'] = 'admin/structure/layouts/manage/' . $layout->name;
+  $form['#redirect'] = 'admin/structure/layouts/manage/' . $layout->name . '/settings';
   $form['help'] = array(
     '#markup' => '<p>' . t('Add a new condition to limit the situations in which this layout will apply.') . '</p>',
   );
@@ -650,8 +678,8 @@ function layout_condition_add_form_submit($form, &$form_state) {
  * Title callback; Provide the page title for configuring a layout condition.
  */
 function layout_condition_edit_title(Layout $layout, $handler_id) {
-  if (is_numeric($handler_id) && isset($layout->access[$handler_id])) {
-    $plugin_name = $layout->access[$handler_id]->plugin;
+  if (is_numeric($handler_id) && isset($layout->conditions[$handler_id])) {
+    $plugin_name = $layout->conditions[$handler_id]->plugin;
   }
   else {
     $plugin_name = $handler_id;
@@ -666,8 +694,8 @@ function layout_condition_edit_title(Layout $layout, $handler_id) {
  * Form callback; Creates a form for editing a new or existing condition.
  */
 function layout_condition_edit_form($form, &$form_state, Layout $layout, $handler_id) {
-  if (is_numeric($handler_id) && isset($layout->access[$handler_id])) {
-    $handler = $layout->access[$handler_id];
+  if (is_numeric($handler_id) && isset($layout->conditions[$handler_id])) {
+    $handler = $layout->conditions[$handler_id];
   }
   else {
     $handler = layout_create_access($handler_id);
@@ -730,12 +758,12 @@ function layout_condition_edit_form_submit($form, &$form_state) {
   $handler->settings = $settings;
   if (!empty($handler->is_new)) {
     $handler->is_new = FALSE;
-    $layout->access[] = $handler;
+    $layout->conditions[] = $handler;
   }
   layout_set_layout_cache($layout);
 
   // Set the portion of the page to be updated.
-  $form_state['ajax_update'] = array('access');
+  $form_state['ajax_update'] = array('conditions');
 }
 
 /**
@@ -1757,12 +1785,11 @@ function layout_menu_item_arguments_form($form, &$form_state, $menu_item) {
   );
 
   foreach ($args as $index) {
-    $argument = $menu_item->arguments[$index];
     if ($required_contexts[$index]) {
       $context = $required_contexts[$index];
     }
-    else {
-      $context = layout_create_context($argument['plugin']);
+    elseif (isset($menu_item->arguments[$index])) {
+      $context = layout_create_context($menu_item->arguments[$index]['plugin']);
     }
     $form['arguments'][$index]['context'] = array(
       '#type' => 'markup',
