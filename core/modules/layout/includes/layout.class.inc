@@ -157,6 +157,7 @@ class Layout {
       'is_new',
       'changed',
       'menu_item',
+      'original_name',
     );
     foreach ($remove_properties as $property) {
       if (array_key_exists($property, $data)) {
@@ -190,9 +191,9 @@ class Layout {
 
     // If this layout overrides an existing module path, reassign or delete
     // the layout menu item.
-    if (menu_get_item($this->path) && !layout_provides_path($this->path)) {
+    if (menu_get_item($this->path) && layout_provides_path($this->path) === FALSE) {
       if ($this->menu_item) {
-        $this->menu_item->reassign();
+        $this->menu_item->delete();
       }
     }
     // If not overriding an existing module path, ensure that the layout always
@@ -211,6 +212,9 @@ class Layout {
           $this->menu_item->save();
         }
         else {
+          if (isset($this->original_name) && $this->original_name !== $this->name && $this->menu_item->name === $this->original_name) {
+            config('layout.menu_item.' . $this->original_name)->delete();
+          }
           $this->menu_item->save();
         }
       }
@@ -313,6 +317,9 @@ class Layout {
   function getPath() {
     if ($this->menu_item) {
       return $this->menu_item->path;
+    }
+    else {
+      return $this->path;
     }
   }
 

@@ -135,10 +135,33 @@ function theme_layout_menu_item_arguments_table($variables) {
     $argument_parts = $parts;
     $argument_parts[$key] = '<strong>' . $argument_parts[$key] . '</strong>';
     $row = array();
-    $row[] = t('Position @index:', array('@index' => $key)) . ' ' . implode('/', $argument_parts);
+    $row[] = t('Position @index:', array('@index' => $key + 1)) . ' ' . implode('/', $argument_parts);
     $row[] = backdrop_render($element[$key]['context']);
     $row[] = backdrop_render($element[$key]['operations']);
     $rows[] = $row;
   }
   return theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => array('id' => 'layout-arguments')));
+}
+
+/**
+ * Output the table for layout_settings_form() contexts.
+ */
+function theme_layout_settings_context_table($variables) {
+  $element = $variables['element'];
+  $path = $element['#layout_path'];
+  $parts = explode('/', $path);
+  $header = array(
+    t('Conext'),
+    t('Type'),
+  );
+  $rows = array();
+  foreach (element_children($element) as $key) {
+    $argument_parts = $parts;
+    $argument_parts[$key] = '<strong>' . $argument_parts[$key] . '</strong>';
+    $row = array();
+    $row[] = t('Position @index:', array('@index' => $key + 1)) . ' ' . implode('/', $argument_parts);
+    $row[] = backdrop_render($element[$key]['plugin']);
+    $rows[] = $row;
+  }
+  return theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => array('id' => 'layout-context-table')));
 }

@@ -42,7 +42,11 @@ function layout_list_page() {
       $row[] = theme('layout_info', array('layout' => $layout));
       $row[] = strpos($path, '%') === FALSE ? l($path, $path) : check_plain($path);
       $row[] = backdrop_render($operations);
-      $rows[] = array('data' => $row, 'class' => array('layout-row'));
+      $class = array('layout-row');
+      if ($layout->disabled) {
+        $class[] = 'disabled';
+      }
+      $rows[] = array('data' => $row, 'class' => $class);
     }
   }
 
@@ -113,17 +117,20 @@ function _layout_get_group_operations($path, array $group) {
   $links = array();
   $last_layout = end($group);
   reset($group);
-  if (layout_provides_path($path)) {
+  if ($last_layout->menu_item) {
     $links['menu_settings'] = array(
       'title' => t('Menu settings'),
       'href' => 'admin/structure/layouts/menu/' . $last_layout->menu_item->name,
     );
+    // This page currently has no separate functional purpose. Remove?
+    /*
     if (strpos($path, '%')) {
       $links['arguments'] = array(
         'title' => t('Arguments'),
         'href' => 'admin/structure/layouts/menu/' . $last_layout->menu_item->name . '/arguments',
       );
     }
+    */
     $links['access'] = array(
       'title' => t('Access control'),
       'href' => 'admin/structure/layouts/menu/' . $last_layout->menu_item->name . '/access',
@@ -207,7 +214,7 @@ function layout_settings_form($form, &$form_state, Layout $layout) {
     ),
     '#submit' => array(
       'layout_settings_form_update_layout',
-      'layout_settings_form_path_check'
+      'layout_settings_form_path_rebuild',
     ),
     '#limit_validation' => array('path'),
     '#ajax' => array(
@@ -232,21 +239,22 @@ function layout_settings_form($form, &$form_state, Layout $layout) {
     $context_options[$plugin_name] = $context_info['title'];
   }
 
+  $form['context_wrapper']['context']['required'] = array(
+    '#theme' => 'layout_settings_context_table',
+    '#layout_path' => $layout->getPath(),
+  );
+
   foreach ($contexts as $context_key => $layout_context) {
     if ($layout_context->locked) {
-      $form['context_wrapper']['context']['required'][$context_key]['label'] = array(
-        '#type' => 'item',
-        '#title' => t('Path position @count', array('@count' => $layout_context->position + 1)),
+      $form['context_wrapper']['context']['required'][$context_key]['plugin'] = array(
         '#markup' => $layout_context->label(),
       );
     }
     elseif ($layout_context->required) {
       $form['context_wrapper']['context']['required'][$context_key]['plugin'] = array(
         '#type' => 'select',
-        '#title' => t('Path position @count', array('@count' => $layout_context->position + 1)),
         '#options' => $context_options,
-        '#default_value' => $layout_context->type(),
-        '#description' => t('Select a context or use a string pass-through to ignore this wildcard.', array('@count' => $layout_context->position + 1)),
+        '#default_value' => $layout_context->plugin,
       );
     }
     else {
@@ -335,7 +343,7 @@ function layout_settings_form($form, &$form_state, Layout $layout) {
       'layout_settings_form_save_submit',
     ),
   );
-  if (isset($_SESSION['layout_new_name'])) {
+  if (isset($_SESSION['layout_new_name']) || isset($layout->changed)) {
     $form['actions']['reset'] = array(
       '#type' => 'submit',
       '#value' => t('Reset'),
@@ -403,8 +411,7 @@ function layout_settings_form_validate(&$form, &$form_state) {
 /**
  * Submit handler for layout_settings_form() that updates available contexts.
  */
-function layout_settings_form_path_check($form, &$form_state) {
-  $form_state['layout']->setPath($form_state['values']['path']);
+function layout_settings_form_path_rebuild($form, &$form_state) {
   $form_state['rebuild'] = TRUE;
 }
 
@@ -543,11 +550,17 @@ function layout_settings_form_ajax_update($form, $form_state) {
 function layout_settings_form_update_layout($form, &$form_state) {
   $layout = $form_state['layout'];
 
+  // Keep track of the original name.
+  if ($form_state['values']['name'] !== $layout->name && !isset($layout->original_name)) {
+    $layout->original_name = $layout->name;
+  }
+
   // Update main properties.
   $layout->title = $form_state['values']['title'];
   $layout->name = $form_state['values']['name'];
   $layout->layout = $form_state['values']['layout'];
   $layout->setPath($form_state['values']['path']);
+  $layout->changed = TRUE;
 
   // Update contexts.
   // @todo: Provide methods/API for setting menu item arguments.
@@ -767,7 +780,7 @@ function layout_condition_edit_form_submit($form, &$form_state) {
 }
 
 /**
- * Form definition for the panels display editor
+ * Form definition for the Layout editor.
  *
  * No validation function is necessary, as all 'validation' is handled
  * either in the lead-up to form rendering (through the selection of
@@ -815,10 +828,10 @@ function layout_edit_form($form, &$form_state, Layout $layout, $renderer = NULL)
     '#default_value' => $layout->title,
     '#title' => t('Title'),
     '#description' => t('The title of this panel. If left blank, a default title may be used. Set to No Title if you want the title to actually be blank.'),
-    // @todo: Convert #dependency to #states.
-    '#dependency' => array('edit-display-title-hide-title' => array(LAYOUT_TITLE_FIXED)),
     '#states' => array(
-
+      'visible' => array(
+        ':input[name="display_title[hide_title]"]' => array('value' => LAYOUT_TITLE_FIXED),
+      ),
     ),
     '#maxlength' => 255,
   );
@@ -1062,6 +1075,23 @@ function layout_save_page_form($form, &$form_state) {
     );
     return $form;
   }
+}
+
+/**
+ * Menu callback; Enable or disable a layout.
+ */
+function layout_enable_layout($status, Layout $layout) {
+  if (backdrop_get_token($layout->name) === $_GET['token']) {
+    $layout->disabled = !$status;
+    $layout->save();
+  }
+  if ($status) {
+    drupal_set_message(t('Layout "@title" enabled.', array('@title' => $layout->title)));
+  }
+  else {
+    drupal_set_message(t('Layout "@title" disabled.', array('@title' => $layout->title)));
+  }
+  drupal_goto('admin/structure/layouts');
 }
 
 // --------------------------------------------------------------------------
@@ -1551,21 +1581,40 @@ function layout_page_argument_form_settings_submit(&$form, &$form_state) {
  * Entry point to clone a page.
  */
 function layout_clone_form($form, &$form_state, $layout) {
-  if (!isset($form_state['layout'])) {
-    $layout = clone($layout);
-    $layout->name = NULL;
-    $layout->is_new = TRUE;
-    $layout->module = NULL;
-    $layout->storage = LAYOUT_STORAGE_NORMAL;
-  }
-  else {
-    $layout = $form_state['layout'];
-  }
+  $layout = clone($layout);
+  $layout->name = NULL;
+  $layout->is_new = TRUE;
+  $layout->module = NULL;
+  $layout->storage = LAYOUT_STORAGE_NORMAL;
 
-  $form = layout_settings_form($form, $form_state, $layout);
-  $form['layout']['#access'] = FALSE;
-  $form['actions']['submit']['#value'] = t('Clone layout');
+  $settings_form = layout_settings_form($form, $form_state, $layout);
+  $form['title'] = $settings_form['title'];
+  $form['name'] = $settings_form['name'];
+
+  $form['actions'] = array('#type' => 'actions');
+  $form['actions']['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Clone layout'),
+  );
+
   return $form;
+}
+
+/**
+ * Submit handler for layout_clone_form().
+ */
+function layout_clone_form_submit($form, &$form_state) {
+  $layout = $form_state['layout'];
+  $layout->title = $form_state['values']['title'];
+  $layout->name = $form_state['values']['name'];
+  $layout->save();
+
+  // Redirect to the full settings form.
+  $form_state['redirect'] = array(
+    'admin/structure/layouts/manage/' . $layout->name . '/settings',
+    array('query' => array('destination' => 'admin/structure/layouts/manage/' . $layout->name)),
+  );
+  drupal_set_message(t('Cloned layout @title created. You may now update the cloned settings.', array('@title' => $layout->title)));
 }
 
 /**

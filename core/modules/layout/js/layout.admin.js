@@ -20,7 +20,7 @@ Backdrop.behaviors.layoutConfigure = {
         if (this.value) {
           $('#edit-path-update').triggerHandler('mousedown');
         }
-      }).triggerHandler('change');
+      });
     }
 
     // Convert AJAX buttons to links.

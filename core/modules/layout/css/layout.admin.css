@@ -8,6 +8,9 @@
 #layout-list .layout-row td:first-child {
   padding-left: 24px;
 }
+#layout-list tr.disabled td {
+  color: #999;
+}
 
 /* Individual layout settings form. */
 #layout-settings-form .layout-options {
@@ -23,8 +26,13 @@
 }
 
 /* Menu item argument settings. */
-#layout-arguments strong {
+#layout-arguments strong,
+#layout-context-table strong {
   text-decoration: underline;
+}
+
+#layout-context-table {
+  width: auto;
 }
 
 /* Buttons that are displayed as links. */
@@ -37,6 +45,4 @@
   padding-left: 0;
   padding-right: 10px;
 }
-.layout-access-add {
 
-}

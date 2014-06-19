@@ -82,7 +82,7 @@ function layout_menu() {
   $items['admin/structure/layouts/manage/%layout_cache'] = array(
     'title' => 'Edit layout settings',
     'page callback' => 'backdrop_get_form',
-    'page arguments' => array('layout_settings_form', 4),
+    'page arguments' => array('layout_edit_form', 4),
     'type' => MENU_CALLBACK,
   ) + $base;
 
@@ -113,13 +113,13 @@ function layout_menu() {
 
   $items['admin/structure/layouts/manage/%layout_cache/enable'] = array(
     'page callback' => 'layout_enable_layout',
-    'page arguments' => array(FALSE, 4),
+    'page arguments' => array(TRUE, 4),
     'type' => MENU_CALLBACK,
   ) + $base;
 
   $items['admin/structure/layouts/manage/%layout_cache/disable'] = array(
     'page callback' => 'layout_enable_layout',
-    'page arguments' => array(TRUE, 4),
+    'page arguments' => array(FALSE, 4),
     'type' => MENU_CALLBACK,
   ) + $base;
 
@@ -166,7 +166,6 @@ function layout_menu() {
     'page arguments' => array('layout_condition_add_form', 4),
     'type' => MENU_CALLBACK,
   ) + $base;
-
 
   $items['admin/structure/layouts/manage/%layout_cache/condition/edit/%'] = array(
     'title' => 'Configure condition',
@@ -377,6 +376,9 @@ function layout_theme() {
     'layout_menu_item_arguments_table' => array(
       'render element' => 'element',
     ) + $base,
+    'layout_settings_context_table' => array(
+      'render element' => 'element',
+    ) + $base,
   );
 
   return $items;
@@ -407,8 +409,9 @@ function layout_autoload_info() {
     'LayoutStringContext' => 'includes/layout_context.class.inc',
     'LayoutMenuItem' => 'includes/layout_menu_item.class.inc',
 
-    'NodeLayoutContext' => 'plugins/node_layout_context_handler.inc',
-    'LayoutAccessFront' => 'plugins/layout_access_front.inc',
+    'NodeLayoutContext' => 'plugins/context/node_layout_context_handler.inc',
+    'LayoutAccessFront' => 'plugins/access/layout_access_front.inc',
+    
   );
 }
 
