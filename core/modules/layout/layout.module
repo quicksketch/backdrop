@@ -409,9 +409,16 @@ function layout_autoload_info() {
     'LayoutStringContext' => 'includes/layout_context.class.inc',
     'LayoutMenuItem' => 'includes/layout_menu_item.class.inc',
 
+    // Context handlers.
     'NodeLayoutContext' => 'plugins/context/node_layout_context_handler.inc',
+
+    // Access handlers.
     'LayoutAccessFront' => 'plugins/access/layout_access_front.inc',
-    
+
+    // Renderer handlers.
+    'LayoutRendererEditor' => 'plugins/renderers/layout_renderer_editor.inc',
+    'LayoutRendererSimple' => 'plugins/renderers/layout_renderer_simple.inc',
+    'LayoutRendererStandard' => 'plugins/renderers/layout_renderer_standard.inc',
   );
 }
 

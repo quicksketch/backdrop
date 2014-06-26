@@ -795,7 +795,7 @@ function layout_edit_form($form, &$form_state, Layout $layout, $renderer = NULL)
     $form_state['layout'] = $layout;
   }
   if (!isset($renderer)) {
-    $renderer = layout_get_plugin('renderer', 'edit', $layout);
+    $renderer = layout_create_handler('renderer', 'editor', $layout);
   }
   if (!isset($form_state['renderer'])) {
     $form_state['renderer'] = $renderer;
