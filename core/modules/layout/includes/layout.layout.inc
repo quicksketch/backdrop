@@ -10,18 +10,20 @@
 function layout_layout_info() {
   $layouts['onecol'] = array(
     'title' => t('Single column'),
-    'file path' => 'layouts/onecol',
+    'path' => 'layouts/onecol',
     'icon' => 'onecol.png',
-    'theme' => 'layout_onecol',
     'css' => 'onecol.css',
-    'regions' => array('middle' => t('Middle column')),
+    'theme' => 'layout_onecol',
+    'regions' => array(
+      'middle' => t('Middle column'),
+    ),
   );
   $layouts['twocol'] = array(
     'title' => t('Two column'),
-    'file path' => 'layouts/twocol',
+    'path' => 'layouts/twocol',
     'icon' => 'twocol.png',
-    'theme' => 'layout_twocol',
     'css' => 'twocol.css',
+    'theme' => 'layout_twocol',
     'regions' => array(
       'left' => t('Left side'),
       'right' => t('Right side')
@@ -87,12 +89,10 @@ function layout_layout_context_info() {
  * Implements hook_layout_access_info().
  */
 function layout_layout_access_info() {
-  $info = array(
-    'front' => array(
-      'title' => t('Front page'),
-      'description' => t('Is this the front page.'),
-      'class' => 'LayoutAccessFront',
-    ),
+  $info['front'] = array(
+    'title' => t('Front page'),
+    'description' => t('Is this the front page.'),
+    'class' => 'LayoutAccessFront',
   );
   return $info;
 }
@@ -101,7 +101,9 @@ function layout_layout_access_info() {
  * Implements hook_layout_renderer_info().
  */
 function layout_layout_renderer_info() {
-  $info = array();
+  $info['broken'] = array(
+    'class' => 'LayoutRendererBroken',
+  );
   $info['editor'] = array(
     'class' => 'LayoutRendererEditor',
   );
@@ -110,6 +112,29 @@ function layout_layout_renderer_info() {
   );
   $info['standard'] = array(
     'class' => 'LayoutRendererStandard',
+  );
+  return $info;
+}
+
+/**
+ * Implements hook_layout_style_info().
+ */
+function layout_layout_style_info() {
+  $info['default'] = array(
+    'title' => t('Default'),
+    'description' => t('The default block rendering style with predictable tags provided by the site template.'),
+    'region theme' => NULL,
+    'block theme' => 'layout_block',
+    'path' => 'templates',
+    'class' => 'LayoutStyle',
+  );
+  $info['dynamic'] = array(
+    'title' => t('Dynamic'),
+    'description' => t('Customizable rendering style in which every HTML tag can be configured.'),
+    'region theme' => NULL,
+    'block theme' => 'layout_block_dynamic',
+    'path' => 'templates',
+    'class' => 'LayoutStyleDynamic',
   );
   return $info;
 }

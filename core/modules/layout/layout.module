@@ -27,32 +27,24 @@ const LAYOUT_STORAGE_OVERRIDE = 2;
 const LAYOUT_STORAGE_DEFAULT = 4;
 
 /**
- * Layout constant indicating the title of the layout is manually specified.
+ * Layout constant indicating the title of the layout is the default.
  */
-const LAYOUT_TITLE_FIXED = 0;
+const LAYOUT_TITLE_DEFAULT = 'default';
 
 /**
  * Layout constant indicating the title of the layout is not shown.
  */
-const LAYOUT_TITLE_NONE = 1;
+const LAYOUT_TITLE_NONE = 'none';
+
+/**
+ * Layout constant indicating the title of the layout is manually specified.
+ */
+const LAYOUT_TITLE_CUSTOM = 'custom';
 
 /**
  * Layout constant indicating the title of the layout comes from a block.
  */
-const LAYOUT_TITLE_BLOCK = 2;
-
-/**
- * Implements hook_permission().
- */
-function page_manager_permission() {
-  return array(
-    'administer layouts' => array(
-      'title' => t('Administer Layouts'),
-      'description' => t('Add and modify layouts on pages.'),
-      'restrict access' => TRUE,
-    ),
-  );
-}
+const LAYOUT_TITLE_BLOCK = 'block';
 
 /**
  * Implements hook_menu().
@@ -82,7 +74,7 @@ function layout_menu() {
   $items['admin/structure/layouts/manage/%layout_cache'] = array(
     'title' => 'Edit layout settings',
     'page callback' => 'backdrop_get_form',
-    'page arguments' => array('layout_edit_form', 4),
+    'page arguments' => array('layout_content_form', 4),
     'type' => MENU_CALLBACK,
   ) + $base;
 
@@ -91,17 +83,31 @@ function layout_menu() {
     'type' => MENU_DEFAULT_LOCAL_TASK,
   ) + $base;
 
+  $items['admin/structure/layouts/manage/%layout_cache/add-block/%/%'] = array(
+    'title' => 'Add block',
+    'page callback' => 'layout_block_add_page',
+    'page arguments' => array(4, 6, 7),
+  ) + $base;
+
+  $items['admin/structure/layouts/manage/%layout_cache/configure-block/%/%'] = array(
+    'title' => 'Configure block',
+    'file' => 'plugins/renderers/layout_renderer_editor.inc',
+    'page callback' => 'backdrop_get_form',
+    'page arguments' => array('layout_block_configure_form', 4, 6, 7),
+  ) + $base;
+
+  $items['admin/structure/layouts/manage/%layout_cache/remove-block/%/%'] = array(
+    'title' => 'Remove block',
+    'file' => 'plugins/renderers/layout_renderer_editor.inc',
+    'page callback' => 'backdrop_get_form',
+    'page arguments' => array('layout_block_remove', 4, 6, 7),
+  ) + $base;
+
   $items['admin/structure/layouts/manage/%layout_cache/settings'] = array(
     'title' => 'Settings',
     'page callback' => 'backdrop_get_form',
     'page arguments' => array('layout_settings_form', 4),
     'type' => MENU_LOCAL_TASK,
-  ) + $base;
-
-  $items['admin/structure/layouts/manage/%layout_cache/operation'] = array(
-    'page callback' => 'layout_edit_layout_operation',
-    'page arguments' => array(4),
-    'type' => MENU_CALLBACK,
   ) + $base;
 
   $items['admin/structure/layouts/manage/%layout_cache/clone'] = array(
@@ -175,12 +181,6 @@ function layout_menu() {
     'page arguments' => array('layout_condition_edit_form', 4, 7),
     'type' => MENU_CALLBACK,
   ) + $base;
-
-  // AJAX callbacks for argument modal.
-  $items['admin/structure/pages/argument'] = array(
-      'page callback' => 'page_manager_page_subtask_argument_ajax',
-      'type' => MENU_CALLBACK,
-    ) + $base;
 
   // Add menu entries for each custom layout path.
   foreach (layout_get_all_layout_menu_items() as $menu_item) {
@@ -363,8 +363,8 @@ function layout_theme() {
     'layout_reorder_layouts' => array(
       'render element' => 'element',
     ) + $base,
-    'layout_edit_form' => array(
-      'template' => 'templates/layout-edit-page',
+    'layout_content_form' => array(
+      'template' => 'templates/layout-content-form',
       'render element' => 'form',
     ) + $base,
     'layout_info' => array(
@@ -381,7 +381,72 @@ function layout_theme() {
     ) + $base,
   );
 
+  // Register all layouts.
+  $layouts = _layout_get_all_info('layout');
+  foreach ($layouts as $layout) {
+    foreach (array('theme', 'admin theme') as $callback) {
+      if (!empty($layout[$callback])) {
+        $items[$layout[$callback]] = array(
+          'variables' => array('content' => NULL, 'settings' => NULL, 'layout' => NULL, 'layout_info' => NULL, 'renderer' => NULL, 'attributes_array' => array()),
+          'path' => $layout['path'],
+        );
+        if (isset($layout['file'])) {
+          $items[$layout[$callback]]['file'] = $layout['file'];
+        }
+        // If no theme function exists, assume template.
+        if (!function_exists('theme_' . $layout['theme'])) {
+          $items[$layout[$callback]]['template'] = str_replace('_', '-', $layout[$callback]);
+        }
+      }
+    }
+  }
+
+  // Register all styles.
+  $styles = _layout_get_all_info('layout_styles');
+  foreach ($styles as $style) {
+    if (!empty($style['block theme'])) {
+      $items[$style['block theme']] = array(
+        'variables' => array('layout' => NULL, 'content' => NULL, 'block' => NULL, 'style' => NULL, 'settings' => array(), 'attributes_array' => array()),
+        'path' => $style['path'],
+      );
+      if (isset($style['file'])) {
+        $items[$style['block theme']]['file'] = $style['file'];
+      }
+    }
+    if (!empty($style['region theme'])) {
+      $items[$style['region theme']] = array(
+        'variables' => array('layout' => NULL, 'blocks' => NULL, 'style' => NULL, 'settings' => array(), 'attributes_array' => array()),
+        'path' => $style['path'],
+      );
+      if (isset($style['file'])) {
+        $items[$style['region theme']]['file'] = $style['file'];
+      }
+    }
+
+    if (!empty($style['hook theme'])) {
+      if (is_array($style['hook theme'])) {
+        $items += $style['hook theme'];
+      }
+      else if (function_exists($style['hook theme'])) {
+        $style['hook theme']($items, $style);
+      }
+    }
+  }
+
   return $items;
+}
+
+/**
+ * Implements hook_permission().
+ */
+function layout_permission() {
+  return array(
+    'administer layouts' => array(
+      'title' => t('Administer Layouts'),
+      'description' => t('Add and modify layouts on pages.'),
+      'restrict access' => TRUE,
+    ),
+  );
 }
 
 /**
@@ -401,24 +466,32 @@ function layout_autoload_info() {
     'LayoutHandler' => 'includes/layout_handler.class.inc',
     'LayoutHandlerBroken' => 'includes/layout_handler.class.inc',
     'Layout' => 'includes/layout.class.inc',
-    'LayoutAccess' => 'includes/layout_access.class.inc',
-    'LayoutAccessBroken' => 'includes/layout_access.class.inc',
-    'LayoutAccessNegatable' => 'includes/layout_access.class.inc',
-    'LayoutContext' => 'includes/layout_context.class.inc',
-    'LayoutContextBroken' => 'includes/layout_context.class.inc',
-    'LayoutStringContext' => 'includes/layout_context.class.inc',
+    'LayoutBlock' => 'includes/layout_block.class.inc',
     'LayoutMenuItem' => 'includes/layout_menu_item.class.inc',
 
+    // Exceptions.
+    'LayoutMissingException' => 'includes/layout.exceptions.inc',
+
     // Context handlers.
+    'LayoutContext' => 'plugins/context/layout_context.inc',
+    'LayoutContextBroken' => 'plugins/context/layout_context.inc',
+    'LayoutStringContext' => 'plugins/context/layout_context.inc',
     'NodeLayoutContext' => 'plugins/context/node_layout_context_handler.inc',
 
     // Access handlers.
+    'LayoutAccess' => 'plugins/access/layout_access.inc',
+    'LayoutAccessBroken' => 'plugins/access/layout_access.inc',
+    'LayoutAccessNegatable' => 'plugins/access/layout_access.inc',
     'LayoutAccessFront' => 'plugins/access/layout_access_front.inc',
 
     // Renderer handlers.
     'LayoutRendererEditor' => 'plugins/renderers/layout_renderer_editor.inc',
     'LayoutRendererSimple' => 'plugins/renderers/layout_renderer_simple.inc',
     'LayoutRendererStandard' => 'plugins/renderers/layout_renderer_standard.inc',
+
+    // Styles.
+    'LayoutStyle' => 'plugins/styles/layout_style_default.inc',
+    'LayoutStyleDynamic' => 'plugins/styles/layout_style_dynamic.inc',
   );
 }
 
@@ -613,9 +686,13 @@ function _layout_get_all_info($data_type) {
       foreach (module_implements($data_type . '_info') as $module) {
         $function = $module . '_' . $data_type . '_info';
         $data = $function();
+        $module_path = backdrop_get_path('module', $module);
         foreach ($data as $key => $info) {
           $info['module'] = $module;
           $info['name'] = $key;
+          if (isset($info['path'])) {
+            $info['path'] = $module_path . '/' . $info['path'];
+          }
           $all_info[$data_type][$key] = $info;
         }
       }
@@ -628,40 +705,86 @@ function _layout_get_all_info($data_type) {
 /**
  * Load all layout information from modules.
  */
-function layout_get_layout_info() {
-  return _layout_get_all_info('layout');
+function layout_get_layout_info($plugin_name) {
+  $info = _layout_get_all_info('layout');
+  return isset($info[$plugin_name]) ? $info[$plugin_name] : FALSE;
 }
 
 /**
  * Load all layout context information from modules.
  */
-function layout_get_context_info() {
-  return _layout_get_all_info('layout_context');
+function layout_get_context_info($plugin_name) {
+  $info = _layout_get_all_info('layout_context');
+  return isset($info[$plugin_name]) ? $info[$plugin_name] : FALSE;
 }
 
 /**
  * Load all layout access information from modules.
  */
-function layout_get_access_info() {
-  return _layout_get_all_info('layout_access');
+function layout_get_access_info($plugin_name) {
+  $info = _layout_get_all_info('layout_access');
+  return isset($info[$plugin_name]) ? $info[$plugin_name] : FALSE;
+}
+
+/**
+ * Load all layout renderer information from modules.
+ */
+function layout_get_renderer_info($plugin_name) {
+  $info = _layout_get_all_info('layout_renderer');
+  return isset($info[$plugin_name]) ? $info[$plugin_name] : FALSE;
+}
+
+/**
+ * Load all layout style information from modules.
+ */
+function layout_get_style_info($plugin_name) {
+  $info = _layout_get_all_info('layout_style');
+  return isset($info[$plugin_name]) ? $info[$plugin_name] : FALSE;
+}
+
+/**
+ * Get information about all blocks or just a single one.
+ *
+ * @param $block_module
+ *   The name of a module providing the desired block.
+ * @param $block_delta
+ *   The key of the block within that module.
+ */
+function layout_get_block_info($block_module = NULL, $block_delta = NULL) {
+  $block_info = &backdrop_static(__FUNCTION__, array());
+
+  // @todo: Add caching here.
+  if (empty($block_info)) {
+    foreach (module_implements('block_info') as $module) {
+      $module_blocks = module_invoke($module, 'block_info');
+      foreach ($module_blocks as $delta => $block) {
+        $block_info[$module . ':' . $delta] = $block;
+      }
+    }
+  }
+
+  if (isset($block_module) && isset($block_delta)) {
+    $block_key = $block_module . ':' . $block_delta;
+    return isset($block_info[$block_key]) ? $block_info[$block_key] : FALSE;
+  }
+
+  return $block_info;
 }
 
 /**
  * Helper function to get a handler class name based on the plugin name.
  */
 function layout_get_handler_name($plugin_type, $plugin_name) {
+  $info = _layout_get_all_info($plugin_type);
   switch ($plugin_type) {
-    case 'access':
-      $info = layout_get_access_info();
+    case 'layout_access':
       $broken_class = 'LayoutAccessBroken';
       break;
-    case 'context':
-      $info = layout_get_context_info();
+    case 'layout_context':
       $broken_class = 'LayoutContextBroken';
       break;
-    case 'renderer':
-      $info = layout_get_renderer_info();
-      $broken_class = 'LayoutRendererBroken';
+    case 'layout_style':
+      $broken_class = 'LayoutStyle';
       break;
   }
 
@@ -695,8 +818,8 @@ function layout_create_handler($plugin_type, $plugin_name, array $config = array
  *
  * @return LayoutContext
  */
-function layout_create_context($context_name, $config = array()) {
-  return layout_create_handler('context', $context_name, $config);
+function layout_create_context($context_plugin_name, $config = array()) {
+  return layout_create_handler('layout_context', $context_plugin_name, $config);
 }
 
 /**
@@ -704,8 +827,18 @@ function layout_create_context($context_name, $config = array()) {
  *
  * @return LayoutAccess
  */
-function layout_create_access($context_name, $config = array()) {
-  return layout_create_handler('access', $context_name, $config);
+function layout_create_access($access_plugin_name, $config = array()) {
+  return layout_create_handler('layout_access', $access_plugin_name, $config);
+}
+
+/**
+ * Helper function to create a Layout Renderer.
+ */
+function layout_create_renderer($renderer_plugin_name, Layout $layout) {
+  // Renderers do not have "broken" classes if they do not exist. As renderers
+  // are not part of configuration, they should never go missing.
+  $renderer_info = layout_get_renderer_info($renderer_plugin_name);
+  return new $renderer_info['class']($layout, $renderer_info);
 }
 
 /**
@@ -872,7 +1005,7 @@ function layout_context_required_by_path($path) {
   $required_context_info = array();
 
   // Populate each required context on the available known handlers.
-  $all_info = layout_get_context_info();
+  $all_info = _layout_get_all_info('layout_context');
   foreach ($all_info as $context_info) {
     foreach ($context_info['menu paths'] as $context_path) {
       // Remove named placeholders to just match on % symbols.
@@ -914,7 +1047,7 @@ function layout_context_required_by_path($path) {
   // Convert required context info into objects.
   $required_contexts = array();
   foreach ($required_context_info as $context_position => $context_info) {
-    $context = layout_create_handler('context', $context_info['plugin']);
+    $context = layout_create_handler('layout_context', $context_info['plugin']);
     $context->required = TRUE;
     // String placeholders are not locked, allowing a new value to be set.
     $context->locked = $context_info['plugin'] !== 'string';

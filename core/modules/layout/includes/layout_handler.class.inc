@@ -1,21 +1,12 @@
 <?php
 /**
  * @file
- *
  * Base classes used by all Layout handlers.
+ *
+ * All layout handlers have some things in common, including the name of the
+ * plugin itself, and any settings affiliated with that handler.
  */
 abstract class LayoutHandler {
-  /**
-   * The human-readable title of this object.
-   *
-   * This is usually optional, in which case a generated title will be used.
-   *
-   * @var string
-   *
-   * @see LayoutHandler::label()
-   */
-  var $title = '';
-
   /**
    * Indicator if this object has not yet been saved.
    *
@@ -25,16 +16,32 @@ abstract class LayoutHandler {
 
   /**
    * The name of this plugin.
+   *
+   * Plugin names are text strings that map to particular classes. This mapping
+   * is provided by the appropriate hook_layout_*_info() hook, such as
+   * hook_layout_access_info().
    */
   var $plugin;
+
+  /**
+   * An array of all settings pertaining to this access rule.
+   *
+   * @var array
+   */
+  var $settings = array();
+
+  function __construct($plugin_name, array $settings = array()) {
+    $this->plugin = $plugin_name;
+    $this->settings = $settings;
+  }
 
   /**
    * Assemble a human-readable label of this object.
    */
   function label() {
     $label = get_class($this);
-    if ($this->title) {
-      $label .= '(' . check_plain($this->title) . ')';
+    if ($this->settings['title']) {
+      $label .= '(' . check_plain($this->settings['title']) . ')';
     }
     return $label;
   }
@@ -46,26 +53,11 @@ abstract class LayoutHandler {
    * array, such as to be stored by the config management system as JSON.
    */
   function toArray() {
-    $array = (array) $this;
-    // Plugin is always saved manually.
-    unset($array['plugin']);
-
-    // Don't bother saving empty titles, since they are optional.
-    if (empty($array['title'])) {
-      unset($array['title']);
-    }
-    return $array;
+    return (array) $this;
   }
 }
 
 /**
  * Handler to hold configuration of handlers that seemingly have been removed.
  */
-class LayoutHandlerBroken extends LayoutHandler {
-  function __construct($plugin_name, array $config = array()) {
-    $this->plugin = $plugin_name;
-    foreach ($config as $key => $value) {
-      $this->$key = $value;
-    }
-  }
-}
+class LayoutHandlerBroken extends LayoutHandler {}

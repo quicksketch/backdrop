@@ -77,6 +77,13 @@ class Layout {
   var $disabled = FALSE;
 
   /**
+   * Whether this layout is locked (being currently edited).
+   *
+   * @var boolean
+   */
+  var $locked = FALSE;
+
+  /**
    * An array of all contexts used by this layout.
    *
    * @var array
@@ -108,6 +115,30 @@ class Layout {
   var $menu_item = NULL;
 
   /**
+   * All user-specified settings for this layout.
+   *
+   * @var array
+   */
+  var $settings = array();
+
+  /**
+   * The main array of configured blocks, keyed by a generated ID per instance.
+   *
+   * @var array
+   */
+  var $content = array();
+
+  /**
+   * Nested array that stores the arrangement of the configured blocks.
+   *
+   * This is keyed first by the region name and the position within that region,
+   * and has the value of the block key within the $content array.
+   *
+   * @var array
+   */
+  var $positions = array();
+
+  /**
    * Constructor for a Layout class.
    *
    * @param array $config
@@ -117,6 +148,13 @@ class Layout {
     foreach ($config as $property => $property_value) {
       $this->{$property} = $property_value;
     }
+
+    // Specify default settings.
+    $this->settings += array(
+      'title' => '',
+      'title_display' => LAYOUT_TITLE_DEFAULT,
+      'title_block' => NULL,
+    );
 
     // Set the storage type.
     if (isset($config['module'])) {
@@ -133,7 +171,7 @@ class Layout {
 
     // Convert all stored contexts, conditions, and relationships to their
     // handler equivalents.
-    foreach (array('conditions' => 'access') as $property_key => $plugin_type) {
+    foreach (array('conditions' => 'layout_access') as $property_key => $plugin_type) {
       foreach ($this->{$property_key} as $plugin_type_key => $plugin_data) {
         $this->{$property_key}[$plugin_type_key] = layout_create_handler($plugin_type, $plugin_data['plugin'], $plugin_data['data']);
       }
@@ -156,6 +194,7 @@ class Layout {
     $remove_properties = array(
       'is_new',
       'changed',
+      'locked',
       'menu_item',
       'original_name',
     );
@@ -279,6 +318,27 @@ class Layout {
     if ($this->menu_item->name === $this->name) {
       $this->menu_item->reassign();
     }
+  }
+
+  /**
+   * Return a form for configuring this layout's settings.
+   */
+  function form(&$form, &$form_state) {
+    // Most layouts do not have a form.
+  }
+
+  /**
+   * Validate the settings form.
+   */
+  function formValidate($form, &$form_state) {
+    // Most layouts do not have a form.
+  }
+
+  /**
+   * Save the settings added in the form method.
+   */
+  function formSubmit($form, &$form_state) {
+    // Most layouts do not have a form.
   }
 
   /**

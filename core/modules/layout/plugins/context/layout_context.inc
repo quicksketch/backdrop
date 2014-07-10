@@ -73,8 +73,8 @@ abstract class LayoutContext {
    * Assemble a human-readable label of this object.
    */
   function label() {
-    $info = layout_get_context_info();
-    return $info[$this->plugin]['title'];
+    $info = layout_get_context_info($this->plugin);
+    return $info['title'];
   }
 }
 

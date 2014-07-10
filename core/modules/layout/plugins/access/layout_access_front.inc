@@ -7,7 +7,7 @@ class LayoutAccessFront extends LayoutAccessNegatable {
   /**
    * {@inheritdoc}
    */
-  function checkAccess($context) {
+  function checkAccess(array $contexts) {
     return backdrop_is_front_page();
   }
 

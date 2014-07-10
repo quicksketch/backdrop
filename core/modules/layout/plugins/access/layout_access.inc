@@ -4,26 +4,6 @@
  * Class for loading, modifying, and saving a layout access rule (condition).
  */
 class LayoutAccess extends LayoutHandler {
-  /**
-   * An array of all settings pertaining to this access rule.
-   *
-   * @var array
-   */
-  var $settings = array();
-
-  /**
-   * Constructor for a Layout class.
-   *
-   * @param array $settings
-   *   An array of configuration data.
-   */
-  function __construct($plugin_name, array $config = array()) {
-    $config += array(
-      'settings' => array(),
-    );
-    $this->plugin = $plugin_name;
-    $this->settings = $config['settings'];
-  }
 
   /**
    * Provides a human-readable summary of this access check's behavior.
@@ -39,11 +19,11 @@ class LayoutAccess extends LayoutHandler {
    * Checks for access based on the available context.
    *
    * @param $context
-   *   An object containing the context.
+   *   An array containing available contexts.
    * @return boolean
    *   The result of the access check.
    */
-  function checkAccess($context) {
+  function checkAccess(array $contexts) {
 
   }
 
@@ -144,7 +124,7 @@ class LayoutAccessBroken extends LayoutAccess {
   function summary() {
     return t('Broken or missing access plugin');
   }
-  function checkAccess($context) {
+  function checkAccess(array $contexts) {
     return TRUE;
   }
 }

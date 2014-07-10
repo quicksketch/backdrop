@@ -12,7 +12,7 @@
 class LayoutRendererSimple extends LayoutRendererStandard {
   function render_regions() {
     $this->rendered['regions'] = array();
-    foreach ($this->display->content as $region_id => $content) {
+    foreach ($this->layout->content as $region_id => $content) {
       if (is_array($content)) {
         $content = implode('', $content);
       }
@@ -22,7 +22,7 @@ class LayoutRendererSimple extends LayoutRendererStandard {
     return $this->rendered['regions'];
   }
 
-  function render_panes() {
+  function render_blocks() {
     // NOP
   }
 

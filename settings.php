@@ -11,7 +11,7 @@
  * below. If using master/slave or multiple connections, see the advanced
  * database settings.
  */
-$database = 'mysql://user:pass@localhost/database_name';
+$database = 'mysql://root:root@localhost/backdrop';
 $database_prefix = '';
 
 /**
@@ -224,7 +224,7 @@ $update_free_access = FALSE;
  *   $hash_salt = file_get_contents('/home/example/salt.txt');
  *
  */
-$hash_salt = '';
+$hash_salt = 'L2_cDE7YArDAQ01QgkoTomn4ilhaBKRXjS2KbZzuCQ4';
 
 /**
  * Base URL (optional).

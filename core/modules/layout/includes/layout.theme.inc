@@ -6,36 +6,30 @@
  */
 
 /**
- * Preprocess the page manager edit page.
+ * Preprocess the main Layout content edit page.
  */
-function template_preprocess_layout_edit_page(&$vars) {
+function template_preprocess_layout_content_form(&$variables) {
+  global $user;
+  $layout = &$variables['form']['#layout'];
 
-  return;
-  $task = $vars['page']->task;
+  if ($layout->locked && $user->uid !== $layout->locked->uid) {
+    $account = user_load($layout->locked->uid);
+    $lock_user = theme('username', array('account' => $account));
+    $lock_age = format_interval(REQUEST_TIME - $layout->locked->updated);
+    $lock_break_url = url('admin/structure/layouts/manage/' . $layout . '/break-lock', array('query' => array('token' => backdrop_get_token($layout->name))));
 
-  $page = &$vars['page'];
-
-  $vars['locked'] = '';
-  $vars['changed'] = '';
-  if (!empty($page->locked)) {
-    $vars['locked'] = theme('page_manager_lock', array('page' => $page));
-    $vars['changed'] = theme('page_manager_changed', array('text' => t('Locked'), 'description' => t('This page is being edited by another user and you cannot make changes to it.')));
+    $variables['locked'] = t('This layout is being edited by user !user, and is therefore locked from editing by others. This lock is !age old. Click here to <a href="!break">break this lock</a>.',  array('!user' => $lock_user, '!age' => $lock_age, '!break' => $lock_break_url));
   }
-  else if (!empty($page->new)) {
-    $vars['changed'] = theme('page_manager_changed', array('text' => t('New'), 'description' => t('This page is newly created and has not yet been saved to the database. It will not be available until you save it.')));
+  else if (!empty($layout->changed)) {
+    $variables['locked'] = t('This layout has been modified, but these modifications are not yet live. While modifying this layout, it is locked from modification by other users.');
   }
-  else if (!empty($page->changed)) {
-    $vars['changed'] = theme('page_manager_changed', array('text' => t('Changed'), 'description' => t('This page has been modified, but these modifications are not yet live. While modifying this page, it is locked from modification by other users.')));
+  else {
+    $variables['locked'] = NULL;
   }
 
-  $form_state = array(
-    'page' => &$vars['page'],
-  );
-
-  $active = $vars['content']['active'];
-  if ($active[0] == 'handlers' && isset($vars['operations'][$active[1]])) {
-    $vars['operations']['secondary'] = $vars['operations'][$active[1]];
-  }
+  // TODO Fill in the content
+  $variables['content'] = NULL;
+  $variables['operations'] = NULL;
 }
 
 /**
@@ -103,9 +97,7 @@ function theme_layout_info($variables) {
  */
 function theme_layout_option($variables) {
   $layout_info = $variables['layout_info'];
-  $icon_path = backdrop_get_path('module', $layout_info['module']);
-  $icon_path .= (isset($layout_info['file path']) ? '/' . $layout_info['file path'] : '');
-  $icon_path .= '/' . $layout_info['icon'];
+  $icon_path = $layout_info['path'] . '/' . $layout_info['icon'];
 
   $output = '';
   $output .= '<div class="layout-icon">';
@@ -164,4 +156,86 @@ function theme_layout_settings_context_table($variables) {
     $rows[] = $row;
   }
   return theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => array('id' => 'layout-context-table')));
+}
+
+
+/**
+ * Clean up the panel pane variables for the template.
+ */
+function template_preprocess_layout_block(&$variables) {
+  $content = &$variables['content'];
+
+  $variables['classes_array'] = array();
+  $variables['title_prefix'] = '';
+  $variables['title_suffix'] = '';
+
+  if (module_exists('contextual') && user_access('access contextual links')) {
+    $links = array();
+    // These are specified by the content.
+    if (!empty($content->admin_links)) {
+      $links += $content->admin_links;
+    }
+
+    // Take any that may have been in the render array we were given and
+    // move them up so they appear outside the pane properly.
+    if (is_array($content->content) && isset($content->content['#contextual_links'])) {
+      $element = array(
+        '#type' => 'contextual_links',
+        '#contextual_links' => $content->content['#contextual_links'],
+      );
+      unset($content->content['#contextual_links']);
+
+      $element = contextual_pre_render_links($element);
+      $links += $element['#links'];
+    }
+
+    if ($links) {
+      $build = array(
+        '#prefix' => '<div class="contextual-links-wrapper">',
+        '#suffix' => '</div>',
+        '#theme' => 'links__contextual',
+        '#links' => $links,
+        '#attributes' => array('class' => array('contextual-links')),
+        '#attached' => array(
+          'library' => array(array('contextual', 'contextual-links')),
+        ),
+      );
+      $variables['classes_array'][] = 'contextual-links-region';
+      $variables['title_prefix'] = drupal_render($build);
+    }
+  }
+
+  // Basic classes.
+  $variables['classes_array'][] = 'block';
+
+  // Add custom classes if sent in.
+  if (!empty($content->content)) {
+    if (!empty($content->css_class)) {
+      $variables['classes_array'] = array_merge(explode(' ', $content->css_class));
+    }
+  }
+
+  // Set up some placeholders for constructing template file names.
+  $base = 'layout_block';
+  $delimiter = '__';
+
+  // Add template file suggestion for content type and sub-type.
+  $variables['theme_hook_suggestions'][] = $base . $delimiter . strtr($content->type, '-', '_');
+  $variables['theme_hook_suggestions'][] = $base . $delimiter . strtr($content->type, '-', '_') . $delimiter . strtr($content->subtype, '-', '_');
+
+  $variables['title'] = !empty($content->title) ? $content->title : '';
+
+  $variables['content'] = !empty($content->content) ? $content->content : '';
+}
+
+/**
+ * Clean up the panel pane variables for the template.
+ */
+function template_preprocess_layout_block_dynamic(&$variables) {
+  // Re-use all the preprocessing provided by the default block template.
+  template_preprocess_layout_block($variables);
+  $variables['attributes_array'] = array();
+  $variables['title_attributes_array'] = array();
+  $variables['content_attributes_array'] = array();
+  $variables['title_attributes_array']['class'][] = 'block-title';
 }
