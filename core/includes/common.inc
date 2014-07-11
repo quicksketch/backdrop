@@ -2696,6 +2696,7 @@ function backdrop_deliver_html_page($page_callback_result) {
 
   // Menu status constants are integers; page content is a string or array.
   if (is_int($page_callback_result)) {
+    $site_config = config('system.site');
     // @todo: Break these up into separate functions?
     switch ($page_callback_result) {
       case MENU_NOT_FOUND:
@@ -2712,7 +2713,7 @@ function backdrop_deliver_html_page($page_callback_result) {
           $_GET['destination'] = $_GET['q'];
         }
 
-        $path = backdrop_get_normal_path(variable_get('site_404', ''));
+        $path = backdrop_get_normal_path($site_config->get('site_404'));
         if ($path && $path != $_GET['q']) {
           // Custom 404 handler. Set the active item in case there are tabs to
           // display, or other dependencies on the path.
@@ -2741,7 +2742,7 @@ function backdrop_deliver_html_page($page_callback_result) {
           $_GET['destination'] = $_GET['q'];
         }
 
-        $path = backdrop_get_normal_path(variable_get('site_403', ''));
+        $path = backdrop_get_normal_path($site_config->get('site_403'));
         if ($path && $path != $_GET['q']) {
           // Custom 403 handler. Set the active item in case there are tabs to
           // display or other dependencies on the path.
@@ -2763,8 +2764,7 @@ function backdrop_deliver_html_page($page_callback_result) {
         backdrop_maintenance_theme();
         backdrop_add_http_header('Status', '503 Service unavailable');
         backdrop_set_title(t('Site under maintenance'));
-        print theme('maintenance_page', array('content' => filter_xss_admin(variable_get('maintenance_mode_message',
-          t('@site is currently under maintenance. We should be back shortly. Thank you for your patience.', array('@site' => variable_get('site_name', 'Backdrop')))))));
+        print theme('maintenance_page', array('content' => filter_xss_admin(t(config_get('system.maintenance', 'maintenance_message'), array('@site' => config_get('system.site', 'site_name'))))));
         break;
     }
   }
