@@ -24,7 +24,7 @@ abstract class LayoutHandler {
   var $plugin;
 
   /**
-   * An array of all settings pertaining to this access rule.
+   * An array of all settings pertaining to this handler.
    *
    * @var array
    */

@@ -462,7 +462,7 @@ function layout_settings_form_open_dialog($form, &$form_state) {
       $page_callback_result = call_user_func_array($router_item['page_callback'], $router_item['page_arguments']);
     }
   }
-  $html = is_string($page_callback_result) ? $page_callback_result : drupal_render($page_callback_result);
+  $html = is_string($page_callback_result) ? $page_callback_result : backdrop_render($page_callback_result);
   if (isset($page_callback_result['#title'])) {
     $title = $page_callback_result['#title'];
   }
@@ -485,7 +485,7 @@ function layout_settings_form_save_dialog($form, $form_state) {
   if (form_get_errors()) {
     $html = '';
     $html .= theme('status_messages');
-    $html .= drupal_render($form);
+    $html .= backdrop_render($form);
     $title = isset($form['#title']) ? $form['#title'] : backdrop_get_title();
     $commands[] = ajax_command_open_modal_dialog($title, $html);
   }
@@ -518,7 +518,7 @@ function layout_settings_form_ajax_update($form, $form_state) {
   }
 
   $replace_form = backdrop_rebuild_form('layout_settings_form', $form_state, $form);
-  $build_id = drupal_render($replace_form['form_build_id']);
+  $build_id = backdrop_render($replace_form['form_build_id']);
   $replace_portion = $form_state['ajax_update'];
   foreach ($replace_portion as $parent) {
     if (isset($replace_form[$parent])) {
@@ -532,7 +532,7 @@ function layout_settings_form_ajax_update($form, $form_state) {
 
   if ($replace_form) {
     // Update the portion of the form.
-    $html = drupal_render($replace_form);
+    $html = backdrop_render($replace_form);
     $commands[] = ajax_command_replace('#' . $replace_form['#id'], $html);
     // And update the build ID so these new values are included when saving.
     $commands[] = ajax_command_replace('#layout-settings-form input[name="form_build_id"]', $build_id);
@@ -628,8 +628,14 @@ function layout_settings_form_save_submit($form, &$form_state) {
   }
   layout_clear_layout_cache($layout->name);
   $layout->save();
-  backdrop_set_message(t('Layout saved.'));
-  $form_state['redirect'] = 'admin/structure/layouts';
+  if (!empty($layout->is_new)) {
+    backdrop_set_message(t('Layout created. Blocks may now be added to this layout.'));
+    $form_state['redirect'] = 'admin/structure/layouts/manage/' . $layout->name;
+  }
+  else {
+    backdrop_set_message(t('Layout saved.'));
+    $form_state['redirect'] = 'admin/structure/layouts';
+  }
 }
 
 /**
@@ -791,6 +797,8 @@ function layout_condition_edit_form_submit($form, &$form_state) {
  * @see panels_edit_display_submit()
  */
 function layout_content_form($form, &$form_state, Layout $layout, $renderer_name = NULL) {
+  global $user;
+
   if (!isset($form_state['layout'])) {
     $form_state['layout'] = $layout;
   }
@@ -817,6 +825,24 @@ function layout_content_form($form, &$form_state, Layout $layout, $renderer_name
       array('system', 'backdrop.ajax'),
     ),
   );
+
+  $message = '';
+  if ($layout->locked && $user->uid !== $layout->locked->uid) {
+    $account = user_load($layout->locked->uid);
+    $lock_user = theme('username', array('account' => $account));
+    $lock_age = format_interval(REQUEST_TIME - $layout->locked->updated);
+    $lock_break_url = url('admin/structure/layouts/manage/' . $layout . '/break-lock', array('query' => array('token' => backdrop_get_token($layout->name))));
+    $message = t('This layout is being edited by user !user, and is therefore locked from editing by others. This lock is !age old. Click here to <a href="!break">break this lock</a>.',  array('!user' => $lock_user, '!age' => $lock_age, '!break' => $lock_break_url));
+  }
+  else if (!empty($layout->changed)) {
+    $message = t('This layout has unsaved changes. Click "Save layout" to make changes permanent or "Cancel" to discard changes.');
+  }
+  if ($message) {
+    $form['message'] = array(
+      '#markup' => '<div class="messages warning">' . $message . '</div>',
+      '#weight' => -100,
+    );
+  }
 
   $form['title_display'] = array (
     '#tree' => TRUE,
@@ -860,7 +886,7 @@ function layout_content_form($form, &$form_state, Layout $layout, $renderer_name
       $layout->positions[$region_id] = array();
     }
 
-    $form['content']['block'][$region_id] = array(
+    $form['content']['positions'][$region_id] = array(
       // Use 'hidden' instead of 'value' so the js can access it.
       '#type' => 'hidden',
       '#default_value' => implode(',', $layout->positions[$region_id]),
@@ -872,7 +898,7 @@ function layout_content_form($form, &$form_state, Layout $layout, $renderer_name
   );
   $form['actions']['submit'] = array(
     '#type' => 'submit',
-    '#value' => t('Save'),
+    '#value' => t('Save layout'),
     '#id' => 'layout-edit-save',
     '#submit' => array('layout_content_form_submit'),
   );
@@ -907,15 +933,15 @@ function layout_content_form_submit($form, &$form_state) {
   $old_content = $layout->content;
   $layout->content = array();
 
-  if (!empty($form_state['values']['content']['block'])) {
-    foreach ($form_state['values']['content']['block'] as $region_id => $blocks) {
+  // Update the block positions based on the hidden position elements.
+  if (!empty($form_state['values']['content']['positions'])) {
+    foreach ($form_state['values']['content']['positions'] as $region_id => $blocks) {
       $layout->positions[$region_id] = array();
       if ($blocks) {
         $uuids = array_filter(explode(',', $blocks));
         foreach ($uuids as $uuid) {
-          if ($old_content[$uuid]) {
+          if (isset($old_content[$uuid])) {
             $layout->positions[$region_id][] = $uuid;
-            $old_content[$uuid]->panel = $region_id;
             $layout->content[$uuid] = $old_content[$uuid];
           }
         }
@@ -931,6 +957,12 @@ function layout_content_form_submit($form, &$form_state) {
 
   // Let layouts save their own settings if needed.
   $layout->formSubmit($form, $form_state);
+
+  // Save the entire layout to configuration.
+  $layout->save();
+
+  // Delete the tempstore copy of the layout.
+  layout_clear_layout_cache($layout->name);
 }
 
 /**
@@ -951,16 +983,31 @@ function layout_block_add_page(Layout $layout, $renderer_name, $region_name, $bl
       return MENU_NOT_FOUND;
     }
 
-    $block = new LayoutBlock($module, $delta);
+    $block = layout_create_handler('block', $block_key);
     return backdrop_get_form('layout_block_configure_form', $layout, $block, $renderer_name, $region_name);
   }
 
   $blocks = layout_get_block_info();
-  $output = array();
+  $output = array(
+    '#type' => 'container',
+    '#attributes' => array(
+      'class' => array('layout-block-list'),
+    ),
+  );
   foreach ($blocks as $key => $block_info) {
     $output[$key] = array(
       '#type' => 'item',
-      '#markup' => l($block_info['info'], 'admin/structure/layouts/manage/' . $layout->name . '/add-block/' . $renderer_name . '/' . $region_name . '/' . $key, array('attributes' => array('class' => array('use-ajax'), 'data-dialog' => TRUE))),
+      '#markup' => l(
+        $block_info['info'],
+        'admin/structure/layouts/manage/' . $layout->name . '/add-block/' . $renderer_name . '/' . $region_name . '/' . $key,
+        array(
+          'attributes' => array(
+            'class' => array('use-ajax'),
+            'data-dialog' => TRUE,
+            'data-dialog-options' => json_encode(array('dialogClass' => 'layout-dialog')),
+          )
+        )
+      ),
       '#description' => isset($block_info['description']) ? $block_info['description'] : NULL,
       '#wrapper_attributes' => array('class' => array('layout-block-add-row'))
     );
@@ -983,7 +1030,7 @@ function layout_block_configure_form($form, &$form_state, Layout $layout, Layout
   $form['actions']['#type'] = 'actions';
   $form['actions']['submit'] = array(
     '#type' => 'submit',
-    '#value' => $block->is_new ? t('Add block') : t('Save configuration'),
+    '#value' => empty($block->uuid) ? t('Add block') : t('Save configuration'),
   );
 
   $form['#tree'] = TRUE;
@@ -998,7 +1045,6 @@ function layout_block_configure_form($form, &$form_state, Layout $layout, Layout
   foreach ($block->conditions as $id => $access) {
     $form['access'][$id] = array(
       '#type' => 'item',
-
     );
   }
 
@@ -1037,7 +1083,10 @@ function layout_block_configure_form($form, &$form_state, Layout $layout, Layout
   $style = layout_create_handler('layout_style', $current_style, $block->style->settings);
   $style->form($form['style']['style_settings'], $form_state);
 
-  if (backdrop_is_dialog()) {
+  // Note that we specifically use backdrop_is_ajax() in addition to
+  // backdrop_is_dialog() to ensure the #ajax callback is specified when the
+  // style dropdown rebuilds the form on changes.
+  if (backdrop_is_dialog() || backdrop_is_ajax()) {
     $form['actions']['submit']['#ajax'] = array(
       'callback' => 'layout_block_configure_ajax_update',
     );
@@ -1054,20 +1103,38 @@ function layout_block_configure_ajax_style($form, $form_state) {
 }
 
 /**
+ * Form validate handler for layout_block_configure_form().
+ */
+function layout_block_configure_form_validate($form, &$form_state) {
+  $block = $form_state['block'];
+
+  // Validate the block settings.
+  $block->formValidate($form, $form_state);
+
+  // Replace the current style handler with a new one, in the event it changed.
+  $style = layout_create_handler('layout_style', $form_state['values']['style']);
+  $style->formValidate($form, $form_state);
+  $form_state['style'] = $style;
+}
+
+/**
  * Form submit handler for layout_block_configure_form().
  */
 function layout_block_configure_form_submit($form, &$form_state) {
   $block = $form_state['block'];
   $layout = $form_state['layout'];
+  $style = $form_state['style'];
 
-  // Replace the current style handler with a new one, in the event it changed.
-  $style = layout_create_handler('layout_style', $form_state['values']['style']);
+  // Save the block settings.
+  $block->formSubmit($form, $form_state);
+
+  // Save the style settings.
   $style->formSubmit($form['style']['style_settings'], $form_state);
   $block->style = $style;
 
   // Insert new blocks into the layout. Updates to $block are already done by
   // reference, so no additional action is needed for updating.
-  if ($block->is_new && $form_state['region_name']) {
+  if (empty($block->uuid) && $form_state['region_name']) {
     $uuid = new Uuid();
     $block->uuid = $uuid->generate();
     $layout->content[$block->uuid] = $block;
@@ -1084,32 +1151,64 @@ function layout_block_configure_ajax_update($form, $form_state) {
   $block = $form_state['block'];
   $renderer = $form_state['renderer'];
   $added_to_region = $form_state['region_name'];
-  if ($block->is_new && $added_to_region) {
+  if ($added_to_region) {
     $commands[] = ajax_command_close_modal_dialog();
-    $commands[] = ajax_command_append('#layout-region-' . $added_to_region, $renderer->render_block($block));
+    $commands[] = ajax_command_append('#layout-editor-region-' . $added_to_region . ' .layout-editor-region-content', $renderer->render_block($block));
   }
+  else {
+    $commands[] = ajax_command_close_modal_dialog();
+    $commands[] = ajax_command_replace('#layout-editor-block-' . $block->uuid, $renderer->render_block($block));
+  }
+
   return array(
     '#type' => 'ajax',
     '#commands' => $commands,
   );
 }
 
+/**
+ * Menu callback; Remove a block from a layout.
+ */
+function layout_block_remove_page(Layout $layout, LayoutBlock $block, $renderer_name) {
+  if (backdrop_get_token($layout->name) !== $_GET['token']) {
+    return MENU_ACCESS_DENIED;
+  }
+
+  if (isset($layout->content[$block->uuid])) {
+    unset($layout->content[$block->uuid]);
+    layout_set_layout_cache($layout);
+  }
+
+  if (backdrop_is_ajax()) {
+    $commands[] = ajax_command_remove('#layout-editor-block-' . $block->uuid);
+    return array(
+      '#type' => 'ajax',
+      '#commands' => $commands,
+    );
+  }
+  else {
+    backdrop_set_message(t('Block "@title" removed.', array('@title' => $block->getAdminTitle())));
+    backdrop_goto('admin/structure/layouts/manage/' . $layout->name);
+  }
+}
 
 /**
  * Menu callback; Enable or disable a layout.
  */
 function layout_enable_layout($status, Layout $layout) {
   if (backdrop_get_token($layout->name) === $_GET['token']) {
-    $layout->disabled = !$status;
-    $layout->save();
+    return MENU_ACCESS_DENIED;
   }
+
+  $layout->disabled = !$status;
+  $layout->save();
   if ($status) {
-    drupal_set_message(t('Layout "@title" enabled.', array('@title' => $layout->title)));
+    backdrop_set_message(t('Layout "@title" enabled.', array('@title' => $layout->title)));
   }
   else {
-    drupal_set_message(t('Layout "@title" disabled.', array('@title' => $layout->title)));
+    backdrop_set_message(t('Layout "@title" disabled.', array('@title' => $layout->title)));
   }
-  drupal_goto('admin/structure/layouts');
+  backdrop_goto('admin/structure/layouts');
 }
 
 /**
@@ -1558,7 +1657,7 @@ function layout_clone_form_submit($form, &$form_state) {
     'admin/structure/layouts/manage/' . $layout->name . '/settings',
     array('query' => array('destination' => 'admin/structure/layouts/manage/' . $layout->name)),
   );
-  drupal_set_message(t('Cloned layout @title created. You may now update the cloned settings.', array('@title' => $layout->title)));
+  backdrop_set_message(t('Cloned layout @title created. You may now update the cloned settings.', array('@title' => $layout->title)));
 }
 
 /**

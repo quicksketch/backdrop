@@ -53,7 +53,9 @@ class LayoutRendererEditor extends LayoutRendererStandard {
   function add_meta() {
     parent::add_meta();
     if ($this->admin) {
+      backdrop_add_library('system', 'ui.sortable');
       backdrop_add_js(backdrop_get_path('module', 'layout') . '/js/layout.admin.js');
+      backdrop_add_css(backdrop_get_path('module', 'layout') . '/css/layout.admin.css');
     }
   }
 
@@ -82,10 +84,12 @@ class LayoutRendererEditor extends LayoutRendererStandard {
 
     $region_buttons = $this->get_region_links($region_id);
 
-    $output = '<div class="layout-region" id="region-region-' . $region_id . '">';
-    $output .= $region_buttons;
+    $output = '<div class="layout-editor-region" id="layout-editor-region-' . $region_id . '" data-region-name="' . $region_id . '">';
+    $output .= '<div class="layout-editor-region-title clearfix">';
     $output .= '<h2 class="label">' . check_plain($this->layout_info['regions'][$region_id]) . '</h2>';
-    $output .= $content;
+    $output .= $region_buttons;
+    $output .= '</div>';
+    $output .= '<div class="layout-editor-region-content">' . $content . '</div>';
     $output .= '</div>';
 
     return $output;
@@ -98,30 +102,23 @@ class LayoutRendererEditor extends LayoutRendererStandard {
     }
 
     $buttons = $this->get_block_links($block);
+    $content = $block->getAdminPreview();
 
-    // TODO: Use an admin-specific display of the block.
-    $content = $block->getContent();
-
-    $grabber_class = 'grab-title grabber';
-
-    $class = 'block';
+    $class = 'layout-editor-block';
     if (isset($this->layout->title_block) && $this->layout->title_block == $block->uuid) {
-      $class .= ' layout-block-is-title';
+      $class .= ' layout-editor-block-is-title';
     }
+    $class .= ' clearfix';
 
-    $output = '<div class="' . $class . '" id="region-block-' . $block->uuid . '">';
-    $output .= '<div class="' . $grabber_class . '">';
+    $output = '<div class="' . $class . '" id="layout-editor-block-' . $block->uuid . '" data-block-id="' . $block->uuid . '">';
+    $output .= '<div class="layout-editor-block-title clearfix">';
+    $output .= '<span class="text">' . $block->getAdminTitle() . '</span>';
     if ($buttons) {
       $output .= '<span class="buttons">' . $buttons . '</span>';
     }
-    $output .= '<span class="text">' . $block->getTitle() . '</span>';
-    $output .= '</div>'; // grabber
-    $output .= '<div class="region-block-collapsible">';
-    //$output .= '<div class="block-title">' . $block->getTitle() . '</div>';
-    $output .= '<div class="block-content">' . filter_xss_admin(render($content)) . '</div>';
-    $output .= '</div>'; // region-block-collapsible
-
-    $output .= '</div>'; // region-block
+    $output .= '</div>'; // layout-block-title
+    $output .= '<div class="layout-editor-block-content">' . render($content) . '</div>';
+    $output .= '</div>'; // layout-block
 
     return $output;
   }
@@ -134,12 +131,13 @@ class LayoutRendererEditor extends LayoutRendererStandard {
       return '';
     }
     $links = array();
-    $links[] = array(
+    $links['add'] = array(
       'title' => t('Add content'),
       'href' => $this->get_url('add-block', $region_id),
       'attributes' => array(
         'class' => array('use-ajax'),
         'data-dialog' => TRUE,
+        'data-dialog-options' => json_encode(array('dialogClass' => 'layout-dialog')),
       ),
     );
 
@@ -160,17 +158,22 @@ class LayoutRendererEditor extends LayoutRendererStandard {
     }
 
     $links = array();
-    $links[] = array(
+    $links['configure'] = array(
       'title' => t('Configure'),
       'href' => $this->get_url('configure-block', $block->uuid),
-      'attributes' => array('class' => array('use-ajax')),
+      'attributes' => array(
+        'class' => array('use-ajax'),
+        'data-dialog' => TRUE,
+        'data-dialog-options' => json_encode(array('dialogClass' => 'layout-dialog')),
+      ),
     );
 
-    $links[] = array(
+    $links['remove'] = array(
       'title' => t('Remove'),
-      'href' => '#',
+      'href' => $this->get_url('remove-block', $block->uuid),
+      'query' => array('token' => backdrop_get_token($this->layout->name)),
       'attributes' => array(
-        'class' => array('remove-block'),
+        'class' => array('remove-block', 'use-ajax'),
       ),
     );
 

@@ -33,13 +33,14 @@ class LayoutStyleDynamic extends LayoutStyle {
         '' => t('No wrapper'),
       );
       $form['wrapper_tag'] = array(
-        '#title' => t('Block tag'),
+        '#title' => t('Wrapper tag'),
         '#type' => 'select',
         '#options' => $tag_list,
         '#weight' => -1,
       );
+      $form['classes']['#title'] = t('Wrapper classes');
       $form['classes']['#states'] = array(
-        'invisible' => array('name="select[wrapper_tag]"' => array('value' => '')),
+        'invisible' => array('[name="style_settings[wrapper_tag]"]' => array('value' => '')),
       );
       $form['heading'] = array(
         '#title' => t('Heading level'),
@@ -54,18 +55,21 @@ class LayoutStyleDynamic extends LayoutStyle {
           'div' => 'DIV',
           'p' => 'P',
         ),
-        '#default_value' => $this->settings['heading'],
+        '#default_value' => $this->settings['heading_tag'],
+        '#weight' => 2,
       );
       $form['heading_classes'] = array(
-        '#title' => t('Content classes'),
+        '#title' => t('Heading classes'),
         '#type' => 'textfield',
         '#default_value' => $this->settings['classes'],
         '#description' => t('Additional classes to be added to the block heading.'),
+        '#weight' => 3,
       );
       $form['content_tag'] = array(
         '#title' => t('Content tag'),
         '#type' => 'select',
         '#options' => $tag_list,
+        '#weight' => 8,
       );
       $form['content_classes'] = array(
         '#title' => t('Content classes'),
@@ -73,8 +77,9 @@ class LayoutStyleDynamic extends LayoutStyle {
         '#default_value' => $this->settings['classes'],
         '#description' => t('Additional classes to be added to the content within this block.'),
         '#states' => array(
-          'invisible' => array('name="select[content_tag]"' => array('value' => '')),
+          'invisible' => array('[name="style_settings[content_tag]"]' => array('value' => '')),
         ),
+        '#weight' => 9,
       );
     }
   }

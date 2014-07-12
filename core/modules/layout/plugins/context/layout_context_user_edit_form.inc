@@ -74,7 +74,7 @@ function ctools_context_create_user_edit_form($empty, $user = NULL, $conf = FALS
     $form_state = array('want form' => TRUE, 'build_info' => array('args' => array($user, $category)));
 
     $file = backdrop_get_path('module', 'user') . '/user.pages.inc';
-    require_once DRUPAL_ROOT . '/' . $file;
+    require_once BACKDROP_ROOT . '/' . $file;
     // This piece of information can let other modules know that more files
     // need to be included if this form is loaded from cache:
     $form_state['build_info']['files'] = array($file);

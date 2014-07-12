@@ -89,18 +89,18 @@ function layout_menu() {
     'page arguments' => array(4, 6, 7),
   ) + $base;
 
-  $items['admin/structure/layouts/manage/%layout_cache/configure-block/%/%'] = array(
+  $items['admin/structure/layouts/manage/%layout_cache/configure-block/%/%layout_cache_block'] = array(
     'title' => 'Configure block',
-    'file' => 'plugins/renderers/layout_renderer_editor.inc',
+    'load arguments' => array(4),
     'page callback' => 'backdrop_get_form',
-    'page arguments' => array('layout_block_configure_form', 4, 6, 7),
+    'page arguments' => array('layout_block_configure_form', 4, 7, 6),
   ) + $base;
 
-  $items['admin/structure/layouts/manage/%layout_cache/remove-block/%/%'] = array(
+  $items['admin/structure/layouts/manage/%layout_cache/remove-block/%/%layout_cache_block'] = array(
     'title' => 'Remove block',
-    'file' => 'plugins/renderers/layout_renderer_editor.inc',
-    'page callback' => 'backdrop_get_form',
-    'page arguments' => array('layout_block_remove', 4, 6, 7),
+    'load arguments' => array(4),
+    'page callback' => 'layout_block_remove_page',
+    'page arguments' => array(4, 7, 6),
   ) + $base;
 
   $items['admin/structure/layouts/manage/%layout_cache/settings'] = array(
@@ -142,25 +142,22 @@ function layout_menu() {
     'type' => MENU_LOCAL_ACTION,
   ) + $base;
 
-  $items['admin/structure/layouts/menu/%layout_cache'] = array(
+  $items['admin/structure/layouts/menu/%layout_cache_menu_item'] = array(
     'title' => 'Menu settings',
-    'load arguments' => array('menu_item'),
     'page callback' => 'backdrop_get_form',
     'page arguments' => array('layout_menu_item_settings_form', 4),
     'type' => MENU_CALLBACK,
   ) + $base;
 
-  $items['admin/structure/layouts/menu/%layout_cache/arguments'] = array(
+  $items['admin/structure/layouts/menu/%layout_cache_menu_item/arguments'] = array(
     'title' => 'Arguments',
-    'load arguments' => array('menu_item'),
     'page callback' => 'backdrop_get_form',
     'page arguments' => array('layout_menu_item_arguments_form', 4),
     'type' => MENU_CALLBACK,
   ) + $base;
 
-  $items['admin/structure/layouts/menu/%layout_cache/access'] = array(
+  $items['admin/structure/layouts/menu/%layout_cache_menu_item/access'] = array(
     'title' => 'Access control',
-    'load arguments' => array('menu_item'),
     'page callback' => 'backdrop_get_form',
     'page arguments' => array('layout_menu_item_access_form', 4),
     'type' => MENU_CALLBACK,
@@ -467,6 +464,7 @@ function layout_autoload_info() {
     'LayoutHandlerBroken' => 'includes/layout_handler.class.inc',
     'Layout' => 'includes/layout.class.inc',
     'LayoutBlock' => 'includes/layout_block.class.inc',
+    'LayoutBlockLegacy' => 'includes/layout_block_legacy.class.inc',
     'LayoutMenuItem' => 'includes/layout_menu_item.class.inc',
 
     // Exceptions.
@@ -664,7 +662,7 @@ function _layout_include_files() {
       $function = $module . '_layout_api';
       $api_info = $function();
       if (isset($api_info['file'])) {
-        include_once(DRUPAL_ROOT . '/' . backdrop_get_path('module', $module) . '/' . $api_info['file']);
+        include_once(BACKDROP_ROOT . '/' . backdrop_get_path('module', $module) . '/' . $api_info['file']);
       }
     }
     $included = TRUE;
@@ -775,25 +773,43 @@ function layout_get_block_info($block_module = NULL, $block_delta = NULL) {
  * Helper function to get a handler class name based on the plugin name.
  */
 function layout_get_handler_name($plugin_type, $plugin_name) {
-  $info = _layout_get_all_info($plugin_type);
-  switch ($plugin_type) {
-    case 'layout_access':
-      $broken_class = 'LayoutAccessBroken';
-      break;
-    case 'layout_context':
-      $broken_class = 'LayoutContextBroken';
-      break;
-    case 'layout_style':
-      $broken_class = 'LayoutStyle';
-      break;
-  }
-
-  if (isset($info[$plugin_name]['class']) && class_exists($info[$plugin_name]['class'])) {
-    return $info[$plugin_name]['class'];
+  // Block "plugins" for Layouts are wrappers around the generic block system.
+  if ($plugin_type === 'block') {
+    $info = layout_get_block_info();
+    if ($info[$plugin_name]) {
+      if (isset($info[$plugin_name]['class'])) {
+        $class_name = 'LayoutBlockStandard';
+      }
+      else {
+        $class_name = 'LayoutBlockLegacy';
+      }
+    }
+    else {
+      $class_name = 'LayoutBlockBroken';
+    }
   }
   else {
-    return $broken_class;
+    $info = _layout_get_all_info($plugin_type);
+    switch ($plugin_type) {
+      case 'layout_access':
+        $broken_class = 'LayoutAccessBroken';
+        break;
+      case 'layout_context':
+        $broken_class = 'LayoutContextBroken';
+        break;
+      case 'layout_style':
+        $broken_class = 'LayoutStyle';
+        break;
+    }
+
+    if (isset($info[$plugin_name]['class']) && class_exists($info[$plugin_name]['class'])) {
+      $class_name = $info[$plugin_name]['class'];
+    }
+    else {
+      $class_name = $broken_class;
+    }
   }
+  return $class_name;
 }
 
 /**
@@ -895,103 +911,27 @@ function layout_clear_layout_cache($name, $type = 'layout') {
 }
 
 /**
- * Menu callback to load a page manager cache object for menu callbacks.
+ * Menu loader callback to load a Layout cache object.
  */
-function layout_cache_load($layout_name, $type = 'layout') {
-  return layout_get_layout_cache($layout_name, $type);
+function layout_cache_load($layout_name) {
+  return layout_get_layout_cache($layout_name, 'layout');
+}
+
+
+/**
+ * Menu loader callback to load a Layout cache object.
+ */
+function layout_cache_menu_item_load($layout_name) {
+  return layout_get_layout_cache($layout_name, 'menu_item');
 }
 
 /**
- * Generate a unique name for a task handler.
- *
- * Task handlers need to be named but they aren't allowed to set their own
- * names. Instead, they are named based upon their parent task and type.
+ * Menu loader to load an individual block from a layout.
  */
-function page_manager_handler_get_name($task_name, $handlers, $handler) {
-  $base = str_replace('-', '_', $task_name);
-  // Generate a unique name. Unlike most named objects, we don't let people choose
-  // names for task handlers because they mostly don't make sense.
-  $base .= '_' . $handler->handler;
-
-  // Once we have a base, check to see if it is used. If it is, start counting up.
-  $name = $base;
-  $count = 1;
-  // If taken
-  while (isset($handlers[$name])) {
-    $name = $base . '_' . ++$count;
-  }
-
-  return $name;
+function layout_cache_block_load($layout_block_uuid, $layout_name) {
+  $layout = layout_cache_load($layout_name);
+  return isset($layout->content[$layout_block_uuid]) ? $layout->content[$layout_block_uuid] : FALSE;
 }
-
-/**
- * Import a handler into a page.
- *
- * This is used by both import and clone, since clone just exports the
- * handler and immediately imports it.
- */
-function page_manager_handler_add_to_page(&$page, &$handler, $title = NULL) {
-  $last = end($page->handler_info);
-  $handler->weight = $last ? $last['weight'] + 1 : 0;
-  $handler->task = $page->task_id;
-  $handler->subtask = $page->subtask_id;
-  $handler->export_type = EXPORT_IN_DATABASE;
-  $handler->type = t('Normal');
-
-  if ($title) {
-    $handler->conf['title'] = $title;
-  }
-
-  $name = page_manager_handler_get_name($page->task_name, $page->handlers, $handler);
-
-  $handler->name = $name;
-
-  $page->handlers[$name] = $handler;
-  $page->handler_info[$name] = array(
-    'weight' => $handler->weight,
-    'name' => $handler->name,
-    'changed' => PAGE_MANAGER_CHANGED_CACHED,
-  );
-}
-
-/**
- * Create a new task handler object.
- *
- * @param $plugin
- *   The plugin this task handler is created from.
- */
-function page_manager_new_task_handler($plugin) {
-  // Generate a unique name. Unlike most named objects, we don't let people choose
-  // names for task handlers because they mostly don't make sense.
-
-  // Create a new, empty handler object.
-  $handler          = new stdClass;
-  $handler->title   = $plugin['title'];
-  $handler->task    = NULL;
-  $handler->subtask = NULL;
-  $handler->name    = NULL;
-  $handler->handler = $plugin['name'];
-  $handler->weight  = 0;
-  $handler->conf    = array();
-
-  // These are provided by the core export API provided by ctools and we
-  // set defaults here so that we don't cause notices. Perhaps ctools should
-  // provide a way to do this for us so we don't have to muck with it.
-  $handler->export_type = EXPORT_IN_DATABASE;
-  $handler->type = t('Local');
-
-  if (isset($plugin['default conf'])) {
-    if (is_array($plugin['default conf'])) {
-      $handler->conf = $plugin['default conf'];
-    }
-    else if (function_exists($plugin['default conf'])) {
-      $handler->conf = $plugin['default conf']($handler);
-    }
-  }
-
-  return $handler;
-}
-
 
 /**
  * Given a path with wildcard placeholders (%), determine the required contexts.

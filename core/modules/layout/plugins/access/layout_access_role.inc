@@ -52,7 +52,7 @@ function ctools_role_ctools_access_check($conf, $context) {
   }
 
   $roles = array_keys($context->data->roles);
-  $roles[] = $context->data->uid ? DRUPAL_AUTHENTICATED_RID : DRUPAL_ANONYMOUS_RID;
+  $roles[] = $context->data->uid ? backdrop_AUTHENTICATED_RID : backdrop_ANONYMOUS_RID;
   return (bool) array_intersect($conf['rids'], $roles);
 }
 

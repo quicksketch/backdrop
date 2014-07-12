@@ -3,7 +3,7 @@
  * @file
  * A class that wraps around a block to store settings information.
  */
-class LayoutBlock {
+class LayoutBlock extends LayoutHandler {
 
   /**
    * The module that provides this block.
@@ -20,30 +20,11 @@ class LayoutBlock {
   var $delta;
 
   /**
-   * Settings for this block.
-   */
-  var $settings = array();
-
-  /**
-   * The content for this block as provided by hook_block_view().
-   *
-   * @var mixed
-   */
-  private $content;
-
-  /**
    * The identifier for this instance of this block.
    *
    * @var string
    */
   var $uuid;
-
-  /**
-   * If this block is newly created and does not yet have a UUID.
-   *
-   * @var boolean
-   */
-  var $is_new = FALSE;
 
   /**
    * The current style for this block.
@@ -70,11 +51,12 @@ class LayoutBlock {
    *   Settings that provide current configuration of the block, such as
    *   access rules, style settings, block settings, etc.
    */
-  function __construct($module, $delta, $uuid = NULL, $settings = array()) {
+  function __construct($plugin_name, array $settings = array()) {
+    $this->plugin = $plugin_name;
+
+    // Provide defaults.
     $settings += array(
-      'title_display' => LAYOUT_TITLE_DEFAULT,
-      'title' => '',
-      'block_settings' => array(),
+      'settings' => array(),
       'style' => array(
         'plugin' => 'default',
         'settings' => array(),
@@ -82,31 +64,26 @@ class LayoutBlock {
       'conditions' => array(),
     );
 
-    $this->module = $module;
-    $this->delta = $delta;
-    $this->uuid = $uuid;
+    // Initialize basics, module, delta, and UUID.
+    list($this->module, $this->delta) = explode(':', $plugin_name);
+    $this->uuid = isset($settings['uuid']) ? $settings['uuid'] : NULL;
+    $this->is_new = !$this->uuid;
 
     // Initialize the style.
     $this->style = layout_create_handler('layout_style', $settings['style']['plugin'], $settings['style']['settings']);
-    unset($settings['style']);
 
     // Initialize conditions.
     foreach ($settings['conditions'] as $condition) {
       $this->conditions[] = layout_create_handler('layout_condition', $condition['plugin'], $condition['settings']);
     }
-    unset($settings['conditions']);
 
-    $this->settings = $settings;
-    if (empty($uuid)) {
-      $this->is_new = TRUE;
-    }
-  }
-
-  protected function buildBlock() {
-    if (!isset($this->content)) {
-      $this->content = module_invoke($this->module, 'block_view', $this->delta, $this->settings['block_settings']);
-    }
-    return $this->content;
+    // All other settings.
+    $settings['settings'] += array(
+      'title_display' => LAYOUT_TITLE_DEFAULT,
+      'title' => '',
+      'block_settings' => array(),
+    );
+    $this->settings = $settings['settings'];
   }
 
   /**
@@ -115,18 +92,22 @@ class LayoutBlock {
    * @return mixed
    */
   function getTitle() {
-    if ($this->settings['title_display'] === LAYOUT_TITLE_DEFAULT) {
-      $block_content = $this->buildBlock();
-      return $block_content['subject'];
-    }
-    elseif ($this->settings['title']) {
+    if ($this->settings['title_display'] === LAYOUT_TITLE_CUSTOM && $this->settings['title']) {
       return $this->settings['title'];
     }
-    else {
+  }
+
+  /**
+   * Return an administrative title that will always have a value.
+   */
+  function getAdminTitle() {
+    $title = $this->getTitle();
+    if (empty($title)) {
       // Last effort, use the title from hook_block_info().
       $info = module_invoke($this->module, 'block_info');
-      return $info[$this->delta]['info'];
+      $title = $info[$this->delta]['info'];
     }
+    return $title;
   }
 
   /**
@@ -137,6 +118,16 @@ class LayoutBlock {
   function getContent() {
     $block_content = $this->buildBlock();
     return $block_content['content'];
+  }
+
+  /**
+   * Return a preview for this block.
+   */
+  function getAdminPreview() {
+    $info = module_invoke($this->module, 'block_info');
+    if (isset($info[$this->delta]['description'])) {
+      return $info[$this->delta]['description'];
+    }
   }
 
   /**
@@ -165,30 +156,22 @@ class LayoutBlock {
       ),
       '#maxlength' => 255,
     );
-
-    // Load the legacy block form into block_settings.
-    $block_form = module_invoke($this->module, 'block_configure', $this->delta, $this->settings['block_settings']);
-    if ($block_form) {
-      $form['block_settings'] = array(
-        '#type' => 'container',
-        '#id' => 'layout-block-settings',
-      );
-      $form['block_settings'] = array_merge($form['block_settings'], $block_form);
-    }
   }
 
   /**
-   * Submit handler to save the block settings.
+   * Validate handler to validate the form settings.
    */
-  function formSubmit($form, $form_state) {
+  function formValidate($form, &$form_state) {
+    // No additional validation needed yet.
+  }
+
+  /**
+   * Submit handler to save the form settings.
+   */
+  function formSubmit($form, &$form_state) {
     $this->settings['title_display'] = $form_state['values']['title_display']['title_display'];
     $this->settings['title'] = $form_state['values']['title_display']['title'];
     $this->settings['style'] = $form_state['values']['style'];
-
-    // Allow blocks to save their settings into the layout. The last parameter
-    // can be taken in by reference and modified.
-    module_invoke($this->module, 'block_save', $this->delta, $form_state['values']['block_settings']);
-    $this->settings['block_settings'] = $form_state['values']['block_settings'];
   }
 
   /**

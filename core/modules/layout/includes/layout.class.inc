@@ -171,7 +171,12 @@ class Layout {
 
     // Convert all stored contexts, conditions, and relationships to their
     // handler equivalents.
-    foreach (array('conditions' => 'layout_access') as $property_key => $plugin_type) {
+    $handlers = array(
+      // Items are key => handler_type.
+      'content' => 'block',
+      'conditions' => 'layout_access',
+    );
+    foreach ($handlers as $property_key => $plugin_type) {
       foreach ($this->{$property_key} as $plugin_type_key => $plugin_data) {
         $this->{$property_key}[$plugin_type_key] = layout_create_handler($plugin_type, $plugin_data['plugin'], $plugin_data['data']);
       }
@@ -207,6 +212,7 @@ class Layout {
     // Convert all stored conditions to arrays.
     // @todo: Save per-layout contexts and relationships.
     $sub_parts = array(
+      'content',
       'conditions',
       // 'contexts',
       // 'relationships',

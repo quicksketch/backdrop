@@ -46,3 +46,62 @@
   padding-right: 10px;
 }
 
+/* Layout dialogs. */
+.layout-dialog {
+  max-width: 600px;
+}
+.layout-block-list {
+  max-height: 300px;
+  overflow: auto;
+}
+
+/* Layout editor. */
+.layout-editor-region-content {
+  border: 1px dashed #CCC;
+  margin: -1px;
+  min-height: 120px;
+}
+.layout-editor-region-title .label {
+  float: left;
+  vertical-align: middle;
+  margin: 10px 0;
+}
+.layout-editor-region-title .dropbutton-wrapper {
+  float: left;
+  width: 300px;
+  padding: 0 12px;
+  margin: 7px 0;
+}
+.ui-sortable .layout-editor-block {
+  cursor: move;
+}
+.layout-editor-block {
+  margin: -1px -1px 1em -1px;
+  background: #FFF;
+}
+.layout-editor-block-title {
+  border: 1px solid #CCC;
+  background: #F3F4EE;
+  padding: 0.4em 1em;
+}
+.layout-editor-block-title .text {
+  font-size: 120%;
+  line-height: 1.5;
+  font-weight: bold;
+}
+.layout-editor-block-title .buttons {
+  float: right; /* LTR */
+  width: 120px;
+}
+[dir="rtl"] .layout-editor-block-title .buttons {
+  float: left;
+}
+.layout-editor-block-content {
+  border: 1px solid #CCC;
+  border-top: none;
+  padding: 0.4em 1em;
+  min-height: 20px;
+}
+.layout-editor-placeholder {
+  background-color: #EFEFEF;
+}

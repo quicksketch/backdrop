@@ -62,7 +62,7 @@ function ctools_context_create_node_edit_form($empty, $node = NULL, $conf = FALS
     $form_state = array('want form' => TRUE, 'build_info' => array('args' => array($node)));
 
     $file = backdrop_get_path('module', 'node') . '/node.pages.inc';
-    require_once DRUPAL_ROOT . '/' . $file;
+    require_once BACKDROP_ROOT . '/' . $file;
     // This piece of information can let other modules know that more files
     // need to be included if this form is loaded from cache:
     $form_state['build_info']['files'] = array($file);

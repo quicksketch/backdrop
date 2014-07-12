@@ -6,33 +6,6 @@
  */
 
 /**
- * Preprocess the main Layout content edit page.
- */
-function template_preprocess_layout_content_form(&$variables) {
-  global $user;
-  $layout = &$variables['form']['#layout'];
-
-  if ($layout->locked && $user->uid !== $layout->locked->uid) {
-    $account = user_load($layout->locked->uid);
-    $lock_user = theme('username', array('account' => $account));
-    $lock_age = format_interval(REQUEST_TIME - $layout->locked->updated);
-    $lock_break_url = url('admin/structure/layouts/manage/' . $layout . '/break-lock', array('query' => array('token' => backdrop_get_token($layout->name))));
-
-    $variables['locked'] = t('This layout is being edited by user !user, and is therefore locked from editing by others. This lock is !age old. Click here to <a href="!break">break this lock</a>.',  array('!user' => $lock_user, '!age' => $lock_age, '!break' => $lock_break_url));
-  }
-  else if (!empty($layout->changed)) {
-    $variables['locked'] = t('This layout has been modified, but these modifications are not yet live. While modifying this layout, it is locked from modification by other users.');
-  }
-  else {
-    $variables['locked'] = NULL;
-  }
-
-  // TODO Fill in the content
-  $variables['content'] = NULL;
-  $variables['operations'] = NULL;
-}
-
-/**
  * Turn the rearrange form into a table with table sorting displayed.
  */
 function theme_layout_reorder_layouts($variables) {
@@ -201,7 +174,7 @@ function template_preprocess_layout_block(&$variables) {
         ),
       );
       $variables['classes_array'][] = 'contextual-links-region';
-      $variables['title_prefix'] = drupal_render($build);
+      $variables['title_prefix'] = backdrop_render($build);
     }
   }
 

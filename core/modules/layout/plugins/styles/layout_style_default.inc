@@ -43,6 +43,13 @@ class LayoutStyle extends LayoutHandler {
   }
 
   /**
+   * Validate handler to validate the form settings.
+   */
+  function formValidate($form, $form_state) {
+    // No additional validation needed yet.
+  }
+
+  /**
    * Submit handler for saving the form settings.
    */
   function formSubmit($form, $form_state) {
