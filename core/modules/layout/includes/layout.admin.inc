@@ -269,6 +269,10 @@ function layout_settings_form($form, &$form_state, Layout $layout) {
     '#description' => t('Conditions allow this layout to selectively apply to different situations, such as different types of content at the same wildcard path.'),
     '#id' => 'layout-access',
   );
+  $form['conditions']['active'] = array(
+    '#type' => 'container',
+    '#id' => 'layout-access-list',
+  );
   foreach ($layout->conditions as $access_key => $layout_access) {
     $form['conditions']['active'][$access_key] = array(
       '#type' => 'container',
@@ -290,7 +294,7 @@ function layout_settings_form($form, &$form_state, Layout $layout) {
         'layout_settings_form_update_layout',
       ),
       '#ajax' => array(
-        'callback' => 'layout_settings_form_ajax_update',
+        'callback' => 'layout_ajax_form_update',
       ),
       '#limit_validation' => array('conditions'),
       '#name' => 'conditions_' . $access_key . '_configure',
@@ -306,7 +310,7 @@ function layout_settings_form($form, &$form_state, Layout $layout) {
         'layout_settings_form_condition_edit',
       ),
       '#ajax' => array(
-        'callback' => 'layout_settings_form_open_dialog',
+        'callback' => 'layout_ajax_form_open_dialog',
       ),
       '#limit_validation' => array('conditions'),
       '#name' => 'conditions_' . $access_key . '_configure',
@@ -325,7 +329,7 @@ function layout_settings_form($form, &$form_state, Layout $layout) {
     ),
     '#limit_validation' => array('conditions'),
     '#ajax' => array(
-      'callback' => 'layout_settings_form_open_dialog',
+      'callback' => 'layout_ajax_form_open_dialog',
     ),
     '#prefix' => '<ul class="action-links"><li>',
     '#suffix' => '</li></ul>',
@@ -423,125 +427,30 @@ function layout_settings_form_path_ajax($form, &$form_state) {
 }
 
 /**
- * Submit handler for layout_settings_form() that lets the user add a context.
+ * Submit handler for layout_settings_form() that lets the user add a condition.
  */
 function layout_settings_form_condition_add($form, &$form_state) {
   $form_state['redirect'] = 'admin/structure/layouts/manage/' . $form_state['layout']->name . '/condition/add';
 }
 
 /**
- * Submit handler for layout_settings_form() that removes an access item.
+ * Submit handler for layout_settings_form() that removes a condition.
  */
 function layout_settings_form_condition_remove($form, &$form_state) {
   $removed_condition = $form_state['clicked_button']['#array_parents'][2];
   unset($form_state['layout']->conditions[$removed_condition]);
   layout_set_layout_cache($form_state['layout']);
-  $form_state['ajax_update'] = array('conditions');
+
+  $form_state['ajax_rebuild_form'] = 'layout_settings_form';
+  $form_state['ajax_update'] = array('conditions', 'active');
 }
 
 /**
- * Submit handler for layout_settings_form() that edits an access item.
+ * Submit handler for layout_settings_form() that edits an condition.
  */
 function layout_settings_form_condition_edit($form, &$form_state) {
   $edit_condition = $form_state['clicked_button']['#array_parents'][2];
   $form_state['redirect'] = 'admin/structure/layouts/manage/' . $form_state['layout']->name . '/condition/edit/' . $edit_condition;
-}
-
-/**
- * AJAX handler for layout_settings_form() that opens a form in a dialog.
- */
-function layout_settings_form_open_dialog($form, &$form_state) {
-  // Get the dialog path as set in the redirect.
-  $dialog_path = $form_state['redirect'];
-  $page_callback_result = NULL;
-  if ($router_item = menu_get_item($dialog_path)) {
-    if ($router_item['access']) {
-      if ($router_item['include_file']) {
-        require_once BACKDROP_ROOT . '/' . $router_item['include_file'];
-      }
-      $page_callback_result = call_user_func_array($router_item['page_callback'], $router_item['page_arguments']);
-    }
-  }
-  $html = is_string($page_callback_result) ? $page_callback_result : backdrop_render($page_callback_result);
-  if (isset($page_callback_result['#title'])) {
-    $title = $page_callback_result['#title'];
-  }
-  else {
-    $title = $router_item['title'];
-  }
-  $commands[] = ajax_command_open_modal_dialog($title, $html);
-  return array('#type' => 'ajax', '#commands' => $commands);
-}
-
-/**
- * AJAX handler for layout_settings_form() that saves a from from a dialog.
- */
-function layout_settings_form_save_dialog($form, $form_state) {
-  $commands = array();
-
-  $commands[] = ajax_command_close_modal_dialog();
-
-  // If errors occurred in the dialog, show messages and re-display.
-  if (form_get_errors()) {
-    $html = '';
-    $html .= theme('status_messages');
-    $html .= backdrop_render($form);
-    $title = isset($form['#title']) ? $form['#title'] : backdrop_get_title();
-    $commands[] = ajax_command_open_modal_dialog($title, $html);
-  }
-  // If no errors, close the dialog and update the page.
-  else {
-    $commands[] = ajax_command_close_modal_dialog();
-
-    // If there is a part of the page that needs to be updated, update it.
-    if (!empty($form_state['ajax_update'])) {
-      $update_ajax = layout_settings_form_ajax_update($form, $form_state);
-      $commands = array_merge($commands, $update_ajax['#commands']);
-    }
-
-    // If there is a second action that needs to be executed, open the next page.
-    if (!empty($form_state['redirect'])) {
-      $dialog_ajax = layout_settings_form_open_dialog($form, $form_state);
-      $commands = array_merge($commands, $dialog_ajax['#commands']);
-    }
-  }
-
-  return array('#type' => 'ajax', '#commands' => $commands);
-}
-
-/**
- * AJAX handler for layout_settings_form() that updates a portion of the form.
- */
-function layout_settings_form_ajax_update($form, $form_state) {
-  if (!isset($form_state['ajax_update'])) {
-    return;
-  }
-
-  $replace_form = backdrop_rebuild_form('layout_settings_form', $form_state, $form);
-  $build_id = backdrop_render($replace_form['form_build_id']);
-  $replace_portion = $form_state['ajax_update'];
-  foreach ($replace_portion as $parent) {
-    if (isset($replace_form[$parent])) {
-      $replace_form = $replace_form[$parent];
-    }
-    else {
-      $replace_form = FALSE;
-      break;
-    }
-  }
-
-  if ($replace_form) {
-    // Update the portion of the form.
-    $html = backdrop_render($replace_form);
-    $commands[] = ajax_command_replace('#' . $replace_form['#id'], $html);
-    // And update the build ID so these new values are included when saving.
-    $commands[] = ajax_command_replace('#layout-settings-form input[name="form_build_id"]', $build_id);
-  }
-  else {
-    // @todo: Provide an error message if the target is not found.
-  }
-
-  return array('#type' => 'ajax', '#commands' => $commands);
 }
 
 /**
@@ -614,7 +523,7 @@ function layout_settings_form_reset($form, &$form_state) {
   layout_clear_layout_cache($layout->name);
   backdrop_set_message(t('Layout changes discarded.'));
   if (empty($layout->is_new)) {
-    $form_state['redirect'] = 'admin/structure/layouts';
+    $form_state['redirect'] = 'admin/structure/layouts/manage/' . $layout->name;
   }
 }
 
@@ -634,155 +543,7 @@ function layout_settings_form_save_submit($form, &$form_state) {
   }
   else {
     backdrop_set_message(t('Layout saved.'));
-    $form_state['redirect'] = 'admin/structure/layouts';
   }
-}
-
-/**
- * Form callback; provides the form for adding new contexts to a layout.
- */
-function layout_condition_add_form($form, &$form_state, Layout $layout) {
-  $form_state['layout'] = $layout;
-  form_load_include($form_state, 'inc', 'layout', 'includes/layout.admin');
-
-  $form['#title'] = t('Add condition');
-  $form['#redirect'] = 'admin/structure/layouts/manage/' . $layout->name . '/settings';
-  $form['help'] = array(
-    '#markup' => '<p>' . t('Add a new condition to limit the situations in which this layout will apply.') . '</p>',
-  );
-
-  $all_access_info = _layout_get_all_info('layout_access');
-  $form['condition'] = array(
-    '#type' => 'select',
-    '#title' => t('Add condition'),
-    '#options' => array(),
-    '#required' => TRUE,
-  );
-  foreach ($all_access_info as $access_info) {
-    $form['condition']['#options'][$access_info['name']] = $access_info['title'];
-  }
-  $form['actions'] = array(
-    '#type' => 'actions',
-  );
-  $form['actions']['cancel'] = array(
-    '#type' => 'submit',
-    '#value' => t('Cancel'),
-    '#attributes' => array('class' => array('dialog-cancel')),
-    '#validate' => array(),
-    '#submit' => array(),
-  );
-  $form['actions']['add'] = array(
-    '#type' => 'submit',
-    '#value' => t('Add condition'),
-    '#submit' => array(
-      'layout_condition_add_form_submit',
-    ),
-    '#ajax' => array(
-      'callback' => 'layout_settings_form_save_dialog',
-    ),
-  );
-
-  return $form;
-}
-
-/**
- * Submit handler for layout_condition_add_form().
- */
-function layout_condition_add_form_submit($form, &$form_state) {
-  $layout = $form_state['layout'];
-  $form_state['redirect'] = 'admin/structure/layouts/manage/' . $layout->name . '/condition/edit/' . $form_state['values']['condition'];
-}
-
-/**
- * Title callback; Provide the page title for configuring a layout condition.
- */
-function layout_condition_edit_title(Layout $layout, $handler_id) {
-  if (is_numeric($handler_id) && isset($layout->conditions[$handler_id])) {
-    $plugin_name = $layout->conditions[$handler_id]->plugin;
-  }
-  else {
-    $plugin_name = $handler_id;
-  }
-  $access_info = layout_get_access_info($plugin_name);
-  if (isset($access_info['title'])) {
-    return t('Configure condition "@condition"', array('@condition' => $access_info['title']));
-  }
-}
-
-/**
- * Form callback; Creates a form for editing a new or existing condition.
- */
-function layout_condition_edit_form($form, &$form_state, Layout $layout, $handler_id) {
-  if (is_numeric($handler_id) && isset($layout->conditions[$handler_id])) {
-    $handler = $layout->conditions[$handler_id];
-  }
-  else {
-    $handler = layout_create_access($handler_id);
-    $handler->is_new = TRUE;
-  }
-  form_load_include($form_state, 'inc', 'layout', 'includes/layout.admin');
-
-  $form['#title'] = layout_condition_edit_title($layout, $handler_id);
-  $form_state['layout'] = $layout;
-  $form_state['handler'] = $handler;
-
-  $handler->form($form, $form_state);
-
-
-  $form['actions'] = array(
-    '#type' => 'actions',
-    '#weight' => 100,
-  );
-  $form['actions']['cancel'] = array(
-    '#type' => 'submit',
-    '#value' => t('Cancel'),
-    '#attributes' => array('class' => array('dialog-cancel')),
-    '#validate' => array(),
-    '#submit' => array(),
-  );
-  $form['actions']['submit'] = array(
-    '#type' => 'submit',
-    '#value' => $handler->is_new ? t('Add condition') : t('Save condition'),
-    '#validate' => array(
-      'layout_condition_edit_form_validate',
-    ),
-    '#submit' => array(
-      'layout_condition_edit_form_submit',
-    ),
-    '#ajax' => array(
-      'callback' => 'layout_settings_form_save_dialog',
-    ),
-  );
-  return $form;
-}
-
-/**
- * Validation handler for layout_condition_edit_form().
- */
-function layout_condition_edit_form_validate($form, &$form_state) {
-  $handler = $form_state['handler'];
-  $handler->formValidate($form, $form_state);
-}
-
-/**
- * Submit handler for layout_condition_edit_form().
- */
-function layout_condition_edit_form_submit($form, &$form_state) {
-  $layout = $form_state['layout'];
-  $handler = $form_state['handler'];
-  $handler->formSubmit($form, $form_state);
-
-  $excluded = backdrop_map_assoc(array('cancel', 'submit', 'form_build_id', 'form_token', 'form_id', 'op'));
-  $settings = array_diff_key($form_state['values'], $excluded);
-  $handler->settings = $settings;
-  if (!empty($handler->is_new)) {
-    $handler->is_new = FALSE;
-    $layout->conditions[] = $handler;
-  }
-  layout_set_layout_cache($layout);
-
-  // Set the portion of the page to be updated.
-  $form_state['ajax_update'] = array('conditions');
 }
 
 /**
@@ -963,6 +724,8 @@ function layout_content_form_submit($form, &$form_state) {
 
   // Delete the tempstore copy of the layout.
   layout_clear_layout_cache($layout->name);
+
+  backdrop_set_message(t('Layout content saved.'));
 }
 
 /**
@@ -1027,6 +790,31 @@ function layout_block_configure_form($form, &$form_state, Layout $layout, Layout
     $form_state['renderer'] = layout_create_renderer($renderer_name, $layout);
   }
 
+  if (empty($block->uuid)) {
+    $form['#title'] = t('Add block "@title"', array('@title' => $block->getAdminTitle()));
+  }
+  else {
+    $form['#title'] = t('Configure block "@title"', array('@title' => $block->getAdminTitle()));
+  }
+
+  // We overload the layout object with an "in_progress" key to hold information
+  // about the block currently being edited, this eases the multi-dialog
+  // workflow for a sequence of dialogs affecting existing or new blocks.
+  if (!isset($layout->in_progress['block']) || $layout->in_progress['block']->uuid !== $block->uuid) {
+    $layout->in_progress = array(
+      'block' => $block,
+      'region_name' => $region_name,
+      'renderer_name' => $renderer_name,
+      'section' => NULL,
+    );
+  }
+  // If resuming an in-progress edit, pull out the region name.
+  else {
+    $form_state['region_name'] = $layout->in_progress['region_name'];
+  }
+
+  form_load_include($form_state, 'inc', 'layout', 'includes/layout.admin');
+
   $form['actions']['#type'] = 'actions';
   $form['actions']['submit'] = array(
     '#type' => 'submit',
@@ -1036,22 +824,11 @@ function layout_block_configure_form($form, &$form_state, Layout $layout, Layout
   $form['#tree'] = TRUE;
   $block->form($form, $form_state);
 
-  $form['access'] = array(
-    '#type' => 'fieldset',
-    '#title' => t('Conditions'),
-    '#collapsed' => TRUE,
-    '#collapsible' => TRUE,
-  );
-  foreach ($block->conditions as $id => $access) {
-    $form['access'][$id] = array(
-      '#type' => 'item',
-    );
-  }
-
+  /* Style settings: */
   $form['style'] = array(
     '#type' => 'fieldset',
     '#title' => t('Style settings'),
-    '#collapsed' => TRUE,
+    '#collapsed' => $layout->in_progress['section'] !== 'style',
     '#collapsible' => TRUE,
   );
   $styles = _layout_get_all_info('layout_style');
@@ -1059,8 +836,7 @@ function layout_block_configure_form($form, &$form_state, Layout $layout, Layout
   foreach ($styles as $style_name => $style_info) {
     $style_options[$style_name] = $style_info['title'];
   }
-
-  $current_style = $block->style->plugin;
+  $current_style = $block->settings['style'];
   if (isset($form_state['values']['style'])) {
     $current_style = $form_state['values']['style'];
   }
@@ -1080,8 +856,81 @@ function layout_block_configure_form($form, &$form_state, Layout $layout, Layout
     '#id' => 'block_style_settings',
     '#parents' => array('style_settings'),
   );
-  $style = layout_create_handler('layout_style', $current_style, $block->style->settings);
-  $style->form($form['style']['style_settings'], $form_state);
+
+  // The style may change in a form rebuild, so we can't use $block->style
+  // directly, instead crate a new style handler and use that form.
+  $block->style = layout_create_handler('layout_style', $current_style, $block->style->toArray());
+  $block->style->form($form['style']['style_settings'], $form_state);
+  /* End style settings. */
+
+  /* Conditions: */
+  $form['conditions'] = array(
+    '#title' => t('Conditions'),
+    '#type' => 'fieldset',
+    '#collapsible' => TRUE,
+    '#collapsed' => $layout->in_progress['section'] !== 'conditions',
+    '#description' => t('Conditions allow this block to be shown only in certain situations, such as for certain roles or types of content.'),
+    '#id' => 'block-access',
+  );
+  $form['conditions']['active'] = array(
+    '#type' => 'container',
+    '#id' => 'layout-access-list',
+  );
+  foreach ($block->conditions as $access_key => $block_access) {
+    $form['conditions']['active'][$access_key] = array(
+      '#type' => 'container',
+      '#attributes' => array('class' => array('layout-condition')),
+      '#id' => NULL,
+    );
+    $form['conditions']['active'][$access_key]['label'] = array(
+      '#markup' => $block_access->summary(),
+    );
+    $form['conditions']['active'][$access_key]['remove'] = array(
+      '#type' => 'submit',
+      '#value' => t('Remove'),
+      '#attributes' => array('class' => array('layout-link-button', 'layout-access-remove')),
+      '#submit' => array(
+        'layout_block_configure_form_condition_remove',
+      ),
+      '#ajax' => array(
+        'callback' => 'layout_ajax_form_update',
+      ),
+      '#limit_validation' => array('conditions'),
+      '#name' => 'conditions_' . $access_key . '_configure',
+    );
+    $form['conditions']['active'][$access_key]['configure'] = array(
+      '#type' => 'submit',
+      '#value' => t('Configure'),
+      '#attributes' => array('class' => array('layout-link-button', 'layout-access-configure')),
+      '#submit' => array(
+        'layout_block_configure_form_submit',
+        'layout_block_configure_form_condition_edit',
+      ),
+      '#save_in_progress' => TRUE, // See layout_block_configure_form_submit().
+      '#ajax' => array(
+        'callback' => 'layout_ajax_form_open_dialog',
+      ),
+      '#limit_validation' => array('conditions'),
+      '#name' => 'conditions_' . $access_key . '_configure',
+    );
+  }
+  $form['conditions']['add'] = array(
+    '#type' => 'submit',
+    '#value' => t('Add condition'),
+    '#attributes' => array('class' => array('layout-link-button', 'layout-access-add')),
+    '#submit' => array(
+      'layout_block_configure_form_submit',
+      'layout_block_configure_form_condition_add',
+    ),
+    '#save_in_progress' => TRUE, // See layout_block_configure_form_submit().
+    '#limit_validation' => array('conditions'),
+    '#ajax' => array(
+      'callback' => 'layout_ajax_form_open_dialog',
+    ),
+    '#prefix' => '<ul class="action-links"><li>',
+    '#suffix' => '</li></ul>',
+  );
+  /* End conditions. */
 
   // Note that we specifically use backdrop_is_ajax() in addition to
   // backdrop_is_dialog() to ensure the #ajax callback is specified when the
@@ -1100,6 +949,47 @@ function layout_block_configure_form($form, &$form_state, Layout $layout, Layout
  */
 function layout_block_configure_ajax_style($form, $form_state) {
   return $form['style']['style_settings'];
+}
+
+/**
+ * Submit handler for layout_block_configure_form() to add a condition.
+ */
+function layout_block_configure_form_condition_add($form, &$form_state) {
+  $layout = $form_state['layout'];
+  $block = $form_state['block'];
+
+  $layout->in_progress['section'] = 'conditions';
+  layout_set_layout_cache($layout);
+  $form_state['redirect'] = 'admin/structure/layouts/manage/' . $layout->name . '/condition/add/' . $block->uuid;
+}
+
+/**
+ * Submit handler for layout_block_configure_form() to edit a condition.
+ */
+function layout_block_configure_form_condition_edit($form, &$form_state) {
+  $layout = $form_state['layout'];
+  $block = $form_state['block'];
+
+  $layout->in_progress['section'] = 'conditions';
+  layout_set_layout_cache($layout);
+  $edit_condition = $form_state['clicked_button']['#array_parents'][2];
+  $form_state['redirect'] = 'admin/structure/layouts/manage/' . $layout->name . '/condition/edit/' . $edit_condition . '/' . $block->uuid;
+}
+
+/**
+ * Submit handler for layout_block_configure_form() to remove a condition.
+ */
+function layout_block_configure_form_condition_remove($form, &$form_state) {
+  $layout = $form_state['layout'];
+  $block = $form_state['block'];
+
+  $removed_condition = $form_state['clicked_button']['#array_parents'][2];
+  unset($block->conditions[$removed_condition]);
+  $layout->in_progress['section'] = 'conditions';
+  layout_set_layout_cache($layout);
+
+  $form_state['ajax_rebuild_form'] = 'layout_block_configure_form';
+  $form_state['ajax_update'] = array('conditions', 'active');
 }
 
 /**
@@ -1124,6 +1014,7 @@ function layout_block_configure_form_submit($form, &$form_state) {
   $block = $form_state['block'];
   $layout = $form_state['layout'];
   $style = $form_state['style'];
+  $renderer = $form_state['renderer'];
 
   // Save the block settings.
   $block->formSubmit($form, $form_state);
@@ -1132,13 +1023,29 @@ function layout_block_configure_form_submit($form, &$form_state) {
   $style->formSubmit($form['style']['style_settings'], $form_state);
   $block->style = $style;
 
-  // Insert new blocks into the layout. Updates to $block are already done by
-  // reference, so no additional action is needed for updating.
-  if (empty($block->uuid) && $form_state['region_name']) {
+  // Generate a UUID for the block.
+  if (empty($block->uuid)) {
     $uuid = new Uuid();
     $block->uuid = $uuid->generate();
-    $layout->content[$block->uuid] = $block;
-    $layout->positions[$form_state['region_name']][] = $block->uuid;
+  }
+
+  // Temporarily store any unfinished blocks (those that do not yet have a
+  // position but were just added) in the layout so it can be retrieved. See
+  // layout_cache_block_load().
+  if (!empty($form_state['triggering_element']['#save_in_progress'])) {
+    $layout->in_progress['region_name'] = $form_state['region_name'];
+    $layout->in_progress['block'] = $block;
+    $layout->in_progress['renderer'] = $renderer;
+  }
+  // Insert new blocks into the layout. Updates to $block are already done by
+  // reference, so no additional action is needed for updating.
+  else {
+    if ($form_state['region_name']) {
+      $layout->content[$block->uuid] = $block;
+      $layout->positions[$form_state['region_name']][] = $block->uuid;
+    }
+    // Clean up the in_progress value now that we're fully done.
+    $layout->in_progress = NULL;
   }
 
   layout_set_layout_cache($layout);
@@ -1148,16 +1055,17 @@ function layout_block_configure_form_submit($form, &$form_state) {
  * AJAX callback to update the underlying layout form after updating a block.
  */
 function layout_block_configure_ajax_update($form, $form_state) {
+  $layout = $form_state['layout'];
   $block = $form_state['block'];
   $renderer = $form_state['renderer'];
-  $added_to_region = $form_state['region_name'];
+  $added_to_region = isset($layout->in_progress['region_name']) ? $layout->in_progress['region_name'] : $form_state['region_name'];
   if ($added_to_region) {
     $commands[] = ajax_command_close_modal_dialog();
-    $commands[] = ajax_command_append('#layout-editor-region-' . $added_to_region . ' .layout-editor-region-content', $renderer->render_block($block));
+    $commands[] = ajax_command_append('#layout-editor-region-' . $added_to_region . ' .layout-editor-region-content', $renderer->renderBlock($block));
   }
   else {
     $commands[] = ajax_command_close_modal_dialog();
-    $commands[] = ajax_command_replace('#layout-editor-block-' . $block->uuid, $renderer->render_block($block));
+    $commands[] = ajax_command_replace('#layout-editor-block-' . $block->uuid, $renderer->renderBlock($block));
   }
 
   return array(
@@ -1189,6 +1097,201 @@ function layout_block_remove_page(Layout $layout, LayoutBlock $block, $renderer_
   else {
     backdrop_set_message(t('Block "@title" removed.', array('@title' => $block->getAdminTitle())));
     backdrop_goto('admin/structure/layouts/manage/' . $layout->name);
+  }
+}
+
+
+/**
+ * Form callback; Displays form for adding new conditions to a layout or block.
+ *
+ * @param Layout $layout
+ *   The layout to which a condition is being added.
+ * @param LayoutBlock|null $block
+ *   If applying a condition to a particular block, the block instance.
+ */
+function layout_condition_add_form($form, &$form_state, Layout $layout, LayoutBlock $block = NULL) {
+  $form_state['layout'] = $layout;
+  $form_state['block'] = $block;
+  form_load_include($form_state, 'inc', 'layout', 'includes/layout.admin');
+
+  $form['#redirect'] = 'admin/structure/layouts/manage/' . $layout->name . '/settings';
+
+  if (isset($block)) {
+    $form['#title'] = t('Add condition for "@title" block', array('@title' => $block->getAdminTitle()));
+    $help = t('Add a new condition to limit the situations in which this block will be shown.');
+  }
+  else {
+    $form['#title'] = t('Add condition for "@title" layout', array('@title' => $layout->title));
+    $help = t('Add a new condition to limit the situations in which this layout will apply.');
+  }
+  $form['help'] = array(
+    '#markup' => '<p>' . $help . '</p>',
+  );
+
+  $all_access_info = _layout_get_all_info('layout_access');
+  $form['condition'] = array(
+    '#type' => 'select',
+    '#title' => t('Add condition'),
+    '#options' => array(),
+    '#required' => TRUE,
+  );
+  foreach ($all_access_info as $access_info) {
+    $form['condition']['#options'][$access_info['name']] = $access_info['title'];
+  }
+  $form['actions'] = array(
+    '#type' => 'actions',
+  );
+  $form['actions']['cancel'] = array(
+    '#type' => 'submit',
+    '#value' => t('Cancel'),
+    '#attributes' => array('class' => array('dialog-cancel')),
+    '#validate' => array(),
+    '#submit' => array(),
+  );
+  $form['actions']['add'] = array(
+    '#type' => 'submit',
+    '#value' => t('Add condition'),
+    '#submit' => array(
+      'layout_condition_add_form_submit',
+    ),
+    '#ajax' => array(
+      'callback' => 'layout_ajax_form_save_dialog',
+    ),
+  );
+
+  return $form;
+}
+
+/**
+ * Submit handler for layout_condition_add_form().
+ */
+function layout_condition_add_form_submit($form, &$form_state) {
+  $layout = $form_state['layout'];
+  $form_state['redirect'] = 'admin/structure/layouts/manage/' . $layout->name . '/condition/edit/' . $form_state['values']['condition'];
+  if ($block = $form_state['block']) {
+    $form_state['redirect'] .= '/' . $block->uuid;
+  }
+}
+
+/**
+ * Title callback; Provide the page title for configuring a layout condition.
+ */
+function layout_condition_edit_title(Layout $layout, $handler_id, LayoutBlock $block = NULL) {
+  if (isset($block->conditions[$handler_id])) {
+    $plugin_name = $block->conditions[$handler_id]->plugin;
+  }
+  elseif (isset($layout->conditions[$handler_id])) {
+    $plugin_name = $layout->conditions[$handler_id]->plugin;
+  }
+  else {
+    $plugin_name = $handler_id;
+  }
+  $access_info = layout_get_access_info($plugin_name);
+  if (isset($access_info['title'])) {
+    if ($block) {
+      return t('Configure condition "@condition" for "@title"', array('@condition' => $access_info['title'], '@title' => $block->getAdminTitle()));
+    }
+    else {
+      return t('Configure condition "@condition"', array('@condition' => $access_info['title']));
+    }
+  }
+}
+
+/**
+ * Form callback; Creates a form for editing a new or existing condition.
+ *
+ * This can be used to add a condition to either a layout or a block. If adding
+ * to a layout, the $block parameter will be empty.
+ */
+function layout_condition_edit_form($form, &$form_state, Layout $layout, $handler_id, LayoutBlock $block = NULL) {
+  if (is_numeric($handler_id)) {
+    if ($block) {
+      $handler = $block->conditions[$handler_id];
+    }
+    else {
+      $handler = $layout->conditions[$handler_id];
+    }
+  }
+  else {
+    $handler = layout_create_access($handler_id);
+    $handler->is_new = TRUE;
+  }
+
+  form_load_include($form_state, 'inc', 'layout', 'includes/layout.admin');
+
+  $form['#title'] = layout_condition_edit_title($layout, $handler_id, $block);
+  $form_state['layout'] = $layout;
+  $form_state['handler'] = $handler;
+  $form_state['block'] = $block;
+
+  $handler->form($form, $form_state);
+
+  $form['actions'] = array(
+    '#type' => 'actions',
+    '#weight' => 100,
+  );
+  $form['actions']['cancel'] = array(
+    '#type' => 'submit',
+    '#value' => t('Cancel'),
+    '#attributes' => array('class' => array('dialog-cancel')),
+    '#validate' => array(),
+    '#submit' => array(),
+  );
+  $form['actions']['submit'] = array(
+    '#type' => 'submit',
+    '#value' => $handler->is_new ? t('Add condition') : t('Save condition'),
+    '#validate' => array(
+      'layout_condition_edit_form_validate',
+    ),
+    '#submit' => array(
+      'layout_condition_edit_form_submit',
+    ),
+    '#ajax' => array(
+      'callback' => 'layout_ajax_form_save_dialog',
+    ),
+  );
+  return $form;
+}
+
+/**
+ * Validation handler for layout_condition_edit_form().
+ */
+function layout_condition_edit_form_validate($form, &$form_state) {
+  $handler = $form_state['handler'];
+  $handler->formValidate($form, $form_state);
+}
+
+/**
+ * Submit handler for layout_condition_edit_form().
+ *
+ * Saves a condition into the layout or block.
+ */
+function layout_condition_edit_form_submit($form, &$form_state) {
+  $layout = $form_state['layout'];
+  $block = $form_state['block'];
+  $handler = $form_state['handler'];
+  $handler->formSubmit($form, $form_state);
+  if (!empty($handler->is_new)) {
+    $handler->is_new = FALSE;
+    if ($block) {
+      $block->conditions[] = $handler;
+    }
+    else {
+      $layout->conditions[] = $handler;
+    }
+  }
+  layout_set_layout_cache($layout);
+
+  // Blocks return to the dialog/page for editing that block.
+  if ($block) {
+    $renderer_name = isset($layout->in_progress['renderer_name']) ? $layout->in_progress['renderer_name'] : 'editor';
+    $renderer = layout_create_renderer($renderer_name, $layout);
+    $form_state['redirect'] = $renderer->getUrl('configure-block', $block->uuid);
+  }
+  // Set the portion of the page to be updated for layouts.
+  else {
+    $form_state['ajax_rebuild_form'] = 'layout_settings_form';
+    $form_state['ajax_update'] = array('conditions', 'active');
   }
 }
 
@@ -1911,4 +2014,124 @@ function layout_menu_item_arguments_form($form, &$form_state, $menu_item) {
  */
 function layout_menu_item_access_form($form, &$form_state, $menu_item) {
   return $form;
+}
+
+
+/**
+ * AJAX handler that opens a form in a dialog.
+ *
+ * This AJAX handler is used both on the layout settings form and the layout
+ * content form.
+ *
+ * @see layout_settings_form()
+ * @see layout_block_configure_form()
+ */
+function layout_ajax_form_open_dialog($form, &$form_state) {
+  // Get the dialog path as set in the redirect.
+  $dialog_path = $form_state['redirect'];
+  $page_callback_result = NULL;
+  if ($router_item = menu_get_item($dialog_path)) {
+    if ($router_item['access']) {
+      if ($router_item['include_file']) {
+        require_once BACKDROP_ROOT . '/' . $router_item['include_file'];
+      }
+      $page_callback_result = call_user_func_array($router_item['page_callback'], $router_item['page_arguments']);
+    }
+  }
+  $html = is_string($page_callback_result) ? $page_callback_result : backdrop_render($page_callback_result);
+  if (isset($page_callback_result['#title'])) {
+    $title = $page_callback_result['#title'];
+  }
+  else {
+    $title = $router_item['title'];
+  }
+  $commands[] = ajax_command_open_modal_dialog($title, $html);
+  return array('#type' => 'ajax', '#commands' => $commands);
+}
+
+/**
+ * AJAX handler that saves a form in a dialog and updates the underlying form.
+ *
+ * This is meant for generic use. It depends on a few variables in $form_state:
+ *   - $form_state['ajax_rebuild_form']: The function name that builds the
+ *     underlying form that will be updated.
+ *   - $form_state['ajax_update']: An array of keys representing the portion
+ *     of the form that should be updated.
+ *   - $form_state['redirect']: If specified, the redirect location will be
+ *     opened as a dialog, acting as a tool to open a sequence of forms in
+ *     dialogs.
+ *
+ * @see layout_ajax_form_update()
+ */
+function layout_ajax_form_save_dialog($form, $form_state) {
+  $commands = array();
+  $commands[] = ajax_command_close_modal_dialog();
+
+  // If errors occurred in the dialog, show messages and re-display.
+  if (form_get_errors()) {
+    $html = '';
+    $html .= theme('status_messages');
+    $html .= backdrop_render($form);
+    $title = isset($form['#title']) ? $form['#title'] : backdrop_get_title();
+    $commands[] = ajax_command_open_modal_dialog($title, $html);
+  }
+  // If no errors, close the dialog and update the page.
+  else {
+    $commands[] = ajax_command_close_modal_dialog();
+
+    // If there is a part of the page that needs to be updated, update it.
+    if (!empty($form_state['ajax_update'])) {
+      $update_ajax = layout_ajax_form_update($form, $form_state);
+      $commands = array_merge($commands, $update_ajax['#commands']);
+    }
+
+    // If there is a second action that needs to be executed, open the next page.
+    if (!empty($form_state['redirect'])) {
+      $dialog_ajax = layout_ajax_form_open_dialog($form, $form_state);
+      $commands = array_merge($commands, $dialog_ajax['#commands']);
+    }
+  }
+
+  return array('#type' => 'ajax', '#commands' => $commands);
+}
+
+/**
+ * AJAX handler that updates a portion of the form.
+ *
+ * This is meant for generic use. It depends on a few variables in $form_state:
+ *   - $form_state['ajax_rebuild_form']: The function name that builds the
+ *     form that will be updated.
+ *   - $form_state['ajax_update']: An array of keys representing the portion
+ *     of the form that should be updated.
+ */
+function layout_ajax_form_update($form, $form_state) {
+  if (!isset($form_state['ajax_update']) || !isset($form_state['ajax_rebuild_form'])) {
+    return;
+  }
+
+  $replace_form = backdrop_rebuild_form($form_state['ajax_rebuild_form'], $form_state, $form);
+  $build_id = backdrop_render($replace_form['form_build_id']);
+  $replace_portion = $form_state['ajax_update'];
+  foreach ($replace_portion as $parent) {
+    if (isset($replace_form[$parent])) {
+      $replace_form = $replace_form[$parent];
+    }
+    else {
+      $replace_form = FALSE;
+      break;
+    }
+  }
+
+  if ($replace_form) {
+    // Update the portion of the form.
+    $html = backdrop_render($replace_form);
+    $commands[] = ajax_command_replace('#' . $replace_form['#id'], $html);
+    // And update the build ID so these new values are included when saving.
+    $commands[] = ajax_command_replace('#layout-settings-form input[name="form_build_id"]', $build_id);
+  }
+  else {
+    // @todo: Provide an error message if the target is not found.
+  }
+
+  return array('#type' => 'ajax', '#commands' => $commands);
 }

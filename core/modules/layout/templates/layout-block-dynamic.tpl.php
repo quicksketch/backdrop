@@ -37,7 +37,7 @@
 <?php if ($content_tag): ?>
 <<?php print $content_tag; ?><?php print $content_attributes; ?>>
 <?php endif; ?>
-<?php print $content; ?>
+<?php print render($content); ?>
 <?php if ($content_tag): ?>
 </<?php print $content_tag; ?>>
 <?php endif; ?>

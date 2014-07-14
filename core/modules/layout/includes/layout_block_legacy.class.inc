@@ -46,19 +46,6 @@ class LayoutBlockLegacy extends LayoutBlock {
   /**
    * {@inheritdoc}
    */
-  function getAdminPreview() {
-    // Remove any scripts/CSS/form tags from preview.
-    $content = $this->getContent();
-    $preview = '';
-    if (empty($preview)) {
-      $preview = parent::getAdminPreview();
-    }
-    return $preview;
-  }
-
-  /**
-   * {@inheritdoc}
-   */
   function form(&$form, &$form_state) {
     parent::form($form, $form_state);
 

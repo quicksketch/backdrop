@@ -21,6 +21,6 @@
 <?php print render($title_suffix); ?>
 
   <div class="block-content">
-    <?php print $content ?>
+    <?php print render($content); ?>
   </div>
 </div>

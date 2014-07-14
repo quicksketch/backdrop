@@ -7,15 +7,15 @@ class LayoutStyleDynamic extends LayoutStyle {
   /**
    * Constructor for a Layout style dynamic class.
    */
-  function __construct($plugin_name, array $settings = array()) {
-    $settings += array(
+  function __construct($plugin_name, array $data = array()) {
+    parent::__construct($plugin_name, $data);
+    $this->settings += array(
       'wrapper_tag' => 'div',
       'heading_tag' => 'h2',
       'heading_classes' => 'layout-block',
       'content_tag' => 'div',
       'content_classes' => '',
     );
-    parent::__construct($plugin_name, $settings);
   }
 
   /**
@@ -37,6 +37,7 @@ class LayoutStyleDynamic extends LayoutStyle {
         '#type' => 'select',
         '#options' => $tag_list,
         '#weight' => -1,
+        '#default_value' => $this->settings['wrapper_tag'],
       );
       $form['classes']['#title'] = t('Wrapper classes');
       $form['classes']['#states'] = array(
@@ -69,12 +70,13 @@ class LayoutStyleDynamic extends LayoutStyle {
         '#title' => t('Content tag'),
         '#type' => 'select',
         '#options' => $tag_list,
+        '#default_value' => $this->settings['content_tag'],
         '#weight' => 8,
       );
       $form['content_classes'] = array(
         '#title' => t('Content classes'),
         '#type' => 'textfield',
-        '#default_value' => $this->settings['classes'],
+        '#default_value' => $this->settings['content_classes'],
         '#description' => t('Additional classes to be added to the content within this block.'),
         '#states' => array(
           'invisible' => array('[name="style_settings[content_tag]"]' => array('value' => '')),

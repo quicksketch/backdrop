@@ -43,7 +43,7 @@ abstract class LayoutContext {
    *
    * @var mixed
    */
-  protected $data;
+  var $data;
 
   /**
    * The argument value from the URL or passed in directly.
@@ -75,6 +75,13 @@ abstract class LayoutContext {
   function label() {
     $info = layout_get_context_info($this->plugin);
     return $info['title'];
+  }
+
+  /**
+   * Set the data for this context.
+   */
+  function setData($data) {
+    $this->data = $data;
   }
 }
 

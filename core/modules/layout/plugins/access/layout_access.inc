@@ -6,8 +6,40 @@
 class LayoutAccess extends LayoutHandler {
 
   /**
+   * An array of contexts used by this access rule.
+   *
+   * Each context is keyed by names specified in hook_layout_access_info(). For
+   * example if hook_layout_access_info() specified an array of required
+   * contexts for a plugin such as:
+   * @code
+   * 'required contexts' = array(
+   *   'node1' => 'node',
+   *   'node2' => 'node',
+   * );
+   * @endcode
+   *
+   * Then this context variable would contain two fully loaded context objects,
+   * with the keys "node1" and "node2".
+   *
+   * @var array
+   */
+  var $contexts = array();
+
+  /**
+   * Constructor for a Layout access rule.
+   */
+  function __construct($plugin_name, array $data = array()) {
+    parent::__construct($plugin_name, $data);
+    $this->settings += array(
+      'contexts' => array(),
+    );
+  }
+
+  /**
    * Provides a human-readable summary of this access check's behavior.
    *
+   * @param $contexts
+   *   An array containing available contexts.
    * @return string
    *   The summary string for this access check.
    */
@@ -18,12 +50,10 @@ class LayoutAccess extends LayoutHandler {
   /**
    * Checks for access based on the available context.
    *
-   * @param $context
-   *   An array containing available contexts.
    * @return boolean
    *   The result of the access check.
    */
-  function checkAccess(array $contexts) {
+  function checkAccess() {
 
   }
 
@@ -31,6 +61,37 @@ class LayoutAccess extends LayoutHandler {
    * Settings form for configuring this access item.
    */
   function form(&$form, &$form_state) {
+    $layout = $form_state['layout'];
+    $info = layout_get_access_info($this->plugin);
+
+    $form['contexts'] = array(
+      '#tree' => TRUE,
+      '#weight' => -20,
+    );
+    if (isset($info['required contexts'])) {
+      foreach ($info['required contexts'] as $context_key => $context_type) {
+        if (isset($info['required contexts labels'][$context_key])) {
+          $label = $info['required contexts labels'][$context_key];
+        }
+        else {
+          $context_info = layout_get_context_info($context_type);
+          $label = $context_info['title'];
+        }
+        $options = array();
+        foreach ($layout->getContexts() as $layout_context_key => $context) {
+          if ($context->plugin === $context_type) {
+            $options[$layout_context_key] = $context->label();
+          }
+        }
+        $form['contexts'][$context_key] = array(
+          '#type' => 'select',
+          '#title' => $label,
+          '#default_value' => isset($this->settings['contexts'][$context_key]) ? $this->settings['contexts'][$context_key] : NULL,
+          '#options' => $options,
+          '#access' => count($options) > 1,
+        );
+      }
+    }
   }
 
 
@@ -45,50 +106,72 @@ class LayoutAccess extends LayoutHandler {
    * Submit handler for the settings form for this access item.
    */
   function formSubmit($form, &$form_state) {
-
+    $excluded = backdrop_map_assoc(array('cancel', 'submit', 'form_build_id', 'form_token', 'form_id', 'op'));
+    $settings = array_diff_key($form_state['values'], $excluded);
+    $this->settings = $settings;
   }
 
   /**
-   * Provides a child plugin's info based on the plugin name.
+   * Sets the contexts for this item from the full list of layout contexts.
    *
-   * For example the "Entity field value" class provides not a single plugin but
-   * one for every field configured on the site. In this situation the "parent"
-   * name would be the name of the providing plugin, e.g. "entity_field_value",
-   * and the child name would be the entity type, bundle, and field name, e.g.
-   * "node:article:field_image".
+   * This method converts all available contexts provided by a layout to
+   * consistent keys expected by the access rule. For example a layout might
+   * have contexts keyed as "node" and "node2", but an access rule may only use
+   * a single context keyed as "node". It's possible for either layout context
+   * to be stored as the single context needed for the access rule.
    *
-   * @param array $plugin_info
-   *   This plugin's info array as provided by hook_layout_access_info().
-   * @param string $parent_name
-   *   The name of the parent plugin.
-   * @param string $child_name
-   *   The identifier for the child plugin.
-   * @return array
-   *   An array of plugin info, as would be provided by
-   *   hook_layout_access_info(), or NULL if the child is not found.
+   * @param array $all_contexts
+   *   An array of context instances used by the entire layout that contains
+   *   this access rule.
+   * @return boolean
+   *   TRUE if all required contexts have been provided, FALSE if the layout's
+   *   contexts did not provide every required context needed by this access
+   *   rule.
    */
-  static function getChild(array $plugin_info, $parent_name, $child_name) {
-    return NULL;
+  function setContexts(array $all_contexts) {
+    $access_info = layout_get_access_info($this->plugin);
+    if (empty($access_info['required contexts'])) {
+      return TRUE;
+    }
+    return layout_set_handler_contexts($this->contexts, $all_contexts, $access_info['required contexts'], $this->settings['contexts']);
+
+//    // Match available contexts to ones required by this access item.
+//    foreach ($access_info['required contexts'] as $context_key => $context_type) {
+//      foreach ($all_contexts as $all_context_key => $context) {
+//        if ($context_type === $context->plugin) {
+//          // Check if the context requires a specific match, such as when there
+//          // are two contexts of the same type available.
+//          if (isset($this->settings['contexts'][$context_key])) {
+//            if ($this->settings['contexts'][$context_key] === $all_context_key) {
+//              $this->contexts[$context_key] = $context;
+//            }
+//          }
+//          // Set the context on match if there is no specific configuration.
+//          elseif (!isset($this->contexts[$context_key])) {
+//            $this->contexts[$context_key] = $context;
+//          }
+//        }
+//      }
+//    }
+//
+//    // Success if all contexts are met.
+//    if (count($access_info['required contexts']) !== count($this->contexts)) {
+//      $this->contexts = array();
+//      return FALSE;
+//    }
+//    return TRUE;
   }
 
   /**
-   * Provides an array of all child plugins provided by this class.
-   *
-   * This can be used to make a single class provide multiple plugins. This is
-   * particularly useful when an abstracted system can handle a lot of different
-   * things in the same manner, e.g. the Field system provides a single class
-   * that creates plugins for all fields in the system.
-   *
-   * @param array $plugin_info
-   *   This plugin's info array as provided by hook_layout_access_info().
-   * @param string $parent_name
-   *   The name of the parent plugin.
-   * @return array
-   *   An array of plugin info, as would be provided by
-   *   hook_layout_access_info().
+   * {@inheritdoc}
    */
-  static function getChilden(array $plugin_info, $parent) {
-    return NULL;
+  function toArray() {
+    $array = parent::toArray();
+    // Don't save empty context settings.
+    if (empty($array['settings']['contexts'])) {
+      unset($array['settings']['contexts']);
+    }
+    return $array;
   }
 }
 
@@ -96,8 +179,8 @@ class LayoutAccess extends LayoutHandler {
  * A common base class used for access handlers that may be negated.
  */
 class LayoutAccessNegatable extends LayoutAccess {
-  function __construct($plugin_name, array $config = array()) {
-    parent::__construct($plugin_name, $config);
+  function __construct($plugin_name, array $data = array()) {
+    parent::__construct($plugin_name, $data);
     // Ensure a setting always exists for negation.
     $this->settings += array(
       'negate' => FALSE,
@@ -108,12 +191,21 @@ class LayoutAccessNegatable extends LayoutAccess {
    * {@inheritdoc}
    */
   function form(&$form, &$form_state) {
+    parent::form($form, $form_state);
     $form['negate'] = array(
       '#type' => 'checkbox',
       '#title' => t('Reverse (NOT)'),
       '#weight' => 100,
       '#default_value' => $this->settings['negate'],
     );
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  function formSubmit($form, &$form_state) {
+    parent::formSubmit($form, $form_state);
+    $this->settings['negate'] = !empty($form_state['values']['negate']);
   }
 }
 
@@ -124,7 +216,7 @@ class LayoutAccessBroken extends LayoutAccess {
   function summary() {
     return t('Broken or missing access plugin');
   }
-  function checkAccess(array $contexts) {
+  function checkAccess() {
     return TRUE;
   }
 }

@@ -179,6 +179,25 @@ function layout_menu() {
     'type' => MENU_CALLBACK,
   ) + $base;
 
+  // Add/configure conditions for a block uses the same callback as layout.
+  $items['admin/structure/layouts/manage/%layout_cache/condition/add/%layout_cache_block'] = array(
+    'title' => 'Add condition',
+    'load arguments' => array(4),
+    'page callback' => 'backdrop_get_form',
+    'page arguments' => array('layout_condition_add_form', 4, 7),
+    'type' => MENU_CALLBACK,
+  ) + $base;
+
+  $items['admin/structure/layouts/manage/%layout_cache/condition/edit/%/%layout_cache_block'] = array(
+    'title' => 'Configure condition',
+    'load arguments' => array(4),
+    'title callback' => 'layout_condition_edit_title',
+    'title arguments' => array(4, 7, 8),
+    'page callback' => 'backdrop_get_form',
+    'page arguments' => array('layout_condition_edit_form', 4, 7, 8),
+    'type' => MENU_CALLBACK,
+  ) + $base;
+
   // Add menu entries for each custom layout path.
   foreach (layout_get_all_layout_menu_items() as $menu_item) {
     if (!empty($menu_item->disabled)) {
@@ -194,57 +213,22 @@ function layout_menu() {
 
     $path             = array();
     $page_arguments   = array($menu_item->name);
-    $access_arguments = array($menu_item->access);
-    $load_arguments   = array($menu_item->name, '%index', '%map');
+    $access_arguments = array($menu_item->name);
+    $load_arguments   = array($menu_item->name, '%map', '%index');
 
-    // Replace named placeholders with our own placeholder to load contexts.
-    $position = 0;
-
-    foreach (explode('/', $menu_item->path) as $bit) {
-      // Remove things like double slashes completely.
-      if (!isset($bit) || $bit === '') {
-        continue;
+    // Replace placeholders with named placeholders for known contexts.
+    foreach (explode('/', $menu_item->path) as $position => $bit) {
+      $placeholder = $bit;
+      if ($bit[0] === '%') {
+        $placeholder = '%layout_path';
       }
 
-      if ($bit[0] == '%' && $bit != '%') {
-        $placeholder = '%layout_arg';
-
-        // Chop off that %.
-        $name = substr($bit, 1);
-
-        // Check to see if the argument plugin wants to use a different
-        // placeholder. This will allow to_args.
-        if (!empty($menu_item->arguments[$name])) {
-          if (!empty($menu_item->arguments[$name]['name'])) {
-            // @port: previously ctools_get_argument.
-            $plugin = layout_get_argument($menu_item->arguments[$name]['name']);
-            if (isset($plugin['path placeholder'])) {
-              if (function_exists($plugin['path placeholder'])) {
-                $placeholder = $plugin['path placeholder']($menu_item->arguments[$name]);
-              }
-              else {
-                $placeholder = $plugin['path placeholder'];
-              }
-            }
-          }
-        }
-        // If an argument, swap it out with our argument loader and make sure
-        // the argument gets passed through to the page callback.
-        $path[]             = $placeholder;
-        $page_arguments[]   = $position;
-        $access_arguments[] = $position;
-      }
-      else if ($bit[0] != '!') {
-        $path[] = $bit;
-      }
-
-      // Increment position. We do it like this to skip empty items that
-      // could happen from erroneous paths like: this///that
-      $position++;
+      $path[]             = $placeholder;
+      $page_arguments[]   = $position;
+      $access_arguments[] = $position;
     }
 
     $menu_path = implode('/', $path);
-
     $items[$menu_path] = layout_page_menu_item($menu_item->menu, $access_arguments, $page_arguments, $load_arguments);
 
     // Add a parent menu item if one is configured.
@@ -256,6 +240,21 @@ function layout_menu() {
   }
 
   return $items;
+}
+
+/**
+ * Menu loader callback; Convert %layout_path placeholders to loaded objects.
+ */
+function layout_path_load($arg_value, $layout_name, $path_parts, $arg_position) {
+  $layout = layout_load($layout_name);
+  $contexts = $layout->getContexts();
+  $context_info = layout_get_context_info($contexts[$arg_position]->plugin);
+  if (isset($context_info['load callback']) && function_exists($context_info['load callback'])) {
+    return $context_info['load callback']($arg_value);
+  }
+
+  // Pass-through the string argument if no load callback specified.
+  return $arg_value;
 }
 
 /**
@@ -399,24 +398,34 @@ function layout_theme() {
   }
 
   // Register all styles.
-  $styles = _layout_get_all_info('layout_styles');
+  $styles = _layout_get_all_info('layout_style');
   foreach ($styles as $style) {
     if (!empty($style['block theme'])) {
       $items[$style['block theme']] = array(
         'variables' => array('layout' => NULL, 'content' => NULL, 'block' => NULL, 'style' => NULL, 'settings' => array(), 'attributes_array' => array()),
-        'path' => $style['path'],
       );
       if (isset($style['file'])) {
         $items[$style['block theme']]['file'] = $style['file'];
+      }
+      if (isset($style['path'])) {
+        $items[$style['block theme']]['path'] = $style['path'];
+      }
+      if (isset($style['template'])) {
+        $items[$style['block theme']]['template'] = $style['template'];
       }
     }
     if (!empty($style['region theme'])) {
       $items[$style['region theme']] = array(
         'variables' => array('layout' => NULL, 'blocks' => NULL, 'style' => NULL, 'settings' => array(), 'attributes_array' => array()),
-        'path' => $style['path'],
       );
       if (isset($style['file'])) {
         $items[$style['region theme']]['file'] = $style['file'];
+      }
+      if (isset($style['path'])) {
+        $items[$style['region theme']]['path'] = $style['path'];
+      }
+      if (isset($style['template'])) {
+        $items[$style['region theme']]['path'] = $style['path'];
       }
     }
 
@@ -429,7 +438,7 @@ function layout_theme() {
       }
     }
   }
-
+debug($items);
   return $items;
 }
 
@@ -475,12 +484,14 @@ function layout_autoload_info() {
     'LayoutContextBroken' => 'plugins/context/layout_context.inc',
     'LayoutStringContext' => 'plugins/context/layout_context.inc',
     'NodeLayoutContext' => 'plugins/context/node_layout_context_handler.inc',
+    'UserLayoutContext' => 'plugins/context/user_layout_context_handler.inc',
 
     // Access handlers.
     'LayoutAccess' => 'plugins/access/layout_access.inc',
     'LayoutAccessBroken' => 'plugins/access/layout_access.inc',
     'LayoutAccessNegatable' => 'plugins/access/layout_access.inc',
     'LayoutAccessFront' => 'plugins/access/layout_access_front.inc',
+    'LayoutAccessUserRole' => 'plugins/access/layout_access_user_role.inc',
 
     // Renderer handlers.
     'LayoutRendererEditor' => 'plugins/renderers/layout_renderer_editor.inc',
@@ -606,7 +617,7 @@ function layout_load($layout_name) {
 function layout_menu_item_load($menu_item_name) {
   $menu_items = layout_get_all_layout_menu_items();
   $path = config_get('layout.menu_item.' . $menu_item_name, 'path');
-  return $path && isset($menu_items[$path]) ? $menu_items[$path] : FALSE;
+  return ($path && isset($menu_items[$path])) ? $menu_items[$path] : FALSE;
 }
 
 /**
@@ -849,6 +860,8 @@ function layout_create_access($access_plugin_name, $config = array()) {
 
 /**
  * Helper function to create a Layout Renderer.
+ *
+ * @return LayoutRenderer
  */
 function layout_create_renderer($renderer_plugin_name, Layout $layout) {
   // Renderers do not have "broken" classes if they do not exist. As renderers
@@ -930,7 +943,14 @@ function layout_cache_menu_item_load($layout_name) {
  */
 function layout_cache_block_load($layout_block_uuid, $layout_name) {
   $layout = layout_cache_load($layout_name);
-  return isset($layout->content[$layout_block_uuid]) ? $layout->content[$layout_block_uuid] : FALSE;
+  $block = FALSE;
+  if (isset($layout->in_progress['block']) && $layout->in_progress['block']->uuid === $layout_block_uuid) {
+    $block = $layout->in_progress['block'];
+  }
+  elseif (isset($layout->content[$layout_block_uuid])) {
+    $block = $layout->content[$layout_block_uuid];
+  }
+  return $block;
 }
 
 /**
@@ -997,4 +1017,48 @@ function layout_context_required_by_path($path) {
   }
 
   return $required_contexts;
+}
+
+/**
+ * Helper function for settings contexts on a layout handler.
+ *
+ * @param array $contexts
+ *   An array of contexts that will be set by reference if all required contexts
+ *   are found.
+ * @param array $all_contexts
+ *   The full array of contexts on an entire layout, from which the required
+ *   contexts will be selected.
+ * @param array $required_contexts
+ *   The array of context keys and types that need to be selected from
+ *   the $all_contexts array and populated into the $contexts array.
+ * @param array $context_settings
+ *   If a plugin has multiple contexts, a user may select which context should
+ *   be used. This array will be keyed by the plugin's required context keys,
+ *   with the values being the overall layout's context keys.
+ */
+function layout_set_handler_contexts(array &$contexts, array $all_contexts, array $required_contexts, array $context_settings) {
+  foreach ($required_contexts as $required_context_key => $context_type) {
+    // Use the configured context if available.
+    if (isset($context_settings[$required_context_key])) {
+      $layout_context_key = $context_settings[$required_context_key];
+      if (isset($all_contexts[$layout_context_key]) && $all_contexts[$layout_context_key]->plugin === $context_type) {
+        $contexts[$required_context_key] = $all_contexts[$layout_context_key];
+        break;
+      }
+    }
+    // Otherwise use the first context that matches the right type.
+    foreach ($all_contexts as $layout_context) {
+      if ($context_type == $layout_context->plugin) {
+        $contexts[$required_context_key] = $layout_context;
+        break 2;
+      }
+    }
+    // If we reach here, no matching required context was found, empty all
+    // contexts to prevent partial functionality and return FALSE.
+    $contexts = array();
+    return FALSE;
+  }
+
+  // All required contexts populated successfully.
+  return TRUE;
 }

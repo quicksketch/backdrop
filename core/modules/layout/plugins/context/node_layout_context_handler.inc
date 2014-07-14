@@ -8,13 +8,13 @@ class NodeLayoutContext extends LayoutContext {
     return 'node';
   }
 
-  function humanLabel() {
-    if (isset($this->options['nid'])) {
-      if ($node = node_load($this->options['nid'])) {
+  function label() {
+    if (isset($this->settings['nid'])) {
+      if ($node = node_load($this->settings['nid'])) {
         return t('Node: @nid (@title)', array('@nid' => $node->nid, '@title' => $node->title));
       }
       else {
-        return t('Unknown node: @nid', array('@nid' =>$this->options['nid']));
+        return t('Unknown node: @nid', array('@nid' =>$this->settings['nid']));
       }
     }
     elseif ($this->locked) {

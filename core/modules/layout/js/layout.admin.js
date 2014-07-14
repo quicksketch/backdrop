@@ -49,6 +49,7 @@ Backdrop.behaviors.layoutConfigure = {
  */
 Backdrop.behaviors.layoutDisplayEditor = {
   attach: function(context) {
+    // Apply drag and drop to regions.
     var $regions = $('.layout-editor-region-content').once('layout-sortable');
     if ($regions.length) {
       $regions.sortable({
@@ -58,6 +59,13 @@ Backdrop.behaviors.layoutDisplayEditor = {
         placeholder: 'layout-editor-placeholder layout-editor-block',
         forcePlaceholderSize: true
       });
+    }
+
+    // Detect the addition of new blocks.
+    if ($(context).hasClass('layout-editor-block')) {
+      var regionName = $(context).closest('.layout-editor-region').data('regionName');
+      var positions = $('input[name="content[positions][' + regionName + ']"]').get(0);
+      positions.value += ',' + $(context).data('blockId');
     }
   },
   /**

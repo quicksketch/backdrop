@@ -56,9 +56,11 @@
 }
 
 /* Layout editor. */
-.layout-editor-region-content {
+.layout-editor-region {
   border: 1px dashed #CCC;
-  margin: -1px;
+  padding: 0 12px;
+}
+.layout-editor-region-content {
   min-height: 120px;
 }
 .layout-editor-region-title .label {

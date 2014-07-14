@@ -136,7 +136,8 @@ function theme_layout_settings_context_table($variables) {
  * Clean up the panel pane variables for the template.
  */
 function template_preprocess_layout_block(&$variables) {
-  $content = &$variables['content'];
+  $content = $variables['content'];
+  $block = $variables['block'];
 
   $variables['classes_array'] = array();
   $variables['title_prefix'] = '';
@@ -193,11 +194,9 @@ function template_preprocess_layout_block(&$variables) {
   $delimiter = '__';
 
   // Add template file suggestion for content type and sub-type.
-  $variables['theme_hook_suggestions'][] = $base . $delimiter . strtr($content->type, '-', '_');
-  $variables['theme_hook_suggestions'][] = $base . $delimiter . strtr($content->type, '-', '_') . $delimiter . strtr($content->subtype, '-', '_');
+  $variables['theme_hook_suggestions'][] = $base . $delimiter . strtr($block->plugin, '-', '_');
 
   $variables['title'] = !empty($content->title) ? $content->title : '';
-
   $variables['content'] = !empty($content->content) ? $content->content : '';
 }
 

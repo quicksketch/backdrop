@@ -47,43 +47,45 @@ class LayoutBlock extends LayoutHandler {
    *   The module that provides this block.
    * @param string $delta
    *   The key for this block within the module.
-   * @param array $settings
+   * @param array $data
    *   Settings that provide current configuration of the block, such as
    *   access rules, style settings, block settings, etc.
    */
-  function __construct($plugin_name, array $settings = array()) {
+  function __construct($plugin_name, array $data = array()) {
     $this->plugin = $plugin_name;
 
     // Provide defaults.
-    $settings += array(
+    $data += array(
       'settings' => array(),
       'style' => array(
         'plugin' => 'default',
-        'settings' => array(),
+        'data' => array(),
       ),
       'conditions' => array(),
+    );
+    $data['settings'] += array(
+      'title_display' => LAYOUT_TITLE_DEFAULT,
+      'title' => '',
+      'style' => 'default',
+      'block_settings' => array(),
+      'contexts' => array(),
     );
 
     // Initialize basics, module, delta, and UUID.
     list($this->module, $this->delta) = explode(':', $plugin_name);
-    $this->uuid = isset($settings['uuid']) ? $settings['uuid'] : NULL;
+    $this->uuid = isset($data['uuid']) ? $data['uuid'] : NULL;
     $this->is_new = !$this->uuid;
 
     // Initialize the style.
-    $this->style = layout_create_handler('layout_style', $settings['style']['plugin'], $settings['style']['settings']);
+    $this->style = layout_create_handler('layout_style', $data['style']['plugin'], $data['style']['data']);
 
     // Initialize conditions.
-    foreach ($settings['conditions'] as $condition) {
-      $this->conditions[] = layout_create_handler('layout_condition', $condition['plugin'], $condition['settings']);
+    foreach ($data['conditions'] as $condition) {
+      $this->conditions[] = layout_create_handler('layout_access', $condition['plugin'], $condition['data']);
     }
 
     // All other settings.
-    $settings['settings'] += array(
-      'title_display' => LAYOUT_TITLE_DEFAULT,
-      'title' => '',
-      'block_settings' => array(),
-    );
-    $this->settings = $settings['settings'];
+    $this->settings = $data['settings'];
   }
 
   /**
@@ -111,7 +113,7 @@ class LayoutBlock extends LayoutHandler {
   }
 
   /**
-   * Return the content of a block as provided by hook_block_view().
+   * Return the content of a block.
    *
    * @return mixed
    */
@@ -183,11 +185,55 @@ class LayoutBlock extends LayoutHandler {
       'delta' => $this->delta,
       'settings' => $this->settings,
       'uuid' => $this->uuid,
-      'style' => $this->style->toArray(),
+      'style' => array(
+        'plugin' => $this->style->plugin,
+        'data' => $this->style->toArray(),
+      ),
     );
     foreach ($this->conditions as $condition) {
-      $array['conditions'][] = $condition->toArray();
+      $array['conditions'][] = array(
+        'plugin' => $condition->plugin,
+        'data' => $condition->toArray(),
+      );
     }
     return $array;
   }
+
+  /**
+   * Set the contexts for this block.
+   */
+  function setContexts(array $all_contexts) {
+    $block_info = layout_get_block_info($this->module, $this->delta);
+    $all_contexts_set = TRUE;
+    if (!empty($block_info['required contexts'])) {
+      $all_contexts_set = layout_set_handler_contexts($this->contexts, $all_contexts, $block_info['required contexts'], $this->settings['contexts']);
+    }
+    if (!$all_contexts_set) {
+      return FALSE;
+    }
+
+    // Let each condition select its contexts as needed as well.
+    foreach ($this->conditions as $condition) {
+      $all_contexts_set = $condition->setContexts($all_contexts);
+      if (!$all_contexts_set) {
+        return FALSE;
+      }
+    }
+
+    // Contexts set for the block and all its children.
+    return TRUE;
+  }
+
+  /**
+   * Check if this block should be shown based on current contexts.
+   */
+  function checkAccess() {
+    foreach ($this->conditions as $condition) {
+      if (!$condition->checkAccess()) {
+        return FALSE;
+      }
+    }
+    return TRUE;
+  }
+
 }

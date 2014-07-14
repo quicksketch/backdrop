@@ -1,52 +1,18 @@
 <?php
 
 /**
- * The standard render pipeline for a Panels display object.
+ * The standard render for a Layout display object.
  *
- * Given a fully-loaded panels_display object, this class will turn its
- * combination of layout, panes, and styles into HTML, invoking caching
- * appropriately along the way. Interacting with the renderer externally is
- * very simple - just pass it the display object and call the render() method:
+ * Given a fully-loaded Layout object, this class will turn its combination of
+ * layout, blocks, and styles into HTML, invoking caching appropriately along
+ * the way. Interacting with the renderer externally is very simple - just pass
+ * it the display object and call the render() method:
  *
  * @code
- *   // given that $display is a fully loaded Panels display object
- *   $renderer = panels_get_renderer_handler('standard', $display)
+ *   // Given that $layout is a fully loaded Layout object.
+ *   $renderer = layout_get_renderer('standard', $layout)
  *   $html_output = $renderer->render();
  * @endcode
- *
- * Internally, the render pipeline is divided into two phases, prepare and
- * render:
- *   - The prepare phase transforms the skeletal data on the provided
- *     display object into a structure that is expected by the render phase.
- *     It is divided into a series of discrete sub-methods and operates
- *     primarily by passing parameters, all with the intention of making
- *     subclassing easier.
- *   - The render phase relies primarily on data stored in the renderer object's
- *     properties, presumably set in the prepare phase. It iterates through the
- *     rendering of each pane, pane styling, placement in panel regions, region
- *     styling, and finally the arrangement of rendered regions in the layout.
- *     Caching, if in use, is triggered per pane, or on the entire display.
- *
- * In short: prepare builds conf, render renders conf. Subclasses should respect
- * this separation of responsibilities by adhering to these loose guidelines,
- * given a loaded display object:
- *   - If your renderer needs to modify the datastructure representing what is
- *     to be rendered (panes and their conf, styles, caching, etc.), it should
- *     use the prepare phase.
- *   - If your renderer needs to modify the manner in which that renderable
- *     datastructure data is rendered, it should use the render phase.
- *
- * In the vast majority of use cases, this standard renderer will be sufficient
- * and need not be switched out/subclassed; style and/or layout plugins can
- * accommodate nearly every use case. If you think you might need a custom
- * renderer, consider the following criteria/examples:
- *   - Some additional markup needs to be added to EVERY SINGLE panel.
- *   - Given a full display object, just render one pane.
- *   - Show a Panels admin interface.
- *
- * The system is almost functionally identical to the old procedural approach,
- * with some exceptions (@see panels_renderer_legacy for details). The approach
- * here differs primarily in its friendliness to tweaking in subclasses.
  */
 class LayoutRendererStandard {
   /**
@@ -69,9 +35,9 @@ class LayoutRendererStandard {
   /**
    * A multilevel array of rendered data. The first level of the array
    * indicates the type of rendered data, typically with up to three keys:
-   * 'layout', 'regions', and 'panes'. The relevant rendered data is stored as
+   * 'layout', 'regions', and 'blocks'. The relevant rendered data is stored as
    * the value for each of these keys as it is generated:
-   *  - 'panes' are an associative array of rendered output, keyed on pane id.
+   *  - 'blocks' are an associative array of rendered output, keyed on UUID.
    *  - 'regions' are an associative array of rendered output, keyed on region
    *    name.
    *  - 'layout' is the whole of the rendered output.
@@ -83,12 +49,12 @@ class LayoutRendererStandard {
   /**
    * A multilevel array of data prepared for rendering. The first level of the
    * array indicates the type of prepared data. The standard renderer populates
-   * and uses two top-level keys, 'panes' and 'regions':
-   *  - 'panes' are an associative array of pane objects to be rendered, keyed
-   *    on pane id and sorted into proper rendering order.
+   * and uses two top-level keys, 'blocks' and 'regions':
+   *  - 'blocks' are an associative array of block objects to be rendered, keyed
+   *    on UUID and sorted into proper rendering order.
    *  - 'regions' are an associative array of regions, keyed on region name,
-   *    each of which is itself an indexed array of pane ids in the order in
-   *    which those panes appear in that region.
+   *    each of which is itself an indexed array of UUIDs in the order in
+   *    which those blocks appear in that region.
    *
    * @var array
    */
@@ -98,7 +64,7 @@ class LayoutRendererStandard {
    * Boolean state variable, indicating whether or not the prepare() method has
    * been run.
    *
-   * This state is checked in panels_renderer_standard::render_layout() to
+   * This state is checked in LayoutRendererStandard::render_layout() to
    * determine whether the prepare method should be automatically triggered.
    *
    * @var bool
@@ -174,59 +140,55 @@ class LayoutRendererStandard {
    *
    * If you override this method, it is important that you either call this
    * method via parent::prepare(), or manually set $this->prep_run = TRUE.
-   *
-   * @param mixed $external_settings
-   *  An optional parameter allowing external code to pass in additional
-   *  settings for use in the preparation process. Not used in the default
-   *  renderer, but included for interface consistency.
    */
-  function prepare($external_settings = NULL) {
+  function prepare() {
     $this->prepare_blocks($this->layout->content);
     $this->prepare_regions($this->layout->positions, $this->layout->settings);
     $this->prep_run = TRUE;
   }
 
   /**
-   * Prepare the list of panes to be rendered, accounting for visibility/access
+   * Prepare the list of blocks to be rendered, accounting for visibility/access
    * settings and rendering order.
    *
    * This method represents the standard approach for determining the list of
-   * panes to be rendered that is compatible with all parts of the Panels
-   * architecture. It first applies visibility & access checks, then sorts panes
+   * blocks to be rendered that is compatible with all parts of the Layout
+   * architecture. It first applies visibility & access checks, then sort blocks
    * into their proper rendering order, and returns the result as an array.
    *
    * Inheriting classes should override this method if that renderer needs to
-   * regularly make additions to the set of panes that will be rendered.
+   * regularly make additions to the set of blocks that will be rendered.
    *
    * @param array $blocks
-   *  An associative array of block data (stdClass objects), keyed on block ID.
+   *  An associative array of block data (LayoutBlock objects), keyed by UUID.
    * @return array
-   *  An associative array of panes to be rendered, keyed on pane id and sorted
+   *  An associative array of blocks to be rendered, keyed on UUID and sorted
    *  into proper rendering order.
    */
   function prepare_blocks($blocks) {
     // Use local variables as writing to them is very slightly faster
     $first = $normal = $last = array();
 
-    // Prepare the list of panes to be rendered
+    // Prepare the list of blocks to be rendered
     foreach ($blocks as $uuid => $block) {
-      if (empty($this->admin)) {
-        // If this pane is not visible to the user, skip out and do the next one
-        if (!$block->shown || !layout_block_access($block, $this->layout)) {
-          continue;
-        }
+      // Assign contexts to each block.
+      $block->setContexts($this->layout->getContexts());
+
+      // Then check access on the block.
+      if (empty($this->admin) && !$block->checkAccess()) {
+        continue;
       }
 
       $block_info = layout_get_block_info($block->module, $block->delta);
 
-      // If this pane wants to render last, add it to the $last array. We allow
-      // this because some panes need to be rendered after other panes,
+      // If this block wants to render last, add it to the $last array. We allow
+      // this because some blocks need to be rendered after other blocks,
       // primarily so they can do things like the leftovers of forms.
       if (!empty($block_info['render last'])) {
         $last[$uuid] = $block;
       }
       // If it wants to render first, add it to the $first array. This is used
-      // by panes that need to do some processing before other panes are
+      // by blocks that need to do some processing before other blocks are
       // rendered.
       else if (!empty($block_info['render first'])) {
         $first[$uuid] = $block;
@@ -285,7 +247,7 @@ class LayoutRendererStandard {
     if (empty($settings)) {
       // No region settings exist, init all with the defaults.
       foreach ($this->layout_info['regions'] as $region_id => $title) {
-        // Ensure this region has at least an empty panes array.
+        // Ensure this region has at least an empty block array.
         $blocks = !empty($region_block_list[$region_id]) ? $region_block_list[$region_id] : array();
 
         $regions[$region_id] = $default;
@@ -313,52 +275,34 @@ class LayoutRendererStandard {
   }
 
   /**
-   * Build inner content, then hand off to layout-specified theme function for
-   * final render step.
-   *
-   * This is the outermost method in the Panels render pipeline. It calls the
-   * inner methods, which return a content array, which is in turn passed to the
-   * theme function specified in the layout plugin.
+   * Render the entire layout and attach meta data.
    *
    * @return string
    *  Themed & rendered HTML output.
    */
   function render() {
-    // Attach out-of-band data first.
-    $this->add_meta();
-
-    if (empty($this->layout->cache['method']) || !empty($this->layout->skip_cache)) {
-      return $this->render_layout();
-    }
-    else {
-      $cache = panels_get_cached_content($this->layout, $this->layout->args, $this->layout->context);
-      if ($cache === FALSE) {
-        $cache = new panels_cache_object();
-        $cache->set_content($this->render_layout());
-        panels_set_cached_content($cache, $this->layout, $this->layout->args, $this->layout->context);
-      }
-      return $cache->content;
-    }
+    $this->addMeta();
+    return $this->render_layout();
   }
 
   /**
    * Perform display/layout-level render operations.
    *
-   * This method triggers all the inner pane/region rendering processes, passes
+   * This method triggers all the inner block/region rendering processes, passes
    * that to the layout plugin's theme callback, and returns the rendered HTML.
    *
    * If display-level caching is enabled and that cache is warm, this method
    * will not be called.
    *
    * @return string
-   *   The HTML string representing the entire rendered, themed panel.
+   *   The HTML string representing the entire rendered, themed layout.
    */
   function render_layout() {
     if (empty($this->prep_run)) {
       $this->prepare();
     }
-    $this->render_blocks();
-    $this->render_regions();
+    $this->renderBlocks();
+    $this->renderRegions();
 
     if ($this->admin && !empty($this->layout_info['admin theme'])) {
       $theme = $this->layout_info['admin theme'];
@@ -377,7 +321,7 @@ class LayoutRendererStandard {
    * This must be done before render, because layouts-within-layouts must have
    * their CSS added in the right order: inner content before outer content.
    */
-  function add_meta() {
+  function addMeta() {
     if (!empty($this->layout_info['css'])) {
       if (file_exists(path_to_theme() . '/' . $this->layout_info['css'])) {
         $this->add_css(path_to_theme() . '/' . $this->layout_info['css']);
@@ -397,7 +341,7 @@ class LayoutRendererStandard {
    *
    * To facilitate previews over Views, CSS can now be added in a manner
    * that does not necessarily mean just using backdrop_add_css. Therefore,
-   * during the panel rendering process, this method can be used to add
+   * during the layout rendering process, this method can be used to add
    * css and make certain that ti gets to the proper location.
    *
    * The arguments should exactly match backdrop_add_css().
@@ -417,17 +361,16 @@ class LayoutRendererStandard {
   }
 
   /**
-   * Render all prepared panes, first by dispatching to their plugin's render
-   * callback, then handing that output off to the pane's style plugin.
+   * Render all prepared blocks, first by dispatching to their plugin's render
+   * callback, then handing that output off to the block's style plugin.
    *
    * @return array
-   *   The array of rendered panes, keyed on pane pid.
+   *   The array of rendered blocks, keyed on block UUID.
    */
-  function render_blocks() {
-    // First, render all the panes into little boxes.
+  function renderBlocks() {
     $this->rendered['blocks'] = array();
     foreach ($this->prepared['blocks'] as $uuid => $block) {
-      $content = $this->render_block($block);
+      $content = $this->renderBlock($block);
       if ($content) {
         $this->rendered['blocks'][$uuid] = $content;
       }
@@ -436,127 +379,56 @@ class LayoutRendererStandard {
   }
 
   /**
-   * Render a pane using its designated style.
+   * Render a block using its designated style.
    *
-   * This method also manages 'title pane' functionality, where the title from
-   * an individual pane can be bubbled up to take over the title for the entire
+   * This method also manages 'title block' functionality, where the title from
+   * an individual block can be bubbled up to take over the title for the entire
    * display.
    *
-   * @param stdClass $pane
-   *  A Panels pane object, as loaded from the database.
+   * @param LayoutBlock $block
+   *   The block to be rendered.
    */
-  function render_block(&$block) {
-    $content = $this->render_block_content($block);
-    if ($this->layout->settings['title_display'] == LAYOUT_TITLE_BLOCK && !empty($this->layout->settings['title_pane']) && $this->layout->settings['title_pane'] == $block->uuid) {
+  function renderBlock(&$block) {
+    if ($this->layout->settings['title_display'] === LAYOUT_TITLE_BLOCK) {
+      if ($block->uuid === $this->layout->settings['title_block']) {
+        $this->layout->settings['title'] = $block->getTitle();
+      }
+    }
 
-      // If the user selected to override the title with nothing, and selected
-      // this as the title pane, assume the user actually wanted the original
-      // title to bubble up to the top but not actually be used on the pane.
-      if (empty($content->title) && !empty($content->original_title)) {
-        $this->layout->stored_pane_title = $content->original_title;
+    $output = '';
+    if ($content = $block->getContent()) {
+      $style = layout_get_style_info($block->style->plugin);
+
+      // Assemble a structured content array.
+      $content = (object) array(
+        'title' => $block->getTitle(),
+        'content' => $content,
+      );
+
+      if (isset($style) && isset($style['block theme'])) {
+        $output = theme($style['block theme'], array('layout' => $this->layout, 'block' => $block, 'content' => $content, 'style' => $style, 'settings' => $block->style->settings));
       }
       else {
-        $this->layout->stored_pane_title = !empty($content->title) ? $content->title : '';
+        // Fallback.
+        $output = theme('layout_block', array('layout' => $this->layout, 'block' => $block, 'content' => $content));
       }
     }
-
-    if (!empty($content->content)) {
-      $classes = array();
-      if (isset($block->style['settings']['classes'])) {
-        $classes = explode(' ', $block->style['settings']['classes']);
-      }
-      if (!empty($block->style['style'])) {
-        $style = layout_get_style_info($block->style['style']);
-
-        if (isset($style) && isset($style['block theme'])) {
-          $output = theme($style['block theme'], array('content' => $content, 'block' => $block, 'style' => $style, 'settings' => $block->style['settings'], 'classes' => $classes));
-          // This could be null if no theme function existed.
-          if (isset($output)) {
-            return $output;
-          }
-        }
-      }
-
-      // Fallback.
-      return theme('layout_block', array('content' => $content, 'block' => $block, 'display' => $this->layout));
-    }
+    return $output;
   }
 
   /**
-   * Render the interior contents of a single pane.
-   *
-   * This method retrieves pane content and produces a ready-to-render content
-   * object. It also manages pane-specific caching.
-   *
-   * @param stdClass $pane
-   *   A Panels pane object, as loaded from the database.
-   * @return stdClass $content
-   *   A renderable object, containing a subject, content, etc. Based on the
-   *   renderable objects used by the block system.
-   */
-  function render_block_content(&$pane) {
-    ctools_include('context');
-    // TODO finally safe to remove this check?
-    if (!is_array($this->layout->context)) {
-      watchdog('panels', 'renderer::render_block_content() hit with a non-array for the context', $this->layout, WATCHDOG_DEBUG);
-      $this->layout->context = array();
-    }
-
-    $content = FALSE;
-    $caching = !empty($block->cache['method']) && empty($this->layout->skip_cache);
-    if ($caching && ($cache = panels_get_cached_content($this->layout, $this->layout->args, $this->layout->context, $pane))) {
-      $content = $cache->content;
-    }
-    else {
-      if ($caching) {
-        // This is created before rendering so that calls to backdrop_add_js
-        // and backdrop_add_css will be captured.
-        $cache = new panels_cache_object();
-      }
-
-      $content = ctools_content_render($block->type, $block->subtype, $block->settings, array(), $this->layout->args, $this->layout->context);
-
-      if (empty($content)) {
-        return;
-      }
-
-      foreach (module_implements('panels_pane_content_alter') as $module) {
-        $function = $module . '_panels_pane_content_alter';
-        $function($content, $pane, $this->layout->args, $this->layout->context, $this, $this->layout);
-      }
-      if ($caching && isset($cache)) {
-        $cache->set_content($content);
-        panels_set_cached_content($cache, $this->layout, $this->layout->args, $this->layout->context, $pane);
-        $content = $cache->content;
-      }
-    }
-
-    // Pass long the css_id that is usually available.
-    if (!empty($block->css['css_id'])) {
-      $content->css_id = check_plain($block->css['css_id']);
-    }
-
-    // Pass long the css_class that is usually available.
-    if (!empty($block->css['css_class'])) {
-      $content->css_class = check_plain($block->css['css_class']);
-    }
-
-    return $content;
-  }
-
-  /**
-   * Render all prepared regions, placing already-rendered panes into their
+   * Render all prepared regions, placing already-rendered blocks into their
    * appropriate positions therein.
    *
    * @return array
-   *   An array of rendered panel regions, keyed on the region name.
+   *   An array of rendered layout regions, keyed on the region name.
    */
-  function render_regions() {
+  function renderRegions() {
     $this->rendered['regions'] = array();
 
-    // Loop through all panel regions, put all panes that belong to the current
-    // region in an array, then render the region. Primarily this ensures that
-    // the blocks are arranged in the proper order.
+    // Loop through all layout regions, put all blocks that belong to the
+    // current region in an array, then render the region. Primarily this
+    // ensures that the blocks are arranged in the proper order.
     foreach ($this->prepared['regions'] as $region_id => $conf) {
       $region_blocks = array();
       foreach ($conf['uuids'] as $uuid) {
@@ -565,29 +437,31 @@ class LayoutRendererStandard {
           $region_blocks[$uuid] = $this->rendered['blocks'][$uuid];
         }
       }
-      $this->rendered['regions'][$region_id] = $this->render_region($region_id, $region_blocks);
+      $this->rendered['regions'][$region_id] = $this->renderRegion($region_id, $region_blocks);
     }
 
     return $this->rendered['regions'];
   }
 
   /**
-   * Render a single panel region.
+   * Render a single layout region.
    *
-   * Primarily just a passthrough to the panel region rendering callback
-   * specified by the style plugin that is attached to the current panel region.
+   * Primarily just a passthrough to the layout region rendering callback
+   * specified by the style plugin that is attached to the current layout
+   * region.
    *
    * @param $region_id
-   *   The ID of the panel region being rendered
+   *   The ID of the layout region being rendered.
    * @param $blocks
    *   An array of blocks that are assigned to the region that's being rendered.
    *
    * @return string
    *   The rendered, HTML string output of the passed-in region.
    */
-  function render_region($region_id, $blocks) {
-    $style = $this->prepared['regions'][$region_id]['style'];
+  function renderRegion($region_id, $blocks) {
+    $style_name = $this->prepared['regions'][$region_id]['style'];
     $style_settings = $this->prepared['regions'][$region_id]['style settings'];
+    $style = layout_get_style_info($style_name);
 
     if ($style['region theme']) {
       $output = theme($style['region theme'], array('layout' => $this->layout, 'blocks' => $blocks, 'settings' => $style_settings, 'style' => $style));

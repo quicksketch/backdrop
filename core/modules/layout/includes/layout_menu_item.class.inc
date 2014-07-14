@@ -95,6 +95,13 @@ class LayoutMenuItem {
   var $storage = LAYOUT_STORAGE_NORMAL;
 
   /**
+   * An array of LayoutContext instances used by this menu item.
+   *
+   * @var array
+   */
+  private $contexts;
+
+  /**
    * Constructor for LayoutMenuItems.
    */
   function __construct($data) {
@@ -128,7 +135,15 @@ class LayoutMenuItem {
    */
   function save() {
     // Convert all properties to an array.
-    $data = (array) $this;
+    $data = array(
+      'name' => $this->name,
+      'module' => $this->module,
+      'storage' => $this->storage,
+      'title' => $this->title,
+      'path' => $this->path,
+      'menu' => $this->menu,
+      'arguments' => $this->arguments,
+    );
 
     config('layout.menu_item.' . $this->name)
       ->setData($data)
@@ -195,18 +210,21 @@ class LayoutMenuItem {
    * Get all contexts required or configured for this menu path.
    */
   function getContexts() {
-    // Required contexts are generated on-demand.
-    $contexts = layout_context_required_by_path($this->path);
-    // Then add in customized contexts.
-    foreach ($contexts as $key => $context) {
-      if (!$context->locked && isset($this->arguments[$key])) {
-        $argument = $this->arguments[$key];
-        $contexts[$key] = layout_create_context($this->arguments[$key]['plugin']);
-        $contexts[$key]->position = $argument['position'];
-        $contexts[$key]->plugin = $argument['plugin'];
-        $contexts[$key]->required = TRUE;
+    if (is_null($this->contexts)) {
+      // Required contexts are generated on-demand.
+      $contexts = layout_context_required_by_path($this->path);
+      // Then add in customized contexts.
+      foreach ($contexts as $key => $context) {
+        if (!$context->locked && isset($this->arguments[$key])) {
+          $argument = $this->arguments[$key];
+          $contexts[$key] = layout_create_context($this->arguments[$key]['plugin']);
+          $contexts[$key]->position = $argument['position'];
+          $contexts[$key]->plugin = $argument['plugin'];
+          $contexts[$key]->required = TRUE;
+        }
       }
+      $this->contexts = $contexts;
     }
-    return $contexts;
+    return $this->contexts;
   }
 }

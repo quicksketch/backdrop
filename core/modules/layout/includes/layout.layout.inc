@@ -52,6 +52,13 @@ function layout_layout_context_info() {
     'menu loaders' => array(
       '%node' => 'nid',
     ),
+    // In situations where this context is being used at an "unknown" (user-
+    // specified) path, provide a string that be used as the loader in
+    // hook_menu().
+    'path placeholder' => '%node',
+    // Given an argument, the callback that will be responsible for loading the
+    // main context data.
+    'load callback' => 'node_load',
   );
   $info['node_add'] = array(
     'title' => t('Node add form'),
@@ -75,6 +82,20 @@ function layout_layout_context_info() {
       'node/%node/edit',
     ),
   );
+  $info['user'] = array(
+    'title' => t('User'),
+    'description' => t('A user object.'),
+    'class' => 'UserLayoutContext',
+    'menu paths' => array(
+      'user/%user',
+      'user/%user/view',
+    ),
+    'menu loaders' => array(
+      '%user' => 'uid',
+    ),
+    'path placeholder' => '%user',
+    'load callback' => 'user_load',
+  );
   $info['string'] = array(
     'title' => t('String pass-through'),
     'description' => t('A pass-through context which allows a string to be passed from the URL to a block.'),
@@ -93,6 +114,21 @@ function layout_layout_access_info() {
     'title' => t('Front page'),
     'description' => t('Is this the front page.'),
     'class' => 'LayoutAccessFront',
+  );
+  $info['user_role'] = array(
+    'title' => t('User: role'),
+    'description' => t('Control access by role.'),
+    'class' => 'LayoutAccessUserRole',
+    // Contexts are specified as context key => context type. The key will be
+    // used in the $contexts array passed to the access class methods. The type
+    // references a context provided by hook_layout_context_info().
+    'required contexts' => array(
+      'user' => 'user',
+    ),
+    // Optional if needing to clarify between contexts of the same type.
+    'required context labels' => array(
+      'user' => t('User'),
+    ),
   );
   return $info;
 }
@@ -125,16 +161,18 @@ function layout_layout_style_info() {
     'description' => t('The default block rendering style with predictable tags provided by the site template.'),
     'region theme' => NULL,
     'block theme' => 'layout_block',
-    'path' => 'templates',
     'class' => 'LayoutStyle',
+    'template' => 'templates/layout-block',
+    'file' => 'includes/layout.theme.inc',
   );
   $info['dynamic'] = array(
     'title' => t('Dynamic'),
     'description' => t('Customizable rendering style in which every HTML tag can be configured.'),
     'region theme' => NULL,
     'block theme' => 'layout_block_dynamic',
-    'path' => 'templates',
     'class' => 'LayoutStyleDynamic',
+    'template' => 'templates/layout-block',
+    'file' => 'includes/layout.theme.inc',
   );
   return $info;
 }

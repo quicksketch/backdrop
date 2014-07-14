@@ -17,15 +17,15 @@ class LayoutStyle extends LayoutHandler {
    * @param array $plugin_name
    *   The name of the plugin actually being used, which may be pointing at
    *   a parent class of this one.
-   * @param array $settings
+   * @param array $data
    *   An array of configuration data.
    */
-  function __construct($plugin_name, array $settings = array(), $is_region = FALSE) {
-    $settings += array(
+  function __construct($plugin_name, array $data = array(), $is_region = FALSE) {
+    parent::__construct($plugin_name, $data);
+    $this->settings += array(
       'classes' => '',
     );
     $this->is_region = $is_region;
-    parent::__construct($plugin_name, $settings);
   }
 
   /**

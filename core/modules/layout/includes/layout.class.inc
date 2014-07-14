@@ -88,7 +88,7 @@ class Layout {
    *
    * @var array
    */
-  //var $context = array();
+  var $context = array();
 
   /**
    * An array of all conditional rules used by this layout.
@@ -175,6 +175,7 @@ class Layout {
       // Items are key => handler_type.
       'content' => 'block',
       'conditions' => 'layout_access',
+      // 'contexts' => 'layout_context',
     );
     foreach ($handlers as $property_key => $plugin_type) {
       foreach ($this->{$property_key} as $plugin_type_key => $plugin_data) {
@@ -187,27 +188,19 @@ class Layout {
    * Save a layout to config.
    */
   function save() {
-    // Convert all properties to an array. The "path" property needs special
-    // consideration because of it's "private" declaration.
-    $path = $this->path;
-    unset($this->path);
-    $data = (array) $this;
-    $data = array_merge(array('path' => $path), $data);
-    $this->path = $path;
-
-    // Remove unnecessary properties.
-    $remove_properties = array(
-      'is_new',
-      'changed',
-      'locked',
-      'menu_item',
-      'original_name',
+    $data = array(
+      'path' => $this->path,
+      'name' => $this->name,
+      'title' => $this->title,
+      'description' => $this->description,
+      'module' => $this->module,
+      'weight' => $this->weight,
+      'storage' => $this->storage,
+      'layout' => $this->layout,
+      'disabled' => $this->disabled,
+      'settings' => $this->settings,
+      'positions' => $this->positions,
     );
-    foreach ($remove_properties as $property) {
-      if (array_key_exists($property, $data)) {
-        unset($data[$property]);
-      }
-    }
 
     // Convert all stored conditions to arrays.
     // @todo: Save per-layout contexts and relationships.
@@ -218,7 +211,7 @@ class Layout {
       // 'relationships',
     );
     foreach ($sub_parts as $config_type) {
-      foreach ($data[$config_type] as $config_type_key => $config_type_data) {
+      foreach ($this->$config_type as $config_type_key => $config_type_data) {
         unset($config_type_data->is_new);
         $data[$config_type][$config_type_key] = array(
           'plugin' => $config_type_data->plugin,
@@ -402,7 +395,31 @@ class Layout {
     else {
       $contexts = array();
     }
+
+    // Add on the current user context, which is always available.
+    $contexts['current_user'] = layout_create_context('user');
+    $contexts['current_user']->setData($GLOBALS['user']);
+    $contexts['current_user']->plugin = 'user';
+
     return $contexts;
+  }
+
+  /**
+   * Set contexts on the layout.
+   *
+   * Before this method will work, all contexts must be initialized on this
+   * layout's menu item by using LayoutContext::setData(), otherwise access will
+   * always return FALSE.
+   */
+  function checkAccess() {
+    $contexts = $this->getContexts();
+    foreach ($this->conditions as $condition) {
+      $condition->setContexts($contexts);
+      if (!$condition->checkAccess()) {
+        return FALSE;
+      }
+    }
+    return TRUE;
   }
 }
 
