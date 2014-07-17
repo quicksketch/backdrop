@@ -113,12 +113,25 @@ function layout_layout_access_info() {
   $info['front'] = array(
     'title' => t('Front page'),
     'description' => t('Is this the front page.'),
-    'class' => 'LayoutAccessFront',
+    'class' => 'FrontLayoutAccess',
+  );
+  $info['language'] = array(
+    'title' => t('Site language'),
+    'description' => t('Control access by the currently active interface language.'),
+    'class' => 'LanguageLayoutAccess',
+  );
+  $info['user_permission'] = array(
+    'title' => t('User: permission'),
+    'description' => t('Control access by permission string.'),
+    'class' => 'UserPermissionLayoutAccess',
+    'required contexts' => array(
+      'user' => 'user',
+    ),
   );
   $info['user_role'] = array(
     'title' => t('User: role'),
     'description' => t('Control access by role.'),
-    'class' => 'LayoutAccessUserRole',
+    'class' => 'UserRoleLayoutAccess',
     // Contexts are specified as context key => context type. The key will be
     // used in the $contexts array passed to the access class methods. The type
     // references a context provided by hook_layout_context_info().
@@ -126,9 +139,14 @@ function layout_layout_access_info() {
       'user' => 'user',
     ),
     // Optional if needing to clarify between contexts of the same type.
-    'required context labels' => array(
+    'required contexts labels' => array(
       'user' => t('User'),
     ),
+  );
+  $info['path'] = array(
+    'title' => t('URL path'),
+    'description' => t('Control access by the current path.'),
+    'class' => 'PathLayoutAccess',
   );
   return $info;
 }

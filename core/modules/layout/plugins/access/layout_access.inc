@@ -219,4 +219,11 @@ class LayoutAccessBroken extends LayoutAccess {
   function checkAccess() {
     return TRUE;
   }
+  function form(&$form, &$form_state) {
+    $info = layout_get_access_info($this->plugin);
+    $class = isset($info['class']) ? $info['class'] : t('Unknown');
+    $form['error'] = array(
+      '#markup' => t('The class "@class" for the "@plugin" plugin could not be found.', array('@class' => $class, '@plugin' => $this->plugin)),
+    );
+  }
 }

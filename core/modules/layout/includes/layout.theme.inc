@@ -128,7 +128,12 @@ function theme_layout_settings_context_table($variables) {
     $row[] = backdrop_render($element[$key]['plugin']);
     $rows[] = $row;
   }
-  return theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => array('id' => 'layout-context-table')));
+  return theme('table', array(
+    'header' => $header,
+    'rows' => $rows,
+    'attributes' => array('id' => 'layout-context-table'),
+    'empty' => t('No contexts'),
+  ));
 }
 
 

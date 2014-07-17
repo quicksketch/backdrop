@@ -3,7 +3,7 @@
  * @file
  * Class for loading, modifying, and saving a layout access rule (condition).
  */
-class LayoutAccessFront extends LayoutAccessNegatable {
+class FrontLayoutAccess extends LayoutAccessNegatable {
   /**
    * {@inheritdoc}
    */

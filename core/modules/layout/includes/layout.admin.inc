@@ -231,7 +231,7 @@ function layout_settings_form($form, &$form_state, Layout $layout) {
     '#type' => 'item',
     '#description' => t('Contexts define what blocks are available within this layout. Most wildcards in the path will be associated with a context automatically.'),
     '#parents' => array('context'),
-    '#access' => count($contexts) > 0,
+    '#access' => count($contexts) > 1, // Current user context is always present.
   );
 
   $all_context_info = _layout_get_all_info('layout_context');
@@ -442,7 +442,7 @@ function layout_settings_form_condition_remove($form, &$form_state) {
   layout_set_layout_cache($form_state['layout']);
 
   $form_state['ajax_rebuild_form'] = 'layout_settings_form';
-  $form_state['ajax_update'] = array('conditions', 'active');
+  $form_state['ajax_update'] = array('conditions');
 }
 
 /**
@@ -989,7 +989,7 @@ function layout_block_configure_form_condition_remove($form, &$form_state) {
   layout_set_layout_cache($layout);
 
   $form_state['ajax_rebuild_form'] = 'layout_block_configure_form';
-  $form_state['ajax_update'] = array('conditions', 'active');
+  $form_state['ajax_update'] = array('conditions');
 }
 
 /**
@@ -1291,7 +1291,7 @@ function layout_condition_edit_form_submit($form, &$form_state) {
   // Set the portion of the page to be updated for layouts.
   else {
     $form_state['ajax_rebuild_form'] = 'layout_settings_form';
-    $form_state['ajax_update'] = array('conditions', 'active');
+    $form_state['ajax_update'] = array('conditions');
   }
 }
 
@@ -2045,7 +2045,7 @@ function layout_ajax_form_open_dialog($form, &$form_state) {
   else {
     $title = $router_item['title'];
   }
-  $commands[] = ajax_command_open_modal_dialog($title, $html);
+  $commands[] = ajax_command_open_modal_dialog($title, $html, array('dialogClass' => 'layout-dialog'));
   return array('#type' => 'ajax', '#commands' => $commands);
 }
 
@@ -2073,7 +2073,7 @@ function layout_ajax_form_save_dialog($form, $form_state) {
     $html .= theme('status_messages');
     $html .= backdrop_render($form);
     $title = isset($form['#title']) ? $form['#title'] : backdrop_get_title();
-    $commands[] = ajax_command_open_modal_dialog($title, $html);
+    $commands[] = ajax_command_open_modal_dialog($title, $html, array('dialogClass' => 'layout-dialog'));
   }
   // If no errors, close the dialog and update the page.
   else {

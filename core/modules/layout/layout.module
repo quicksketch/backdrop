@@ -75,7 +75,7 @@ function layout_menu() {
     'title' => 'Edit layout settings',
     'page callback' => 'backdrop_get_form',
     'page arguments' => array('layout_content_form', 4),
-    'type' => MENU_CALLBACK,
+    'type' => MENU_NORMAL_ITEM,
   ) + $base;
 
   $items['admin/structure/layouts/manage/%layout_cache/edit'] = array(
@@ -438,7 +438,7 @@ function layout_theme() {
       }
     }
   }
-debug($items);
+
   return $items;
 }
 
@@ -490,8 +490,12 @@ function layout_autoload_info() {
     'LayoutAccess' => 'plugins/access/layout_access.inc',
     'LayoutAccessBroken' => 'plugins/access/layout_access.inc',
     'LayoutAccessNegatable' => 'plugins/access/layout_access.inc',
-    'LayoutAccessFront' => 'plugins/access/layout_access_front.inc',
-    'LayoutAccessUserRole' => 'plugins/access/layout_access_user_role.inc',
+    'LanguageLayoutAccess' => 'plugins/access/language_layout_access.inc',
+    'FrontLayoutAccess' => 'plugins/access/front_layout_access.inc',
+    'PathLayoutAccess' => 'plugins/access/path_layout_access.inc',
+    'UserRoleLayoutAccess' => 'plugins/access/user_role_layout_access.inc',
+    'UserPermissionLayoutAccess' => 'plugins/access/user_permission_layout_access.inc',
+
 
     // Renderer handlers.
     'LayoutRendererEditor' => 'plugins/renderers/layout_renderer_editor.inc',

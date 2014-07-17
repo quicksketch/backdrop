@@ -1,11 +1,9 @@
 <?php
-
 /**
  * @file
  * Plugin to provide access control based upon role membership.
  */
-
-class LayoutAccessUserRole extends LayoutAccess {
+class UserRoleLayoutAccess extends LayoutAccess {
   /**
    * Constructor for a Layout access rule.
    */
