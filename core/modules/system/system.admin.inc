@@ -92,7 +92,7 @@ function system_admin_index() {
       // Sort links by title.
       uasort($admin_tasks, 'backdrop_sort_title');
       // Move 'Configure permissions' links to the bottom of each section.
-      $permission_key = "admin/people/permissions#module-$module";
+      $permission_key = "admin/config/people/permissions#module-$module";
       if (isset($admin_tasks[$permission_key])) {
         $permission_task = $admin_tasks[$permission_key];
         unset($admin_tasks[$permission_key]);
@@ -765,6 +765,8 @@ function _system_is_incompatible(&$incompatible, $files, $file) {
  * @see system_modules_submit()
  */
 function system_modules($form, $form_state = array()) {
+  backdrop_set_title('Modules');
+
   // Get current list of modules.
   $files = system_rebuild_module_data();
 
@@ -1211,6 +1213,8 @@ function system_modules_submit($form, &$form_state) {
  *   A form array representing the currently disabled modules.
  */
 function system_modules_uninstall($form, $form_state = NULL) {
+  backdrop_set_title('Uninstall modules');
+
   // Make sure the install API is available.
   include_once BACKDROP_ROOT . '/core/includes/install.inc';
 
@@ -1555,13 +1559,13 @@ function system_run_cron_submit($form, &$form_state) {
  * Form builder; Configure error reporting settings.
  *
  * @ingroup forms
- * @see system_settings_form()
+ * @see system_logging_settings_submit()
  */
-function system_logging_settings() {
+function system_logging_settings($form, &$form_state) {
   $form['error_level'] = array(
     '#type' => 'radios',
     '#title' => t('Error messages to display'),
-    '#default_value' => variable_get('error_level', ERROR_REPORTING_DISPLAY_ALL),
+    '#default_value' => config_get('system.logging', 'error_level'),
     '#options' => array(
       ERROR_REPORTING_HIDE => t('None'),
       ERROR_REPORTING_DISPLAY_SOME => t('Errors and warnings'),
@@ -1570,7 +1574,24 @@ function system_logging_settings() {
     '#description' => t('It is recommended that sites running on production environments do not display any errors.'),
   );
 
-  return system_settings_form($form);
+  $form['actions']['#type'] = 'actions';
+  $form['actions']['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Save configuration')
+  );
+  return $form;
+}
+
+/**
+ * Form submission handler for system_logging_settings().
+ *
+ * @ingroup forms
+ */
+function system_logging_settings_submit($form, &$form_state) {
+  config('system.logging')
+    ->set('error_level', $form_state['values']['error_level'])
+    ->save();
+  backdrop_set_message(t('The configuration options have been saved.'));
 }
 
 /**
@@ -1813,31 +1834,41 @@ function system_image_toolkit_settings() {
  * Form builder; Configure how the site handles RSS feeds.
  *
  * @ingroup forms
- * @see system_settings_form()
  */
 function system_rss_feeds_settings() {
+  $rss_config = config('system.rss');
   $form['feed_description'] = array(
     '#type' => 'textarea',
     '#title' => t('Feed description'),
-    '#default_value' => variable_get('feed_description', ''),
+    '#default_value' => $rss_config->get('rss_description'),
     '#description' => t('Description of your site, included in each feed.')
   );
   $form['feed_default_items'] = array(
     '#type' => 'select',
     '#title' => t('Number of items in each feed'),
-    '#default_value' => variable_get('feed_default_items', 10),
+    '#default_value' => $rss_config->get('rss_limit'),
     '#options' => backdrop_map_assoc(array(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 25, 30)),
     '#description' => t('Default number of items to include in each feed.')
   );
   $form['feed_item_length'] = array(
     '#type' => 'select',
     '#title' => t('Feed content'),
-    '#default_value' => variable_get('feed_item_length', 'fulltext'),
-    '#options' => array('title' => t('Titles only'), 'teaser' => t('Titles plus teaser'), 'fulltext' => t('Full text')),
+    '#default_value' => $rss_config->get('rss_viewmode'),
+    '#options' => array(
+      'title' => t('Titles only'),
+      'teaser' => t('Titles plus teaser'),
+      'fulltext' => t('Full text'),
+    ),
     '#description' => t('Global setting for the default display of content items in each feed.')
   );
 
-  return system_settings_form($form);
+  $form['actions']['#type'] = 'actions';
+  $form['actions']['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Save configuration')
+  );
+
+  return $form;
 }
 
 /**
