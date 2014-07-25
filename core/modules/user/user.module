@@ -99,6 +99,7 @@ function user_entity_info() {
   return array(
     'user' => array(
       'label' => t('User'),
+      'bundle label' => t('Type'),
       'controller class' => 'UserStorageController',
       'base table' => 'users',
       'fieldable' => TRUE,
@@ -998,6 +999,7 @@ function user_block_save($delta = '', $edit = array()) {
   switch ($delta) {
     case 'new':
       variable_set('user_block_whois_new_count', $edit['user_block_whois_new_count']);
+      debug('hi');
       break;
 
     case 'online':
@@ -1028,7 +1030,7 @@ function user_block_view($delta = '', $settings = array()) {
     case 'new':
       if (user_access('access content')) {
         // Retrieve a list of new users who have subsequently accessed the site successfully.
-        $new_count = isset($settings['user_block_max_list_count']) ? $settings['user_block_max_list_count'] : variable_get('user_block_whois_new_count', 5);
+        $new_count = isset($settings['user_block_whois_new_count']) ? $settings['user_block_whois_new_count'] : variable_get('user_block_whois_new_count', 5);
         $items = db_query_range('SELECT uid, name FROM {users} WHERE status <> 0 AND access <> 0 ORDER BY created DESC', 0, $new_count)->fetchAll();
         $output = theme('user_list', array('users' => $items));
 

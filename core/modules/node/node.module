@@ -120,6 +120,7 @@ function node_entity_info() {
   $return = array(
     'node' => array(
       'label' => t('Node'),
+      'bundle label' => t('Type'),
       'controller class' => 'NodeStorageController',
       'entity class' => 'Node',
       'base table' => 'node',

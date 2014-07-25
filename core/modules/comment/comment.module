@@ -75,6 +75,7 @@ function comment_entity_info() {
   $return = array(
     'comment' => array(
       'label' => t('Comment'),
+      'bundle label' => t('Node type'),
       'base table' => 'comment',
       'fieldable' => TRUE,
       'controller class' => 'CommentStorageController',
