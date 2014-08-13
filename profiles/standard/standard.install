@@ -196,23 +196,22 @@ function standard_install() {
   variable_set('node_submitted_page', FALSE);
 
   // Enable user picture support and set the default to a square thumbnail option.
-  variable_set('user_pictures', '1');
-  variable_set('user_picture_dimensions', '1024x1024');
-  variable_set('user_picture_file_size', '800');
-  variable_set('user_picture_style', 'thumbnail');
+  config('user.settings')
+    ->set('user_pictures', '1')
+    ->set('user_picture_dimensions', '1024x1024')
+    ->set('user_picture_file_size', '800')
+    ->set('user_picture_style', 'thumbnail')
+    ->save();
 
   // Allow visitor account creation with administrative approval.
-  variable_set('user_register', USER_REGISTER_VISITORS_ADMINISTRATIVE_APPROVAL);
+  config_set('user.settings', 'user_register', USER_REGISTER_VISITORS_ADMINISTRATIVE_APPROVAL);
 
   // Create a default vocabulary named "Tags", enabled for the 'article' content type.
   $description = st('Use tags to group articles on similar topics into categories.');
-  $help = st('Enter a comma-separated list of words to describe your content.');
   $vocabulary = entity_create('taxonomy_vocabulary', array(
     'name' => st('Tags'),
     'description' => $description,
     'machine_name' => 'tags',
-    'help' => $help,
-
   ));
   taxonomy_vocabulary_save($vocabulary);
 
@@ -232,12 +231,13 @@ function standard_install() {
   );
   field_create_field($field);
 
+  $help = st('Enter a comma-separated list of words to describe your content.');
   $instance = array(
     'field_name' => 'field_' . $vocabulary->machine_name,
     'entity_type' => 'node',
     'label' => 'Tags',
     'bundle' => 'article',
-    'description' => $vocabulary->help,
+    'description' => $help,
     'widget' => array(
       'type' => 'taxonomy_autocomplete',
       'weight' => -4,
@@ -336,7 +336,7 @@ function standard_install() {
   user_role_save($admin_role);
   user_role_grant_permissions($admin_role->rid, array_keys(module_invoke_all('permission')));
   // Set this as the administrator role.
-  variable_set('user_admin_role', $admin_role->rid);
+  config_set('user.settings', 'user_admin_role', $admin_role->rid);
 
   // Assign user 1 the "administrator" role.
   db_insert('users_roles')

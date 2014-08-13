@@ -126,6 +126,7 @@ function node_form_validate($form, &$form_state) {
  */
 function node_form($form, &$form_state, Node $node) {
   global $user;
+  $config = config('user.settings');
 
   // During initial form build, add the node entity to the form state for use
   // during form building and processing. During a rebuild, use what is in the
@@ -267,7 +268,7 @@ function node_form($form, &$form_state, Node $node) {
         backdrop_get_path('module', 'node') . '/node.js',
         array(
           'type' => 'setting',
-          'data' => array('anonymous' => variable_get('anonymous', t('Anonymous'))),
+          'data' => array('anonymous' => $config->get('anonymous')),
         ),
       ),
     ),
@@ -280,7 +281,7 @@ function node_form($form, &$form_state, Node $node) {
     '#autocomplete_path' => 'user/autocomplete',
     '#default_value' => !empty($node->name) ? $node->name : '',
     '#weight' => -1,
-    '#description' => t('Leave blank for %anonymous.', array('%anonymous' => variable_get('anonymous', t('Anonymous')))),
+    '#description' => t('Leave blank for %anonymous.', array('%anonymous' => $config->get('anonymous'))),
   );
   $form['author']['date'] = array(
     '#type' => 'textfield',
@@ -596,6 +597,7 @@ function node_delete_confirm_submit($form, &$form_state) {
   if ($form_state['values']['confirm']) {
     $node = node_load($form_state['values']['nid']);
     node_delete($form_state['values']['nid']);
+    cache_clear_all();
     watchdog('content', '@type: deleted %title.', array('@type' => $node->type, '%title' => $node->title));
     backdrop_set_message(t('@type %title has been deleted.', array('@type' => node_type_get_name($node), '%title' => $node->title)));
   }

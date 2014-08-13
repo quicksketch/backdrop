@@ -11,6 +11,9 @@ const SEARCH_TYPE = '_test_';
 const SEARCH_TYPE_2 = '_test2_';
 const SEARCH_TYPE_JPN = '_test3_';
 
+/**
+ * Indexes content and queries it.
+ */
 class SearchMatchTestCase extends BackdropWebTestCase {
   /**
    * Implementation setUp().
@@ -31,7 +34,7 @@ class SearchMatchTestCase extends BackdropWebTestCase {
    * Set up a small index of items to test against.
    */
   function _setup() {
-    variable_set('minimum_word_size', 3);
+    config_set('search.settings', 'search_minimum_word_size', 3);
 
     for ($i = 1; $i <= 7; ++$i) {
       search_index($i, SEARCH_TYPE, $this->getText($i));
@@ -277,7 +280,7 @@ class SearchPageText extends BackdropWebTestCase {
 
     // Test a search input exceeding the limit of AND/OR combinations to test
     // the Denial-of-Service protection.
-    $limit = variable_get('search_and_or_limit', 7);
+    $limit = config_get('search.settings', 'search_and_or_limit');
     $keys = array();
     for ($i = 0; $i < $limit + 1; $i++) {
       $keys[] = $this->randomName(3);
@@ -291,6 +294,9 @@ class SearchPageText extends BackdropWebTestCase {
   }
 }
 
+/**
+ * Indexes content and tests the advanced search form.
+ */
 class SearchAdvancedSearchForm extends BackdropWebTestCase {
   protected $node;
 
@@ -346,6 +352,9 @@ class SearchAdvancedSearchForm extends BackdropWebTestCase {
   }
 }
 
+/**
+ * Indexes content and tests ranking factors.
+ */
 class SearchRankingTestCase extends BackdropWebTestCase {
   /**
    * Implementation setUp().
@@ -540,6 +549,9 @@ class SearchRankingTestCase extends BackdropWebTestCase {
   }
 }
 
+/**
+ * Tests the rendering of the search block.
+ */
 class SearchBlockTestCase extends BackdropWebTestCase {
   function setUp() {
     parent::setUp('search');
@@ -705,7 +717,7 @@ class SearchCommentTestCase extends BackdropWebTestCase {
       BACKDROP_ANONYMOUS_RID . '[access comments]' => 1,
       BACKDROP_ANONYMOUS_RID . '[post comments]' => 1,
     );
-    $this->backdropPost('admin/people/permissions', $edit, t('Save permissions'));
+    $this->backdropPost('admin/config/people/permissions', $edit, t('Save permissions'));
 
     // Create a node.
     $node = $this->backdropCreateNode(array('type' => 'article'));
@@ -783,7 +795,7 @@ class SearchCommentTestCase extends BackdropWebTestCase {
     $this->checkCommentAccess('Anon user has search permission and access comments permission, comments should be indexed', TRUE);
 
     $this->backdropLogin($this->admin_user);
-    $this->backdropGet('admin/people/permissions');
+    $this->backdropGet('admin/config/people/permissions');
 
     // Disable search access for authenticated user to test admin user.
     $this->setRolePermissions(BACKDROP_AUTHENTICATED_RID, FALSE, FALSE);
@@ -1105,7 +1117,7 @@ class SearchKeywordsConditions extends BackdropWebTestCase {
     // Login with sufficient privileges.
     $this->backdropLogin($this->searching_user);
     // Test with all search modules enabled.
-    variable_set('search_active_modules', array('node' => 'node', 'user' => 'user', 'search_extra_type' => 'search_extra_type'));
+    config_set('search.settings', 'search_active_modules', array('node', 'user', 'search_extra_type'));
     menu_rebuild();
   }
 
@@ -1343,14 +1355,14 @@ class SearchConfigSettingsForm extends BackdropWebTestCase {
 
     // Test that the form saves with the default values.
     $this->backdropPost('admin/config/search/settings', array(), t('Save configuration'));
-    $this->assertText(t('The configuration options have been saved.'), 'Form saves with the default values.');
+    $this->assertText(t('The active search modules have been changed.'), 'Form saves with the default values.');
 
     // Test that the form does not save with an invalid word length.
     $edit = array(
       'minimum_word_size' => $this->randomName(3),
     );
     $this->backdropPost('admin/config/search/settings', $edit, t('Save configuration'));
-    $this->assertNoText(t('The configuration options have been saved.'), 'Form does not save with an invalid word length.');
+    $this->assertNoText(t('The active search modules have been changed.'), 'Form does not save with an invalid word length.');
   }
 
   /**
@@ -1447,10 +1459,9 @@ class SearchConfigSettingsForm extends BackdropWebTestCase {
 /**
  * Tests the search_excerpt() function.
  */
-class SearchExcerptTestCase extends BackdropUnitTestCase {
+class SearchExcerptTestCase extends BackdropWebTestCase {
   function setUp() {
-    backdrop_load('module', 'search');
-    parent::setUp();
+    parent::setUp('search');
   }
 
   /**
@@ -1475,7 +1486,7 @@ class SearchExcerptTestCase extends BackdropUnitTestCase {
     $this->assertEqual($result, 'The quick brown <strong>fox</strong> &amp; jumps over the lazy dog ...', 'Found keyword is highlighted');
 
     $longtext = str_repeat($text . ' ', 10);
-    $result = preg_replace('| +|', ' ', search_excerpt('nothing', $text));
+    $result = preg_replace('| +|', ' ', search_excerpt('nothing', $longtext));
     $this->assertTrue(strpos($result, $expected) === 0, 'When keyword is not found in long string, return value starts as expected');
 
     $entities = str_repeat('k&eacute;sz&iacute;t&eacute;se ', 20);
@@ -1559,8 +1570,10 @@ class SearchTokenizerTestCase extends BackdropWebTestCase {
   function testTokenizer() {
     // Set the minimum word size to 1 (to split all CJK characters) and make
     // sure CJK tokenizing is turned on.
-    variable_set('minimum_word_size', 1);
-    variable_set('overlap_cjk', TRUE);
+    config('search.settings')
+      ->set('search_minimum_word_size', 1)
+      ->set('search_overlap_cjk', TRUE)
+      ->save();
     $this->refreshVariables();
 
     // Create a string of CJK characters from various character ranges in
@@ -1645,8 +1658,10 @@ class SearchTokenizerTestCase extends BackdropWebTestCase {
   function testNoTokenizer() {
     // Set the minimum word size to 1 (to split all CJK characters) and make
     // sure CJK tokenizing is turned on.
-    variable_set('minimum_word_size', 1);
-    variable_set('overlap_cjk', TRUE);
+    config('search.settings')
+      ->set('search_minimum_word_size', 1)
+      ->set('search_overlap_cjk', TRUE)
+      ->save();
     $this->refreshVariables();
 
     $letters = 'abcdefghijklmnopqrstuvwxyz';
@@ -1710,8 +1725,7 @@ class SearchEmbedForm extends BackdropWebTestCase {
     search_update_totals();
 
     // Set up a dummy initial count of times the form has been submitted.
-    $this->submit_count = 12;
-    variable_set('search_embedded_form_submitted', $this->submit_count);
+    $this->submit_count = config_get('search.settings', 'search_embedded_form_submitted');
     $this->refreshVariables();
   }
 
@@ -1723,7 +1737,7 @@ class SearchEmbedForm extends BackdropWebTestCase {
     $this->backdropPost('search_embedded_form',
       array('name' => 'John'),'Send away');
     $this->assertText('Test form was submitted', 'Form message appears');
-    $count = variable_get('search_embedded_form_submitted', 0);
+    $count = config_get('search.settings', 'search_embedded_form_submitted');
     $this->assertEqual($this->submit_count + 1, $count, 'Form submission count is correct');
     $this->submit_count = $count;
 
@@ -1733,7 +1747,7 @@ class SearchEmbedForm extends BackdropWebTestCase {
     $this->backdropPost('search/node/' . $this->node->title,
       array('name' => 'John'), 'Send away');
     $this->assertText('Test form was submitted', 'Form message appears');
-    $count = variable_get('search_embedded_form_submitted', 0);
+    $count = config_get('search.settings', 'search_embedded_form_submitted');
     $this->assertEqual($this->submit_count + 1, $count, 'Form submission count is correct');
     $this->submit_count = $count;
 
@@ -1743,7 +1757,7 @@ class SearchEmbedForm extends BackdropWebTestCase {
       array('keys' => 'foo'),
       t('Search'));
     $this->assertNoText(t('Test form was submitted'), 'Form message does not appear');
-    $count = variable_get('search_embedded_form_submitted', 0);
+    $count = config_get('search.settings', 'search_embedded_form_submitted');
     $this->assertEqual($this->submit_count, $count, 'Form submission count is correct');
     $this->submit_count = $count;
   }
@@ -1763,7 +1777,7 @@ class SearchPageOverride extends BackdropWebTestCase {
     $this->backdropLogin($this->search_user);
 
     // Enable the extra type module for searching.
-    variable_set('search_active_modules', array('node' => 'node', 'user' => 'user', 'search_extra_type' => 'search_extra_type'));
+    config_set('search.settings', 'search_active_modules', array('node', 'user', 'search_extra_type'));
     menu_rebuild();
   }
 

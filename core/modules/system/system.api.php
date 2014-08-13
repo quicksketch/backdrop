@@ -1774,10 +1774,6 @@ function hook_theme($existing, $type, $theme, $path) {
       'render element' => 'requirements',
       'file' => 'system.admin.inc',
     ),
-    'system_date_time_settings' => array(
-      'render element' => 'form',
-      'file' => 'system.admin.inc',
-    ),
   );
 }
 
@@ -2421,7 +2417,7 @@ function hook_file_download($uri) {
   if (!file_prepare_directory($uri)) {
     $uri = FALSE;
   }
-  if (strpos(file_uri_target($uri), variable_get('user_picture_path', 'pictures') . '/picture-') === 0) {
+  if (strpos(file_uri_target($uri), config_get('user.settings', 'user_picture_path') . '/picture-') === 0) {
     if (!user_access('access user profiles')) {
       // Access to the file is denied.
       return -1;
@@ -2599,37 +2595,39 @@ function hook_requirements($phase) {
 /**
  * Define the current version of the database schema.
  *
- * A Backdrop schema definition is an array structure representing one or
- * more tables and their related keys and indexes. A schema is defined by
+ * A Backdrop schema definition is an array structure representing one or more
+ * tables and their related keys and indexes. A schema is defined by
  * hook_schema() which must live in your module's .install file.
  *
- * This hook is called at install and uninstall time, and in the latter
- * case, it cannot rely on the .module file being loaded or hooks being known.
- * If the .module file is needed, it may be loaded with backdrop_load().
+ * This hook is called at install and uninstall time, and in the latter case, it
+ * cannot rely on the .module file being loaded or hooks being known. If the
+ * .module file is needed, it may be loaded with backdrop_load().
  *
- * The tables declared by this hook will be automatically created when
- * the module is first enabled, and removed when the module is uninstalled.
- * This happens before hook_install() is invoked, and after hook_uninstall()
- * is invoked, respectively.
+ * The tables declared by this hook will be automatically created when the
+ * module is first enabled, and removed when the module is uninstalled. This
+ * happens before hook_install() is invoked, and after hook_uninstall() is
+ * invoked, respectively.
  *
  * By declaring the tables used by your module via an implementation of
  * hook_schema(), these tables will be available on all supported database
  * engines. You don't have to deal with the different SQL dialects for table
  * creation and alteration of the supported database engines.
  *
- * See the Schema API Handbook at http://drupal.org/node/146843 for
- * details on schema definition structures.
+ * See the Schema API Handbook at http://drupal.org/node/146843 for details on
+ * schema definition structures.
  *
- * @return
+ * @return array
  *   A schema definition structure array. For each element of the
  *   array, the key is a table name and the value is a table structure
  *   definition.
+ *
+ * @see hook_schema_alter()
  *
  * @ingroup schemaapi
  */
 function hook_schema() {
   $schema['node'] = array(
-    // example (partial) specification for table "node"
+    // Example (partial) specification for table "node".
     'description' => 'The base table for nodes.',
     'fields' => array(
       'nid' => array(
@@ -3465,143 +3463,6 @@ function hook_archiver_info_alter(&$info) {
 }
 
 /**
- * Define additional date types.
- *
- * Next to the 'long', 'medium' and 'short' date types defined in core, any
- * module can define additional types that can be used when displaying dates,
- * by implementing this hook. A date type is basically just a name for a date
- * format.
- *
- * Date types are used in the administration interface: a user can assign
- * date format types defined in hook_date_formats() to date types defined in
- * this hook. Once a format has been assigned by a user, the machine name of a
- * type can be used in the format_date() function to format a date using the
- * chosen formatting.
- *
- * To define a date type in a module and make sure a format has been assigned to
- * it, without requiring a user to visit the administrative interface, use
- * @code variable_set('date_format_' . $type, $format); @endcode
- * where $type is the machine-readable name defined here, and $format is a PHP
- * date format string.
- *
- * To avoid namespace collisions with date types defined by other modules, it is
- * recommended that each date type starts with the module name. A date type
- * can consist of letters, numbers and underscores.
- *
- * @return
- *   An array of date types where the keys are the machine-readable names and
- *   the values are the human-readable labels.
- *
- * @see hook_date_formats()
- * @see format_date()
- */
-function hook_date_format_types() {
-  // Define the core date format types.
-  return array(
-    'long' => t('Long'),
-    'medium' => t('Medium'),
-    'short' => t('Short'),
-  );
-}
-
-/**
- * Modify existing date types.
- *
- * Allows other modules to modify existing date types like 'long'. Called by
- * _system_date_format_types_build(). For instance, A module may use this hook
- * to apply settings across all date types, such as locking all date types so
- * they appear to be provided by the system.
- *
- * @param $types
- *   A list of date types. Each date type is keyed by the machine-readable name
- *   and the values are associative arrays containing:
- *   - is_new: Set to FALSE to override previous settings.
- *   - module: The name of the module that created the date type.
- *   - type: The machine-readable date type name.
- *   - title: The human-readable date type name.
- *   - locked: Specifies that the date type is system-provided.
- */
-function hook_date_format_types_alter(&$types) {
-  foreach ($types as $name => $type) {
-    $types[$name]['locked'] = 1;
-  }
-}
-
-/**
- * Define additional date formats.
- *
- * This hook is used to define the PHP date format strings that can be assigned
- * to date types in the administrative interface. A module can provide date
- * format strings for the core-provided date types ('long', 'medium', and
- * 'short'), or for date types defined in hook_date_format_types() by itself
- * or another module.
- *
- * Since date formats can be locale-specific, you can specify the locales that
- * each date format string applies to. There may be more than one locale for a
- * format. There may also be more than one format for the same locale. For
- * example d/m/Y and Y/m/d work equally well in some locales. You may wish to
- * define some additional date formats that aren't specific to any one locale,
- * for example, "Y m". For these cases, the 'locales' component of the return
- * value should be omitted.
- *
- * Providing a date format here does not normally assign the format to be
- * used with the associated date type -- a user has to choose a format for each
- * date type in the administrative interface. There is one exception: locale
- * initialization chooses a locale-specific format for the three core-provided
- * types (see locale_get_localized_date_format() for details). If your module
- * needs to ensure that a date type it defines has a format associated with it,
- * call @code variable_set('date_format_' . $type, $format); @endcode
- * where $type is the machine-readable name defined in hook_date_format_types(),
- * and $format is a PHP date format string.
- *
- * @return
- *   A list of date formats to offer as choices in the administrative
- *   interface. Each date format is a keyed array consisting of three elements:
- *   - 'type': The date type name that this format can be used with, as
- *     declared in an implementation of hook_date_format_types().
- *   - 'format': A PHP date format string to use when formatting dates. It
- *     can contain any of the formatting options described at
- *     http://php.net/manual/en/function.date.php
- *   - 'locales': (optional) An array of 2 and 5 character locale codes,
- *     defining which locales this format applies to (for example, 'en',
- *     'en-us', etc.). If your date format is not language-specific, leave this
- *     array empty.
- *
- * @see hook_date_format_types()
- */
-function hook_date_formats() {
-  return array(
-    array(
-      'type' => 'mymodule_extra_long',
-      'format' => 'l jS F Y H:i:s e',
-      'locales' => array('en-ie'),
-    ),
-    array(
-      'type' => 'mymodule_extra_long',
-      'format' => 'l jS F Y h:i:sa',
-      'locales' => array('en', 'en-us'),
-    ),
-    array(
-      'type' => 'short',
-      'format' => 'F Y',
-      'locales' => array(),
-    ),
-  );
-}
-
-/**
- * Alter date formats declared by another module.
- *
- * Called by _system_date_format_types_build() to allow modules to alter the
- * return values from implementations of hook_date_formats().
- */
-function hook_date_formats_alter(&$formats) {
-  foreach ($formats as $id => $format) {
-    $formats[$id]['locales'][] = 'en-ca';
-  }
-}
-
-/**
  * Alters the delivery callback used to send the result of the page callback to the browser.
  *
  * Called by backdrop_deliver_page() to allow modules to alter how the
@@ -3790,7 +3651,7 @@ function hook_tokens($type, $tokens, array $data = array(), array $options = arr
 
         // Default values for the chained tokens handled below.
         case 'author':
-          $name = ($node->uid == 0) ? variable_get('anonymous', t('Anonymous')) : $node->name;
+          $name = ($node->uid == 0) ? config_get('user.settings', 'anonymous') : $node->name;
           $replacements[$original] = $sanitize ? filter_xss($name) : $name;
           break;
 

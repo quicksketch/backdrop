@@ -88,13 +88,13 @@ const LOCALE_IMPORT_KEEP = 1;
  * URL language negotiation: use the path prefix as URL language
  * indicator.
  */
-const LANGUAGE_NEGOTIATION_URL_PREFIX = 0;
+const LANGUAGE_NEGOTIATION_URL_PREFIX = 'path_prefix';
 
 /**
  * URL language negotiation: use the domain as URL language
  * indicator.
  */
-const LANGUAGE_NEGOTIATION_URL_DOMAIN = 1;
+const LANGUAGE_NEGOTIATION_URL_DOMAIN = 'domain';
 
 /**
  * @defgroup locale-languages-negotiation Language negotiation options
@@ -232,7 +232,7 @@ function locale_language_from_user($languages) {
  *   A valid language code on success, FALSE otherwise.
  */
 function locale_language_from_session($languages) {
-  $param = variable_get('locale_language_negotiation_session_param', 'language');
+  $param = config_get('language.negotiation', 'session_parameter');
 
   // Request parameter: we need to update the session parameter only if we have
   // an authenticated user.
@@ -268,7 +268,7 @@ function locale_language_from_url($languages) {
     return $language_url;
   }
 
-  switch (variable_get('locale_language_negotiation_url_part', LANGUAGE_NEGOTIATION_URL_PREFIX)) {
+  switch (config_get('language.negotiation', 'url_part')) {
     case LANGUAGE_NEGOTIATION_URL_PREFIX:
       // $_GET['q'] might not be available at this time, because
       // path initialization runs after the language bootstrap phase.
@@ -339,7 +339,7 @@ function locale_language_from_url($languages) {
  */
 function locale_language_url_fallback($language = NULL, $language_type = LANGUAGE_TYPE_INTERFACE) {
   $default = language_default();
-  $prefix = (variable_get('locale_language_negotiation_url_part', LANGUAGE_NEGOTIATION_URL_PREFIX) == LANGUAGE_NEGOTIATION_URL_PREFIX);
+  $prefix = (config_get('language.negotiation', 'url_part') == LANGUAGE_NEGOTIATION_URL_PREFIX);
 
   // If the default language is not configured to convey language information,
   // a missing URL language information indicates that URL language should be
@@ -382,7 +382,7 @@ function locale_language_switcher_url($type, $path) {
 function locale_language_switcher_session($type, $path) {
   backdrop_add_css(backdrop_get_path('module', 'locale') . '/locale.css');
 
-  $param = variable_get('locale_language_negotiation_session_param', 'language');
+  $param = config_get('language.negotiation', 'session_parameter');
   $language_query = isset($_SESSION[$param]) ? $_SESSION[$param] : $GLOBALS[$type]->langcode;
 
   // Get the enabled languages only.
@@ -439,7 +439,7 @@ function locale_language_url_rewrite_url(&$path, &$options) {
   }
 
   if (isset($options['language'])) {
-    switch (variable_get('locale_language_negotiation_url_part', LANGUAGE_NEGOTIATION_URL_PREFIX)) {
+    switch (config_get('language.negotiation', 'url_part')) {
       case LANGUAGE_NEGOTIATION_URL_DOMAIN:
         $domains = locale_language_negotiation_url_domains();
         if (!empty($domains[$options['language']->langcode])) {
@@ -448,7 +448,7 @@ function locale_language_url_rewrite_url(&$path, &$options) {
           $url_scheme = ($is_https) ? 'https://' : 'http://';
           $options['absolute'] = TRUE;
           $options['base_url'] = $url_scheme . $domains[$options['language']->langcode];
-          if (isset($options['https']) && variable_get('https', FALSE)) {
+          if (isset($options['https']) && settings_get('https', FALSE)) {
             if ($options['https'] === TRUE) {
               $options['base_url'] = str_replace('http://', 'https://', $options['base_url']);
             }
@@ -473,28 +473,28 @@ function locale_language_url_rewrite_url(&$path, &$options) {
  * Reads language prefixes and uses the langcode if no prefix is set.
  */
 function locale_language_negotiation_url_prefixes() {
-  return variable_get('locale_language_negotiation_url_prefixes', array());
+  return config_get('language.negotiation', 'url_prefixes');
 }
 
 /**
  * Saves language prefix settings.
  */
 function locale_language_negotiation_url_prefixes_save(array $prefixes) {
-  variable_set('locale_language_negotiation_url_prefixes', $prefixes);
+  config_set('language.negotiation', 'url_prefixes', $prefixes);
 }
 
 /**
  * Reads language domains.
  */
 function locale_language_negotiation_url_domains() {
-  return variable_get('locale_language_negotiation_url_domains', array());
+  return config_get('language.negotiation', 'url_domains');
 }
 
 /**
  * Saves the language domain settings.
  */
 function locale_language_negotiation_url_domains_save(array $domains) {
-  variable_set('locale_language_negotiation_url_domains', $domains);
+  config_set('language.negotiation', 'url_domains', $domains);
 }
 
 /**
@@ -510,7 +510,7 @@ function locale_language_url_rewrite_session(&$path, &$options) {
     if (!$user->uid) {
       // Get the enabled languages only.
       $languages = language_list(TRUE);
-      $query_param = check_plain(variable_get('locale_language_negotiation_session_param', 'language'));
+      $query_param = check_plain(config_get('language.negotiation', 'session_parameter'));
       $query_value = isset($_GET[$query_param]) ? check_plain($_GET[$query_param]) : NULL;
       $query_rewrite = isset($languages[$query_value]) && language_negotiation_get_any(LANGUAGE_NEGOTIATION_SESSION);
     }
@@ -839,89 +839,4 @@ function country_get_list() {
   // Allow other modules to modify the country list.
   backdrop_alter('countries', $countries);
   return $countries;
-}
-
-/**
- * Save locale specific date formats to the database.
- *
- * @param $langcode
- *   Language code, can be 2 characters, e.g. 'en' or 5 characters, e.g.
- *   'en-CA'.
- * @param $type
- *   Date format type, e.g. 'short', 'medium'.
- * @param $format
- *   The date format string.
- */
-function locale_date_format_save($langcode, $type, $format) {
-  $locale_format = array();
-  $locale_format['language'] = $langcode;
-  $locale_format['type'] = $type;
-  $locale_format['format'] = $format;
-
-  $is_existing = (bool) db_query_range('SELECT 1 FROM {date_format_locale} WHERE language = :langcode AND type = :type', 0, 1, array(':langcode' => $langcode, ':type' => $type))->fetchField();
-  if ($is_existing) {
-    $keys = array('type', 'language');
-    backdrop_write_record('date_format_locale', $locale_format, $keys);
-  }
-  else {
-    backdrop_write_record('date_format_locale', $locale_format);
-  }
-}
-
-/**
- * Select locale date format details from database.
- *
- * @param $languages
- *   An array of language codes.
- *
- * @return
- *   An array of date formats.
- */
-function locale_get_localized_date_format($languages) {
-  $formats = array();
-
-  // Get list of different format types.
-  $format_types = system_get_date_types();
-  $short_default = variable_get('date_format_short', 'm/d/Y - H:i');
-
-  // Loop through each language until we find one with some date formats
-  // configured.
-  foreach ($languages as $language) {
-    $date_formats = system_date_format_locale($language);
-    if (!empty($date_formats)) {
-      // We have locale-specific date formats, so check for their types. If
-      // we're missing a type, use the default setting instead.
-      foreach ($format_types as $type => $type_info) {
-        // If format exists for this language, use it.
-        if (!empty($date_formats[$type])) {
-          $formats['date_format_' . $type] = $date_formats[$type];
-        }
-        // Otherwise get default variable setting. If this is not set, default
-        // to the short format.
-        else {
-          $formats['date_format_' . $type] = variable_get('date_format_' . $type, $short_default);
-        }
-      }
-
-      // Return on the first match.
-      return $formats;
-    }
-  }
-
-  // No locale specific formats found, so use defaults.
-  $system_types = array('short', 'medium', 'long');
-  // Handle system types separately as they have defaults if no variable exists.
-  $formats['date_format_short'] = $short_default;
-  $formats['date_format_medium'] = variable_get('date_format_medium', 'D, m/d/Y - H:i');
-  $formats['date_format_long'] = variable_get('date_format_long', 'l, F j, Y - H:i');
-
-  // For non-system types, get the default setting, otherwise use the short
-  // format.
-  foreach ($format_types as $type => $type_info) {
-    if (!in_array($type, $system_types)) {
-      $formats['date_format_' . $type] = variable_get('date_format_' . $type, $short_default);
-    }
-  }
-
-  return $formats;
 }

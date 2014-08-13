@@ -784,20 +784,29 @@ class DatabaseUpdateTestCase extends DatabaseTestCase {
    * Test updating with expressions.
    */
   function testExpressionUpdate() {
-    // Set age = 1 for a single row for this test to work.
-    db_update('test')
-      ->condition('id', 1)
-      ->fields(array('age' => 1))
-      ->execute();
-
-    // Ensure that expressions are handled properly.  This should set every
-    // record's age to a square of itself, which will change only three of the
-    // four records in the table since 1*1 = 1. That means only three records
-    // are modified, so we should get back 3, not 4, from execute().
+    // Ensure that expressions are handled properly. This should set every
+    // record's age to a square of itself
     $num_rows = db_update('test')
       ->expression('age', 'age * age')
       ->execute();
-    $this->assertIdentical($num_rows, 3, 'Number of affected rows are returned.');
+    $this->assertIdentical($num_rows, 4, 'Updated 4 records.');
+  }
+
+  /**
+   * Tests return value on update.
+   */
+  function testUpdateAffectedRows() {
+    // At 5am in the morning, all band members but those with a priority 1 task
+    // are sleeping. So we set their tasks to 'sleep'. 5 records match the
+    // condition and therefore are affected by the query, even though two of
+    // them actually don't have to be changed because their value was already
+    // 'sleep'. Still, execute() should return 5 affected rows, not only 3,
+    // because that's cross-db expected behaviour.
+    $num_rows = db_update('test_task')
+      ->condition('priority', 1, '<>')
+      ->fields(array('task' => 'sleep'))
+      ->execute();
+    $this->assertIdentical($num_rows, 5, 'Correctly returned 5 affected rows.');
   }
 
   /**
@@ -1266,9 +1275,10 @@ class DatabaseSelectTestCase extends DatabaseTestCase {
    * Test rudimentary SELECT statement with a COMMENT.
    */
   function testSimpleComment() {
-    $query = db_select('test')->comment('Testing query comments');
-    $name_field = $query->addField('test', 'name');
-    $age_field = $query->addField('test', 'age', 'age');
+    $query = db_select('test');
+    $query->comment('Testing query comments');
+    $query->addField('test', 'name');
+    $query->addField('test', 'age', 'age');
     $result = $query->execute();
 
     $num_records = 0;
@@ -1287,9 +1297,10 @@ class DatabaseSelectTestCase extends DatabaseTestCase {
    * Test query COMMENT system against vulnerabilities.
    */
   function testVulnerableComment() {
-    $query = db_select('test')->comment('Testing query comments */ SELECT nid FROM {node}; --');
-    $name_field = $query->addField('test', 'name');
-    $age_field = $query->addField('test', 'age', 'age');
+    $query = db_select('test');
+    $query->comment('Testing query comments */ SELECT nid FROM {node}; --');
+    $query->addField('test', 'name');
+    $query->addField('test', 'age', 'age');
     $result = $query->execute();
 
     $num_records = 0;
@@ -2447,6 +2458,52 @@ class DatabaseTaggingTestCase extends DatabaseTestCase {
   }
 
   /**
+   * Confirm that an extended query has a "tag" added to it.
+   */
+  function testExtenderHasTag() {
+    $query = db_select('test')
+      ->extend('SelectQueryExtender');
+    $query->addField('test', 'name');
+    $query->addField('test', 'age', 'age');
+
+    $query->addTag('test');
+
+    $this->assertTrue($query->hasTag('test'), 'hasTag() returned true.');
+    $this->assertFalse($query->hasTag('other'), 'hasTag() returned false.');
+  }
+
+  /**
+   * Test extended query tagging "has all of these tags" functionality.
+   */
+  function testExtenderHasAllTags() {
+    $query = db_select('test')
+      ->extend('SelectQueryExtender');
+    $query->addField('test', 'name');
+    $query->addField('test', 'age', 'age');
+
+    $query->addTag('test');
+    $query->addTag('other');
+
+    $this->assertTrue($query->hasAllTags('test', 'other'), 'hasAllTags() returned true.');
+    $this->assertFalse($query->hasAllTags('test', 'stuff'), 'hasAllTags() returned false.');
+  }
+
+  /**
+   * Test extended query tagging "has at least one of these tags" functionality.
+   */
+  function testExtenderHasAnyTag() {
+    $query = db_select('test')
+      ->extend('SelectQueryExtender');
+    $query->addField('test', 'name');
+    $query->addField('test', 'age', 'age');
+
+    $query->addTag('test');
+
+    $this->assertTrue($query->hasAnyTag('test', 'other'), 'hasAnyTag() returned true.');
+    $this->assertFalse($query->hasAnyTag('other', 'stuff'), 'hasAnyTag() returned false.');
+  }
+
+  /**
    * Test that we can attach meta data to a query object.
    *
    * This is how we pass additional context to alter hooks.
@@ -2869,6 +2926,15 @@ class DatabaseTemporaryQueryTestCase extends BackdropWebTestCase {
 
     $this->assertEqual($this->countTableRows($table_name_system), $this->countTableRows("system"), 'A temporary table was created successfully in this request.');
     $this->assertEqual($this->countTableRows($table_name_users), $this->countTableRows("users"), 'A second temporary table was created successfully in this request.');
+
+    // Check that leading whitespace and comments do not cause problems
+    // in the modified query.
+    $sql = "
+      -- Let's select some rows into a temporary table
+      SELECT name FROM {test}
+    ";
+    $table_name_test = db_query_temporary($sql, array());
+    $this->assertEqual($this->countTableRows($table_name_test), $this->countTableRows('test'), 'Leading white space and comments do not interfere with temporary table creation.');    
   }
 }
 

@@ -235,14 +235,11 @@ function install_begin_request(&$install_state) {
 
   backdrop_bootstrap(BACKDROP_BOOTSTRAP_CONFIGURATION);
 
-  // This must go after backdrop_bootstrap(), which unsets globals!
-  global $conf;
-
   require_once BACKDROP_ROOT . '/core/modules/system/system.install';
   require_once BACKDROP_ROOT . '/core/includes/common.inc';
   require_once BACKDROP_ROOT . '/core/includes/file.inc';
   require_once BACKDROP_ROOT . '/core/includes/install.inc';
-  require_once BACKDROP_ROOT . '/' . variable_get('path_inc', 'core/includes/path.inc');
+  require_once BACKDROP_ROOT . '/' . settings_get('path_inc', 'core/includes/path.inc');
 
   // Load module basics (needed for hook invokes).
   include_once BACKDROP_ROOT . '/core/includes/module.inc';
@@ -271,7 +268,7 @@ function install_begin_request(&$install_state) {
   // suspect, due to the fact that Backdrop is not fully set up yet.
   require_once BACKDROP_ROOT . '/core/includes/cache.inc';
   require_once BACKDROP_ROOT . '/core/includes/cache-install.inc';
-  $conf['cache_default_class'] = 'BackdropFakeCache';
+  $GLOBALS['settings']['cache_default_class'] = 'BackdropFakeCache';
 
   // Prepare for themed output. We need to run this at the beginning of the
   // page request to avoid a different theme accidentally getting set. (We also
@@ -600,7 +597,6 @@ function install_tasks($install_state) {
       'run' => $needs_translations ? INSTALL_TASK_RUN_IF_NOT_COMPLETED : INSTALL_TASK_SKIP,
     ),
     'install_finished' => array(
-      'display_name' => st('Finished'),
     ),
   );
 
@@ -916,36 +912,27 @@ function install_settings_form($form, &$form_state, &$install_state) {
 
   backdrop_set_title(st('Database configuration'));
 
-  $drivers = backdrop_get_database_types();
-  $drivers_keys = array_keys($drivers);
-
   $form['driver'] = array(
-    '#type' => 'radios',
-    '#title' => st('Database type'),
+    '#type' => 'hidden',
     '#required' => TRUE,
-    '#default_value' => !empty($database['driver']) ? $database['driver'] : current($drivers_keys),
-    '#description' => st('The type of database your @profile data will be stored in.', array('@profile' => backdrop_install_profile_distribution_name())),
+    '#value' => !empty($database['driver']) ? $database['driver'] : 'mysql',
   );
-  if (count($drivers) == 1) {
-    $form['driver']['#disabled'] = TRUE;
-    $form['driver']['#description'] .= ' ' . st('Your PHP configuration only supports a single database type, so it has been automatically selected.');
-  }
+
+  $driver = backdrop_load_database_driver();
 
   // Add driver specific configuration options.
-  foreach ($drivers as $key => $driver) {
-    $form['driver']['#options'][$key] = $driver->name();
+  $form['driver']['#options']['mysql'] = $driver->name();
 
-    $form['settings'][$key] = $driver->getFormOptions($database);
-    $form['settings'][$key]['#prefix'] = '<h2 class="js-hide">' . st('@driver_name settings', array('@driver_name' => $driver->name())) . '</h2>';
-    $form['settings'][$key]['#type'] = 'container';
-    $form['settings'][$key]['#tree'] = TRUE;
-    $form['settings'][$key]['advanced_options']['#parents'] = array($key);
-    $form['settings'][$key]['#states'] = array(
-      'visible' => array(
-        ':input[name=driver]' => array('value' => $key),
-      )
-    );
-  }
+  $form['settings']['mysql'] = $driver->getFormOptions($database);
+  $form['settings']['mysql']['#prefix'] = '<h2 class="js-hide">' . st('@driver_name settings', array('@driver_name' => $driver->name())) . '</h2>';
+  $form['settings']['mysql']['#type'] = 'container';
+  $form['settings']['mysql']['#tree'] = TRUE;
+  $form['settings']['mysql']['advanced_options']['#parents'] = array('mysql');
+  $form['settings']['mysql']['#states'] = array(
+    'visible' => array(
+      ':input[name=driver]' => array('value' => 'mysql'),
+    )
+  );
 
   $form['actions'] = array('#type' => 'actions');
   $form['actions']['save'] = array(
@@ -953,7 +940,7 @@ function install_settings_form($form, &$form_state, &$install_state) {
     '#value' => st('Save and continue'),
     '#limit_validation_errors' => array(
       array('driver'),
-      array(isset($form_state['input']['driver']) ? $form_state['input']['driver'] : current($drivers_keys)),
+      array(isset($form_state['input']['driver']) ? $form_state['input']['driver'] : 'mysql'),
     ),
     '#submit' => array('install_settings_form_submit'),
   );
@@ -989,14 +976,13 @@ function install_database_errors($database, $settings_file) {
   $errors = array();
 
   // Check database type.
-  $database_types = backdrop_get_database_types();
   $driver = $database['driver'];
-  if (!isset($database_types[$driver])) {
+  if (!$mysql_driver = backdrop_load_database_driver()) {
     $errors['driver'] = st("In your %settings_file file you have configured @profile to use a %driver server, however your PHP installation currently does not support this database type.", array('%settings_file' => $settings_file, '@profile' => backdrop_install_profile_distribution_name(), '%driver' => $driver));
   }
   else {
     // Run driver specific validation
-    $errors += $database_types[$driver]->validateDatabaseSettings($database);
+    $errors += $mysql_driver->validateDatabaseSettings($database);
 
     // Run tasks associated with the database type. Any errors are caught in the
     // calling function.
@@ -1035,7 +1021,7 @@ function install_settings_form_submit($form, &$form_state) {
   $settings['database_prefix'] = array(
     'value' => $db_settings['db_prefix'],
   );
-  $settings['hash_salt'] = array(
+  $settings["settings['hash_salt']"] = array(
     'value' => backdrop_random_key(),
     'required' => TRUE,
   );
@@ -1762,7 +1748,6 @@ function _install_configure_form($form, &$form_state, &$install_state) {
   $form['admin_account']['account']['pass'] = array(
     '#type' => 'password_confirm',
     '#required' => TRUE,
-    '#size' => 25,
     '#weight' => 0,
   );
 
@@ -1844,7 +1829,7 @@ function install_configure_form_submit($form, &$form_state) {
     ->set('site_name', $form_state['values']['site_name'])
     ->set('site_mail', $form_state['values']['site_mail'])
     ->save();
-  variable_set('date_default_timezone', $form_state['values']['date_default_timezone']);
+  config_set('system.date', 'default_timezone', $form_state['values']['date_default_timezone']);
 
   // Enable update.module if this option was selected.
   if ($form_state['values']['update_status_module'][1]) {
@@ -1853,7 +1838,7 @@ function install_configure_form_submit($form, &$form_state) {
     // Add the site maintenance account's email address to the list of
     // addresses to be notified when updates are available, if selected.
     if ($form_state['values']['update_status_module'][2]) {
-      variable_set('update_notify_emails', array($form_state['values']['account']['mail']));
+      config_set('update.settings', 'update_emails', array($form_state['values']['account']['mail']));
     }
   }
 

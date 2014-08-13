@@ -517,15 +517,16 @@ abstract class BackdropTestCase {
    *   methods during debugging.
    */
   public function run(array $methods = array()) {
+    $config = config('simpletest.settings');
     // Initialize verbose debugging.
     simpletest_verbose(NULL, variable_get('file_public_path', 'files'), get_class($this));
 
     // HTTP auth settings (<username>:<password>) for the simpletest browser
     // when sending requests to the test site.
-    $this->httpauth_method = variable_get('simpletest_httpauth_method', CURLAUTH_BASIC);
-    $username = variable_get('simpletest_httpauth_username', NULL);
-    $password = variable_get('simpletest_httpauth_password', NULL);
-    if ($username && $password) {
+    $this->httpauth_method = $config->get('simpletest_method');
+    $username = $config->get('simpletest_username', NULL);
+    $password = $config->get('simpletest_password', NULL);
+    if (!empty($username) && !empty($password)) {
       $this->httpauth_credentials = $username . ':' . $password;
     }
 
@@ -923,6 +924,13 @@ class BackdropWebTestCase extends BackdropTestCase {
   protected $originalUser = NULL;
 
   /**
+   * The original settings as provided in settings.php.
+   *
+   * @var object
+   */
+  protected $originalSettings = NULL;
+
+  /**
    * The original shutdown handlers array, before it was cleaned for testing purposes.
    *
    * @var array
@@ -953,6 +961,11 @@ class BackdropWebTestCase extends BackdropTestCase {
    * Whether the files were copied to the test files directory.
    */
   protected $generatedTestFiles = FALSE;
+
+  /**
+   * The maximum number of redirects to follow when handling responses.
+   */
+  protected $maximumRedirects = 5;
 
   /**
    * The number of redirects followed during the handling of a request.
@@ -1395,7 +1408,7 @@ class BackdropWebTestCase extends BackdropTestCase {
    * @see BackdropWebTestCase::tearDown()
    */
   protected function prepareEnvironment() {
-    global $user, $language_interface, $conf, $config_directories;
+    global $user, $language_interface, $settings, $config_directories;
 
     // Store necessary current values before switching to prefixed database.
     $this->originalLanguage = $language_interface;
@@ -1405,6 +1418,7 @@ class BackdropWebTestCase extends BackdropTestCase {
     $this->originalProfile = backdrop_get_profile();
     $this->originalCleanUrl = variable_get('clean_url', 0);
     $this->originalUser = $user;
+    $this->originalSettings = $settings;
 
     // Set to English to prevent exceptions from utf8_truncate() from t()
     // during install if the current language is not 'en'.
@@ -1456,6 +1470,9 @@ class BackdropWebTestCase extends BackdropTestCase {
     $test_info = &$GLOBALS['backdrop_test_info'];
     $test_info['test_run_id'] = $this->databasePrefix;
     $test_info['in_child_site'] = FALSE;
+
+    // Disable Drupal compatibility for test runs.
+    $settings['backdrop_drupal_compatibility'] = FALSE;
 
     // Indicate the environment was set up correctly.
     $this->setupEnvironment = TRUE;
@@ -1523,11 +1540,11 @@ class BackdropWebTestCase extends BackdropTestCase {
     variable_set('file_private_path', $this->private_files_directory);
     variable_set('file_temporary_path', $this->temp_files_directory);
 
-    // Set the 'simpletest_parent_profile' variable to add the parent profile's
+    // Set 'parent_profile' of simpletest to add the parent profile's
     // search path to the child site's search paths.
     // @see backdrop_system_listing()
     // @todo This may need to be primed like 'install_profile' above.
-    variable_set('simpletest_parent_profile', $this->originalProfile);
+    config_set('simpletest.settings', 'parent_profile', $this->originalProfile);
 
     // Ensure schema versions are recalculated.
     backdrop_static_reset('backdrop_get_schema_versions');
@@ -1576,7 +1593,7 @@ class BackdropWebTestCase extends BackdropTestCase {
     state_set('install_task', 'done');
     variable_set('clean_url', $this->originalCleanUrl);
     config_set('system.site', 'site_mail', 'simpletest@example.com');
-    variable_set('date_default_timezone', date_default_timezone_get());
+    config_set('system.date', 'date_default_timezone', date_default_timezone_get());
 
     // Set up English language.
     unset($conf['language_default']);
@@ -1639,7 +1656,7 @@ class BackdropWebTestCase extends BackdropTestCase {
    * and reset the database prefix.
    */
   protected function tearDown() {
-    global $user, $language_interface, $config_directories;
+    global $user, $language_interface, $settings, $config_directories;
 
     // In case a fatal error occurred that was not in the test process read the
     // log to pick up any fatal errors.
@@ -1655,7 +1672,6 @@ class BackdropWebTestCase extends BackdropTestCase {
     file_unmanaged_delete_recursive($this->originalFileDirectory . '/simpletest/' . substr($this->databasePrefix, 10));
 
     // Remove all prefixed tables.
-    $tables = db_find_tables($this->databasePrefix . '%');
     $connection_info = Database::getConnectionInfo('default');
     $tables = db_find_tables($connection_info['default']['prefix']['default'] . '%');
     if (empty($tables)) {
@@ -1683,6 +1699,9 @@ class BackdropWebTestCase extends BackdropTestCase {
 
     // Set the configuration direcotires back to the originals.
     $config_directories = $this->originalConfigDirectories;
+
+    // Restore the original settings.
+    $settings = $this->originalSettings;
 
     // Restore original shutdown callbacks array to prevent original
     // environment of calling handlers from test run.
@@ -1828,7 +1847,7 @@ class BackdropWebTestCase extends BackdropTestCase {
     // to prevent fragments being sent to the web server as part
     // of the request.
     // TODO: Remove this; fixed in curl 7.20.0.
-    if (in_array($status, array(300, 301, 302, 303, 305, 307)) && $this->redirect_count < variable_get('simpletest_maximum_redirects', 5)) {
+    if (in_array($status, array(300, 301, 302, 303, 305, 307)) && $this->redirect_count < $this->maximumRedirects) {
       if ($this->backdropGetHeader('location')) {
         $this->redirect_count++;
         $curl_options = array();
@@ -2332,6 +2351,13 @@ class BackdropWebTestCase extends BackdropTestCase {
     }
     $this->backdropSetContent($content);
     $this->backdropSetSettings($backdrop_settings);
+
+    $verbose = 'AJAX POST request to: ' . $path;
+    $verbose .= '<br />AJAX callback path: ' . $ajax_path;
+    $verbose .= '<hr />Ending URL: ' . $this->getUrl();
+    $verbose .= '<hr />' . $this->content;
+
+    $this->verbose($verbose);    
     return $return;
   }
 
@@ -2732,10 +2758,13 @@ class BackdropWebTestCase extends BackdropTestCase {
     if (isset($urls[$index])) {
       $url_target = $this->getAbsoluteUrl($urls[$index]['href']);
     }
+    else {
+      $url_target = '';
+    }
 
     $this->assertTrue(isset($urls[$index]), t('Clicked link %label (@url_target) from @url_before', array('%label' => $label, '@url_target' => $url_target, '@url_before' => $url_before)), t('Browser'));
 
-    if (isset($url_target)) {
+    if (!empty($url_target)) {
       return $this->backdropGet($url_target);
     }
     return FALSE;

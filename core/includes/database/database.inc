@@ -182,7 +182,7 @@
  * concrete implementation of it to support special handling required by that
  * database.
  *
- * @see http://php.net/manual/en/book.pdo.php
+ * @see http://php.net/manual/book.pdo.php
  */
 abstract class DatabaseConnection extends PDO {
 
@@ -1988,7 +1988,7 @@ interface DatabaseStatementInterface extends Traversable {
   /**
    * Sets the default fetch mode for this statement.
    *
-   * See http://php.net/manual/en/pdo.constants.php for the definition of the
+   * See http://php.net/manual/pdo.constants.php for the definition of the
    * constants used.
    *
    * @param $mode
@@ -2007,7 +2007,7 @@ interface DatabaseStatementInterface extends Traversable {
   /**
    * Fetches the next row from a result set.
    *
-   * See http://php.net/manual/en/pdo.constants.php for the definition of the
+   * See http://php.net/manual/pdo.constants.php for the definition of the
    * constants used.
    *
    * @param $mode
@@ -2382,14 +2382,14 @@ function db_query_range($query, $from, $count, array $args = array(), array $opt
 }
 
 /**
- * Executes a query string and saves the result set to a temporary table.
+ * Executes a SELECT query string and saves the result set to a temporary table.
  *
  * The execution of the query string happens against the active database.
  *
  * @param $query
- *   The prepared statement query to run. Although it will accept both named and
- *   unnamed placeholders, named placeholders are strongly preferred as they are
- *   more self-documenting.
+ *   The prepared SELECT statement query to run. Although it will accept both
+ *   named and unnamed placeholders, named placeholders are strongly preferred
+ *   as they are more self-documenting.
  * @param $args
  *   An array of values to substitute into the query. If the query uses named
  *   placeholders, this is an associative array in any order. If the query uses

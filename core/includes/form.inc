@@ -769,8 +769,9 @@ function backdrop_retrieve_form($form_id, &$form_state) {
   // Record the filepath of the include file containing the original form, so
   // the form builder callbacks can be loaded when the form is being rebuilt
   // from cache on a different path (such as 'system/ajax'). See
-  // form_get_cache().
-  // $menu_get_item() is not available during installation.
+  // form_get_cache(). Don't do this in maintenance mode as Backdrop may not be
+  // fully bootstrapped (i.e. during installation) in which case
+  // menu_get_item() is not available.
   if (!isset($form_state['build_info']['files']['menu']) && !defined('MAINTENANCE_MODE')) {
     $item = menu_get_item();
     if (!empty($item['include_file'])) {
@@ -1817,7 +1818,7 @@ function form_builder($form_id, &$element, &$form_state) {
 
   // Special handling if we're on the top level form element.
   if (isset($element['#type']) && $element['#type'] == 'form') {
-    if (!empty($element['#https']) && variable_get('https', FALSE) &&
+    if (!empty($element['#https']) && settings_get('https', FALSE) &&
         !url_is_external($element['#action'])) {
       global $base_root;
 
@@ -2954,11 +2955,11 @@ function form_process_date($element) {
   $element['#tree'] = TRUE;
 
   // Determine the order of day, month, year in the site's chosen date format.
-  $format = variable_get('date_format_short', 'm/d/Y - H:i');
+  $format = system_date_format_load('short');
   $sort = array();
-  $sort['day'] = max(strpos($format, 'd'), strpos($format, 'j'));
-  $sort['month'] = max(strpos($format, 'm'), strpos($format, 'M'));
-  $sort['year'] = strpos($format, 'Y');
+  $sort['day'] = max(strpos($format['pattern'], 'd'), strpos($format['pattern'], 'j'));
+  $sort['month'] = max(strpos($format['pattern'], 'm'), strpos($format['pattern'], 'M'));
+  $sort['year'] = strpos($format['pattern'], 'Y');
   asort($sort);
   $order = array_keys($sort);
 

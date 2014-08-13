@@ -446,7 +446,7 @@ function backdrop_get_query_array($query) {
   $result = array();
   if (!empty($query)) {
     foreach (explode('&', $query) as $param) {
-      $param = explode('=', $param);
+      $param = explode('=', $param, 2);
       $result[$param[0]] = isset($param[1]) ? rawurldecode($param[1]) : '';
     }
   }
@@ -772,7 +772,7 @@ function backdrop_http_request($url, array $options = array()) {
   // implementation.
   $alternate_http_system = &backdrop_static('__FUNCTION__');
   if (!isset($alternate_http_system)) {
-    $class = variable_get('http_system');
+    $class = settings_get('http_system');
     $alternate_http_system = $class ? new $class() : FALSE;
   }
   if ($alternate_http_system) {
@@ -817,7 +817,7 @@ function backdrop_http_request($url, array $options = array()) {
   $options['timeout'] = (float) $options['timeout'];
 
   // Use a proxy if one is defined and the host is not on the excluded list.
-  $proxy_server = variable_get('proxy_server', '');
+  $proxy_server = settings_get('proxy_server', '');
   if ($proxy_server && _backdrop_http_use_proxy($uri['host'])) {
     // Set the scheme so we open a socket to the proxy server.
     $uri['scheme'] = 'proxy';
@@ -827,13 +827,13 @@ function backdrop_http_request($url, array $options = array()) {
     unset($uri['query']);
 
     // Add in username and password to Proxy-Authorization header if needed.
-    if ($proxy_username = variable_get('proxy_username', '')) {
-      $proxy_password = variable_get('proxy_password', '');
+    if ($proxy_username = settings_get('proxy_username', '')) {
+      $proxy_password = settings_get('proxy_password', '');
       $options['headers']['Proxy-Authorization'] = 'Basic ' . base64_encode($proxy_username . (!empty($proxy_password) ? ":" . $proxy_password : ''));
     }
     // Some proxies reject requests with any User-Agent headers, while others
     // require a specific one.
-    $proxy_user_agent = variable_get('proxy_user_agent', '');
+    $proxy_user_agent = settings_get('proxy_user_agent', '');
     // The default value matches neither condition.
     if ($proxy_user_agent === NULL) {
       unset($options['headers']['User-Agent']);
@@ -846,7 +846,7 @@ function backdrop_http_request($url, array $options = array()) {
   switch ($uri['scheme']) {
     case 'proxy':
       // Make the socket connection to a proxy server.
-      $socket = 'tcp://' . $proxy_server . ':' . variable_get('proxy_port', 8080);
+      $socket = 'tcp://' . $proxy_server . ':' . settings_get('proxy_port', 8080);
       // The Host header still needs to match the real request.
       $options['headers']['Host'] = $uri['host'];
       $options['headers']['Host'] .= isset($uri['port']) && $uri['port'] != 80 ? ':' . $uri['port'] : '';
@@ -1083,7 +1083,7 @@ function backdrop_http_request($url, array $options = array()) {
  *   TRUE if a proxy should be used for this host.
  */
 function _backdrop_http_use_proxy($host) {
-  $proxy_exceptions = variable_get('proxy_exceptions', array('localhost', '127.0.0.1'));
+  $proxy_exceptions = settings_get('proxy_exceptions', array('localhost', '127.0.0.1'));
   return !in_array(strtolower($host), $proxy_exceptions, TRUE);
 }
 
@@ -1121,7 +1121,7 @@ function _fix_gpc_magic(&$item) {
  * @param $key
  *   The key for the item within $_FILES.
  *
- * @see http://php.net/manual/en/features.file-upload.php#42280
+ * @see http://php.net/manual/features.file-upload.php#42280
  */
 function _fix_gpc_magic_files(&$item, $key) {
   if ($key != 'tmp_name') {
@@ -2058,23 +2058,21 @@ function format_interval($interval, $granularity = 2, $langcode = NULL) {
  *
  * @param $timestamp
  *   A UNIX timestamp to format.
- * @param $type
+ * @param $date_format_name
  *   (optional) The format to use, one of:
  *   - One of the built-in formats: 'short', 'medium', 'long', 'html_datetime',
  *     'html_date', 'html_time', 'html_yearless_date', 'html_week',
  *     'html_month', 'html_year'.
- *   - The name of a date type defined by a module in hook_date_format_types(),
- *     if it's been assigned a format.
  *   - The machine name of an administrator-defined date format.
  *   - 'custom', to use $format.
  *   Defaults to 'medium'.
- * @param $format
- *   (optional) If $type is 'custom', a PHP date format string suitable for
- *   input to date(). Use a backslash to escape ordinary text, so it does not
- *   get interpreted as date format characters.
+ * @param $pattern
+ *   (optional) If $date_format_name is 'custom', a PHP date format string
+ *   suitable for input to date(). Use a backslash to escape ordinary text, so
+ *   it does not get interpreted as date format characters.
  * @param $timezone
  *   (optional) Time zone identifier, as described at
- *   http://php.net/manual/en/timezones.php Defaults to the time zone used to
+ *   http://php.net/manual/timezones.php Defaults to the time zone used to
  *   display the page.
  * @param $langcode
  *   (optional) Language code to translate to. Defaults to the language used to
@@ -2083,7 +2081,7 @@ function format_interval($interval, $granularity = 2, $langcode = NULL) {
  * @return
  *   A translated date string in the requested format.
  */
-function format_date($timestamp, $type = 'medium', $format = '', $timezone = NULL, $langcode = NULL) {
+function format_date($timestamp, $date_format_name = 'medium', $pattern = '', $timezone = NULL, $langcode = NULL) {
   // Use the advanced backdrop_static() pattern, since this is called very often.
   static $backdrop_static_fast;
   if (!isset($backdrop_static_fast)) {
@@ -2100,64 +2098,10 @@ function format_date($timestamp, $type = 'medium', $format = '', $timezone = NUL
     $timezones[$timezone] = timezone_open($timezone);
   }
 
-  // Use the default langcode if none is set.
+  // Use the interface langcode if none is set.
   global $language_interface;
   if (empty($langcode)) {
     $langcode = isset($language_interface->langcode) ? $language_interface->langcode : LANGUAGE_SYSTEM;
-  }
-
-  switch ($type) {
-    case 'short':
-      $format = variable_get('date_format_short', 'm/d/Y - H:i');
-      break;
-
-    case 'long':
-      $format = variable_get('date_format_long', 'l, F j, Y - H:i');
-      break;
-
-    case 'html_datetime':
-      $format = variable_get('date_format_html_datetime', 'Y-m-d\TH:i:sO');
-      break;
-
-    case 'html_date':
-      $format = variable_get('date_format_html_date', 'Y-m-d');
-      break;
-
-    case 'html_time':
-      $format = variable_get('date_format_html_time', 'H:i:s');
-      break;
-
-    case 'html_yearless_date':
-      $format = variable_get('date_format_html_yearless_date', 'm-d');
-      break;
-
-    case 'html_week':
-      $format = variable_get('date_format_html_week', 'Y-\WW');
-      break;
-
-    case 'html_month':
-      $format = variable_get('date_format_html_month', 'Y-m');
-      break;
-
-    case 'html_year':
-      $format = variable_get('date_format_html_year', 'Y');
-      break;
-
-    case 'custom':
-      // No change to format.
-      break;
-
-    case 'medium':
-    default:
-      // Retrieve the format of the custom $type passed.
-      if ($type != 'medium') {
-        $format = variable_get('date_format_' . $type, '');
-      }
-      // Fall back to 'medium'.
-      if ($format === '') {
-        $format = variable_get('date_format_medium', 'D, m/d/Y - H:i');
-      }
-      break;
   }
 
   // Create a DateTime object from the timestamp.
@@ -2165,21 +2109,33 @@ function format_date($timestamp, $type = 'medium', $format = '', $timezone = NUL
   // Set the time zone for the DateTime object.
   date_timezone_set($date_time, $timezones[$timezone]);
 
+  // If we have a non-custom date format use the provided date format pattern.
+  if ($date_format_name != 'custom') {
+    $date_format = system_date_format_load($date_format_name);
+    $pattern = isset($date_format['locales'][$langcode]) ? $date_format['locales'][$langcode] : $date_format['pattern'];
+  }
+
+  // Fall back to medium if a format was not found.
+  if (empty($pattern)) {
+    $date_format = system_date_format_load('medium');
+    $pattern = $date_format['pattern'];
+  }
+
   // Encode markers that should be translated. 'A' becomes '\xEF\AA\xFF'.
   // xEF and xFF are invalid UTF-8 sequences, and we assume they are not in the
   // input string.
   // Paired backslashes are isolated to prevent errors in read-ahead evaluation.
   // The read-ahead expression ensures that A matches, but not \A.
-  $format = preg_replace(array('/\\\\\\\\/', '/(?<!\\\\)([AaeDlMTF])/'), array("\xEF\\\\\\\\\xFF", "\xEF\\\\\$1\$1\xFF"), $format);
+  $pattern = preg_replace(array('/\\\\\\\\/', '/(?<!\\\\)([AaeDlMTF])/'), array("\xEF\\\\\\\\\xFF", "\xEF\\\\\$1\$1\xFF"), $pattern);
 
   // Call date_format().
-  $format = date_format($date_time, $format);
+  $formatted_date_time = date_format($date_time, $pattern);
 
   // Pass the langcode to _format_date_callback().
   _format_date_callback(NULL, $langcode);
 
   // Translate the marked sequences.
-  return preg_replace_callback('/\xEF([AaeDlMTF]?)(.*?)\xFF/', '_format_date_callback', $format);
+  return preg_replace_callback('/\xEF([AaeDlMTF]?)(.*?)\xFF/', '_format_date_callback', $formatted_date_time);
 }
 
 /**
@@ -2330,7 +2286,7 @@ function url($path = NULL, array $options = array()) {
     if ($options['query']) {
       $path .= (strpos($path, '?') !== FALSE ? '&' : '?') . backdrop_http_build_query($options['query']);
     }
-    if (isset($options['https']) && variable_get('https', FALSE)) {
+    if (isset($options['https']) && settings_get('https', FALSE)) {
       if ($options['https'] === TRUE) {
         $path = str_replace('http://', 'https://', $path);
       }
@@ -2346,7 +2302,7 @@ function url($path = NULL, array $options = array()) {
 
   // The base_url might be rewritten from the language rewrite in domain mode.
   if (!isset($options['base_url'])) {
-    if (isset($options['https']) && variable_get('https', FALSE)) {
+    if (isset($options['https']) && settings_get('https', FALSE)) {
       if ($options['https'] === TRUE) {
         $options['base_url'] = $base_secure_url;
         $options['absolute'] = TRUE;
@@ -3799,7 +3755,7 @@ function backdrop_load_stylesheet_content($contents, $optimize = FALSE) {
     // Remove certain whitespace.
     // There are different conditions for removing leading and trailing
     // whitespace.
-    // @see http://php.net/manual/en/regexp.reference.subpatterns.php
+    // @see http://php.net/manual/regexp.reference.subpatterns.php
     $contents = preg_replace('<
       # Strip leading and trailing whitespace.
         \s*([@{};,])\s*
@@ -3982,14 +3938,14 @@ function backdrop_html_id($id) {
       // requested id. $_POST['ajax_html_ids'] contains the ids as they were
       // returned by this function, potentially with the appended counter, so
       // we parse that to reconstruct the $seen_ids array.
-      if (is_array($_POST['ajax_html_ids'])) {
+      if (isset($_POST['ajax_html_ids'][0]) && strpos($_POST['ajax_html_ids'][0], ',') === FALSE) {
         $ajax_html_ids = $_POST['ajax_html_ids'];
       }
       else {
-        // jquery.form.js may send the server a comma-separated string instead
-        // of an array(see http://drupal.org/node/1575060), so we need to
-        // convert it to an array in that case.
-        $ajax_html_ids = explode(',', $_POST['ajax_html_ids']);
+        // jquery.form.js may send the server a comma-separated string as first
+        // element of an array (see http://drupal.org/node/1575060), so we need
+        // to convert it to an array in that case.
+        $ajax_html_ids = explode(',', $_POST['ajax_html_ids'][0]);
       }
       foreach ($ajax_html_ids as $seen_id) {
         // We rely on '--' being used solely for separating a base id from the
@@ -4265,7 +4221,7 @@ function backdrop_add_js($data = NULL, $options = NULL) {
         ),
       );
       // Backwards-compatibility for JavaScript.
-      if (!empty($GLOBALS['conf']['backdrop_drupal_compatibility'])) {
+      if (!empty($GLOBALS['settings']['backdrop_drupal_compatibility'])) {
         $javascript['settings']['data'][] = array('drupalCompatibility' => TRUE);
       }
 
@@ -5350,8 +5306,10 @@ function backdrop_json_output($var = NULL) {
  *   A salt based on information in settings.php, not in the database.
  */
 function backdrop_get_hash_salt() {
-  global $hash_salt, $databases;
-  // If the $hash_salt variable is empty, a hash of the serialized
+  global $databases;
+  $hash_salt = settings_get('hash_salt');
+
+  // If the hash_salt setting is empty, a hash of the serialized
   // database credentials is used as a fallback salt.
   return empty($hash_salt) ? hash('sha256', serialize($databases)) : $hash_salt;
 }
@@ -5382,7 +5340,7 @@ function backdrop_get_private_key() {
  * session, manually start a session prior to calling this function.
  *
  * @return string
- *   A 43-character URL-safe token for validation, based on the user session ID,
+ *   A 43-character URL-safe token for validation,based on the user session ID,
  *   the global $hash_salt variable from settings.php, and the
  *   'private_key' configuration variable.
  */
@@ -5416,10 +5374,10 @@ function _backdrop_bootstrap_full() {
     return;
   }
   $called = TRUE;
-  require_once BACKDROP_ROOT . '/' . variable_get('path_inc', 'core/includes/path.inc');
+  require_once BACKDROP_ROOT . '/' . settings_get('path_inc', 'core/includes/path.inc');
   require_once BACKDROP_ROOT . '/core/includes/theme.inc';
   require_once BACKDROP_ROOT . '/core/includes/pager.inc';
-  require_once BACKDROP_ROOT . '/' . variable_get('menu_inc', 'core/includes/menu.inc');
+  require_once BACKDROP_ROOT . '/' . settings_get('menu_inc', 'core/includes/menu.inc');
   require_once BACKDROP_ROOT . '/core/includes/tablesort.inc';
   require_once BACKDROP_ROOT . '/core/includes/file.inc';
   require_once BACKDROP_ROOT . '/core/includes/unicode.inc';
@@ -5480,7 +5438,7 @@ function _backdrop_bootstrap_full() {
  * client without gzip support.
  *
  * Page compression requires the PHP zlib extension
- * (http://php.net/manual/en/ref.zlib.php).
+ * (http://php.net/manual/ref.zlib.php).
  *
  * @see backdrop_page_header()
  */
@@ -5595,8 +5553,15 @@ function backdrop_cron_run() {
     $end = time() + (isset($info['time']) ? $info['time'] : 15);
     $queue = BackdropQueue::get($queue_name);
     while (time() < $end && ($item = $queue->claimItem())) {
-      $function($item->data);
-      $queue->deleteItem($item);
+      try {
+        $function($item->data);
+        $queue->deleteItem($item);
+      }
+      catch (Exception $e) {
+        // In case of exception log it and leave the item in the queue
+        // to be processed again later.
+        watchdog_exception('cron', $e);
+      }
     }
   }
   // Restore the user.
@@ -5689,7 +5654,7 @@ function backdrop_system_listing($mask, $directory, $key = 'name', $min_depth = 
   // distribution we need to include the profile of the parent site (in which
   // test runs are triggered).
   if (backdrop_valid_test_ua()) {
-    $testing_profile = variable_get('simpletest_parent_profile', FALSE);
+    $testing_profile = config_get('simpletest.settings', 'simpletest_parent_profile');
     if ($testing_profile && $testing_profile != $profile) {
       $profiles[] = $testing_profile;
     }

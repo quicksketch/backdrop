@@ -948,7 +948,7 @@ function field_ui_display_overview_form($form, &$form_state, $entity_type, $bund
   $field_label_options = array(
     'above' => t('Above'),
     'inline' => t('Inline'),
-    'hidden' => t('<Hidden>'),
+    'hidden' => '<' . t('Hidden') . '>',
   );
   $extra_visibility_options = array(
     'visible' => t('Visible'),
@@ -1004,7 +1004,7 @@ function field_ui_display_overview_form($form, &$form_state, $entity_type, $bund
     );
 
     $formatter_options = field_ui_formatter_options($field['type']);
-    $formatter_options['hidden'] = t('<Hidden>');
+    $formatter_options['hidden'] = '<' . t('Hidden') . '>';
     $table[$name]['format'] = array(
       'type' => array(
         '#type' => 'select',
@@ -1226,6 +1226,7 @@ function field_ui_display_overview_form($form, &$form_state, $entity_type, $bund
       // spinners will be added manually by the client-side script.
       'progress' => 'none',
     ),
+    '#attributes' => array('class' => array('element-invisible'))
   );
 
   $form['actions'] = array('#type' => 'actions');
