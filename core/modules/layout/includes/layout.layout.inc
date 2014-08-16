@@ -110,6 +110,29 @@ function layout_layout_context_info() {
  * Implements hook_layout_access_info().
  */
 function layout_layout_access_info() {
+  $entities = entity_get_info();
+  // Remove vocabularity related entities.
+  unset($entities['taxonomy_vocabulary']);
+
+  // Provide a bundle (type) plugin for each entity type.
+  foreach ($entities as $entity_type => $entity) {
+    $bundle_label = array_key_exists('bundle label', $entity) ? $entity['bundle label'] : 'Type';
+    $info['entity:' . $entity_type] = array(
+      'title' => t('@entity: @bundle', array('@entity' => $entity['label'], '@bundle' => $bundle_label)),
+      'description' => t('Control access by @entity entity bundle.', array('@entity' => $entity_type)),
+      'keyword' => $entity_type,
+      'class' => 'EntityBundleLayoutAccess',
+      'required contexts' => array(
+        $entity_type => $entity_type,
+      ),
+    );
+  }
+
+  $info['front'] = array(
+    'title' => t('Front page'),
+    'description' => t('Is this the front page.'),
+    'class' => 'FrontLayoutAccess',
+  );
   $info['front'] = array(
     'title' => t('Front page'),
     'description' => t('Is this the front page.'),
@@ -121,7 +144,7 @@ function layout_layout_access_info() {
     'class' => 'LanguageLayoutAccess',
   );
   $info['user_permission'] = array(
-    'title' => t('User: permission'),
+    'title' => t('User: Permission'),
     'description' => t('Control access by permission string.'),
     'class' => 'UserPermissionLayoutAccess',
     'required contexts' => array(
@@ -129,7 +152,7 @@ function layout_layout_access_info() {
     ),
   );
   $info['user_role'] = array(
-    'title' => t('User: role'),
+    'title' => t('User: Role'),
     'description' => t('Control access by role.'),
     'class' => 'UserRoleLayoutAccess',
     // Contexts are specified as context key => context type. The key will be

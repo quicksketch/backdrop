@@ -487,6 +487,7 @@ function layout_autoload_info() {
     'UserLayoutContext' => 'plugins/context/user_layout_context_handler.inc',
 
     // Access handlers.
+    'EntityBundleLayoutAccess' => 'plugins/access/entity_bundle_layout_access.inc',
     'LayoutAccess' => 'plugins/access/layout_access.inc',
     'LayoutAccessBroken' => 'plugins/access/layout_access.inc',
     'LayoutAccessNegatable' => 'plugins/access/layout_access.inc',
@@ -495,7 +496,6 @@ function layout_autoload_info() {
     'PathLayoutAccess' => 'plugins/access/path_layout_access.inc',
     'UserRoleLayoutAccess' => 'plugins/access/user_role_layout_access.inc',
     'UserPermissionLayoutAccess' => 'plugins/access/user_permission_layout_access.inc',
-
 
     // Renderer handlers.
     'LayoutRendererEditor' => 'plugins/renderers/layout_renderer_editor.inc',
