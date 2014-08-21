@@ -10,8 +10,20 @@
  * - $attributes: A string of attributes to be added to the layout wrapper.
  * - $content: An array of content, each item in the array is keyed to one
  *   region of the layout. This layout supports the following sections:
- *   - $content['left']: Content in the left column.
- *   - $content['right']: Content in the right column.
+ *   - $content['header']
+ *   - $content['featured']
+ *   - $content['highlighted']
+ *   - $content['content']
+ *   - $content['sidebar_first']
+ *   - $content['sidebar_second']
+ *   - $content['triptych_first']
+ *   - $content['triptych_middle']
+ *   - $content['triptych_last']
+ *   - $content['footer_firstcolumn']
+ *   - $content['footer_secondcolumn']
+ *   - $content['footer_thirdcolumn']
+ *   - $content['footer_fourthcolumn']
+ *   - $content['footer']
  */
 ?>
 <div class="layout-three-three-four <?php print $classes; ?>"<?php print $attributes; ?>>

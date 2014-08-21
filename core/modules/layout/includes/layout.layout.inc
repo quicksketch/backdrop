@@ -29,6 +29,29 @@ function layout_layout_info() {
       'right' => t('Right side')
     ),
   );
+  $layouts['three_three_four'] = array(
+    'title' => t('Three/three/four stacked'),
+    'path' => 'layouts/three_three_four',
+    'icon' => 'three-three-four.png',
+    'css' => 'three-three-four.css',
+    'theme' => 'layout_three_three_four',
+    'regions' => array(
+      'header' => t('Header'),
+      'featured' => t('Featured'),
+      'highlighted' => t('Highlighted'),
+      'content' => t('Content'),
+      'sidebar_first' => t('Sidebar first'),
+      'sidebar_second' => t('Sidebar second'),
+      'triptych_first' => t('Tryptych first'),
+      'triptych_middle' => t('Tryptych second'),
+      'triptych_last' => t('Tryptych last'),
+      'footer_firstcolumn' => t('Footer first'),
+      'footer_secondcolumn' => t('Footer second'),
+      'footer_thirdcolumn' => t('Footer third'),
+      'footer_fourthcolumn' => t('Footer fourth'),
+      'footer' => t('Footer bottom'),
+    ),
+  );
   return $layouts;
 }
 
