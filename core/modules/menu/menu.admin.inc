@@ -65,7 +65,7 @@ function theme_menu_admin_overview($variables) {
  */
 function menu_overview_form($form, &$form_state, $menu) {
   global $menu_admin;
-  $form['#attached']['css'] = array(backdrop_get_path('module', 'menu') . '/menu.css');
+  $form['#attached']['css'] = array(backdrop_get_path('module', 'menu') . '/css/menu.css');
   $sql = "
     SELECT m.load_functions, m.to_arg_functions, m.access_callback, m.access_arguments, m.page_callback, m.page_arguments, m.delivery_callback, m.title, m.title_callback, m.title_arguments, m.type, m.description, ml.*
     FROM {menu_links} ml LEFT JOIN {menu_router} m ON m.path = ml.router_path
@@ -368,7 +368,7 @@ function menu_edit_item($form, &$form_state, $type, $item, $menu) {
   $options = menu_parent_options(menu_get_menus(), $item);
   $default = $item['menu_name'] . ':' . $item['plid'];
   if (!isset($options[$default])) {
-    $default = 'navigation:0';
+    $default = 'main-menu:0';
   }
   $form['parent'] = array(
     '#type' => 'select',
@@ -533,8 +533,7 @@ function menu_delete_menu_page($menu) {
   // System-defined menus may not be deleted.
   $system_menus = menu_list_system_menus();
   if (isset($system_menus[$menu['menu_name']])) {
-    backdrop_access_denied();
-    return;
+    return MENU_ACCESS_DENIED;
   }
   return backdrop_get_form('menu_delete_menu_confirm', $menu);
 }
@@ -643,8 +642,7 @@ function menu_item_delete_page($item) {
   // Links defined via hook_menu may not be deleted. Updated items are an
   // exception, as they can be broken.
   if ($item['module'] == 'system' && !$item['updated']) {
-    backdrop_access_denied();
-    return;
+    return MENU_ACCESS_DENIED;
   }
   return backdrop_get_form('menu_item_delete_form', $item);
 }

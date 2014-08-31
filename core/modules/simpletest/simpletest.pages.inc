@@ -69,14 +69,14 @@ function simpletest_test_form($form) {
 function theme_simpletest_test_table($variables) {
   $table = $variables['table'];
 
-  backdrop_add_css(backdrop_get_path('module', 'simpletest') . '/simpletest.css');
+  backdrop_add_css(backdrop_get_path('module', 'simpletest') . '/css/simpletest.css');
   backdrop_add_js(backdrop_get_path('module', 'simpletest') . '/simpletest.js');
   backdrop_add_js('core/misc/tableselect.js');
 
   // Create header for test selection table.
   $header = array(
     array('class' => array('select-all')),
-    array('data' => t('Test'), 'class' => array('simpletest_test')),
+    array('data' => t('Test'), 'class' => array('simpletest-test')),
     array('data' => t('Description'), 'class' => array('simpletest_description')),
   );
 
@@ -87,6 +87,7 @@ function theme_simpletest_test_table($variables) {
       theme('image', array('uri' => 'core/misc/menu-expanded.png', 'width' => 7, 'height' => 7, 'alt' => t('Collapse'), 'title' => t('Collapse'))) . ' <a href="#" class="simpletest-collapse">(' . t('Collapse') . ')</a>',
     ),
   );
+  backdrop_add_js(array('simpleTest' => $js), 'setting');
 
   // Cycle through each test group and create a row.
   $rows = array();
@@ -104,12 +105,12 @@ function theme_simpletest_test_table($variables) {
     $image_index = $collapsed ? 0 : 1;
 
     // Place-holder for checkboxes to select group of tests.
-    $row[] = array('id' => $test_class, 'class' => array('simpletest-select-all'));
+    $row[] = array('id' => $test_class, 'class' => array('simpletest-group-select-all'));
 
     // Expand/collapse image and group title.
     $row[] = array(
-      'data' => '<div class="simpletest-image" id="simpletest-test-group-' . $test_class . '"></div>' .
-        '<label for="' . $test_class . '-select-all" class="simpletest-group-label">' . $key . '</label>',
+      'data' => '<span class="simpletest-image" id="simpletest-test-group-' . $test_class . '"></span>' .
+        '<label for="' . $test_class . '-group-select-all">' . $key . '</label>',
       'class' => array('simpletest-group-label'),
     );
 
@@ -120,14 +121,6 @@ function theme_simpletest_test_table($variables) {
 
     $rows[] = array('data' => $row, 'class' => array('simpletest-group'));
 
-    // Add individual tests to group.
-    $current_js = array(
-      'testClass' => $test_class . '-test',
-      'testNames' => array(),
-      'imageDirection' => $image_index,
-      'clickActive' => FALSE,
-    );
-
     // Sorting $element by children's #title attribute instead of by class name.
     uasort($element, 'element_sort_by_title');
 
@@ -135,8 +128,6 @@ function theme_simpletest_test_table($variables) {
     foreach (element_children($element) as $test_name) {
       $test = $element[$test_name];
       $row = array();
-
-      $current_js['testNames'][] = $test['#id'];
 
       // Store test title and description so that checkbox won't render them.
       $title = $test['#title'];
@@ -160,12 +151,8 @@ function theme_simpletest_test_table($variables) {
 
       $rows[] = array('data' => $row, 'class' => array($test_class . '-test', ($collapsed ? 'js-hide' : '')));
     }
-    $js['simpletest-test-group-' . $test_class] = $current_js;
     unset($table[$key]);
   }
-
-  // Add js array of settings.
-  backdrop_add_js(array('simpleTest' => $js), 'setting');
 
   if (empty($rows)) {
     return '<strong>' . t('No tests to display.') . '</strong>';
@@ -202,7 +189,7 @@ function simpletest_result_form($form, &$form_state, $test_id) {
   }
 
   // Load all classes and include CSS.
-  backdrop_add_css(backdrop_get_path('module', 'simpletest') . '/simpletest.css');
+  backdrop_add_css(backdrop_get_path('module', 'simpletest') . '/css/simpletest.css');
 
   // Keep track of which test cases passed or failed.
   $filter = array(

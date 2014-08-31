@@ -1806,7 +1806,7 @@ function node_menu() {
   $items['node'] = array(
     'page callback' => 'node_page_default',
     'access arguments' => array('access content'),
-    'menu_name' => 'navigation',
+    'menu_name' => 'main-menu',
     'type' => MENU_CALLBACK,
   );
   $items['node/add'] = array(
@@ -1814,6 +1814,8 @@ function node_menu() {
     'page callback' => 'node_add_page',
     'access callback' => '_node_add_access',
     'file' => 'node.pages.inc',
+    'menu_name' => 'management',
+    'weight' => -20,
   );
   $items['rss.xml'] = array(
     'title' => 'RSS feed',

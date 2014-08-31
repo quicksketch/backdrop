@@ -339,6 +339,17 @@ function _backdrop_default_html_head() {
  */
 function backdrop_get_html_head() {
   $elements = backdrop_add_html_head();
+
+  // Always add the default mobile meta tags.
+  $elements['viewport'] = array(
+    '#type' => 'html_tag',
+    '#tag' => 'meta',
+    '#attributes' => array(
+      'name' => 'viewport',
+      'content' => 'width=device-width, initial-scale=1',
+    ),
+  );
+
   backdrop_alter('html_head', $elements);
   return backdrop_render($elements);
 }
@@ -3709,17 +3720,23 @@ function backdrop_load_stylesheet($file, $optimize = NULL, $reset_basepath = TRU
   if ($basepath && !file_uri_scheme($file)) {
     $file = $basepath . '/' . $file;
   }
+  // Store the parent base path to restore it later.
+  $parent_base_path = $basepath;
+  // Set the current base path to process possible child imports.
   $basepath = dirname($file);
 
   // Load the CSS stylesheet. We suppress errors because themes may specify
   // stylesheets in their .info file that don't exist in the theme's path,
   // but are merely there to disable certain module CSS files.
+  $content = '';
   if ($contents = @file_get_contents($file)) {
     // Return the processed stylesheet.
-    return backdrop_load_stylesheet_content($contents, $_optimize);
+    $content = backdrop_load_stylesheet_content($contents, $_optimize);
   }
 
-  return '';
+  // Restore the parent base path as the file and its childen are processed.
+  $basepath = $parent_base_path;
+  return $content;
 }
 
 /**
@@ -4595,7 +4612,7 @@ function backdrop_aggregate_js(&$js_groups) {
  * @code
  * $build['#attached'] = array(
  *   'js' => array(backdrop_get_path('module', 'taxonomy') . '/taxonomy.js'),
- *   'css' => array(backdrop_get_path('module', 'taxonomy') . '/taxonomy.css'),
+ *   'css' => array(backdrop_get_path('module', 'taxonomy') . '/css/taxonomy.css'),
  * );
  * @endcode
  *
@@ -5106,7 +5123,7 @@ function backdrop_add_tabledrag($table_id, $action, $relationship, $group, $subg
 function backdrop_build_js_cache($files) {
   $contents = '';
   $uri = '';
-  $map = variable_get('js_cache_files', array());
+  $map = state_get('js_cache_files', array());
   // Create a new array so that only the file names are used to create the hash.
   // This prevents new aggregates from being created unnecessarily.
   $js_data = array();
@@ -5147,7 +5164,7 @@ function backdrop_build_js_cache($files) {
       }
     }
     $map[$key] = $uri;
-    variable_set('js_cache_files', $map);
+    state_set('js_cache_files', $map);
   }
   return $uri;
 }
@@ -5157,7 +5174,7 @@ function backdrop_build_js_cache($files) {
  */
 function backdrop_clear_js_cache() {
   variable_del('javascript_parsed');
-  variable_del('js_cache_files');
+  state_set('js_cache_files', FALSE);
   file_scan_directory('public://js', '/.*/', array('callback' => 'backdrop_delete_file_if_stale'));
 }
 
@@ -5446,6 +5463,10 @@ function backdrop_page_set_cache() {
   global $base_root;
 
   if (backdrop_page_is_cacheable()) {
+
+    // Check whether the current page might be compressed.
+    $page_compressed = config_get('system.performance', 'page_compression') && extension_loaded('zlib');
+
     $cache = (object) array(
       'cid' => $base_root . request_uri(),
       'data' => array(
@@ -5453,6 +5474,9 @@ function backdrop_page_set_cache() {
         'body' => ob_get_clean(),
         'title' => backdrop_get_title(),
         'headers' => array(),
+        // We need to store whether page was compressed or not,
+        // because by the time it is read, the configuration might change.
+        'page_compressed' => $page_compressed,
       ),
       'expire' => CACHE_TEMPORARY,
       'created' => REQUEST_TIME,
@@ -5470,7 +5494,7 @@ function backdrop_page_set_cache() {
     }
 
     if ($cache->data['body']) {
-      if (config_get('system.performance', 'page_compression') && extension_loaded('zlib')) {
+      if ($page_compressed) {
         $cache->data['body'] = gzencode($cache->data['body'], 9, FORCE_GZIP);
       }
       cache('page')->set($cache->cid, $cache->data, $cache->expire);
@@ -7302,6 +7326,9 @@ function backdrop_common_theme() {
       'render element' => 'element',
     ),
     'textarea' => array(
+      'render element' => 'element',
+    ),
+    'search' => array(
       'render element' => 'element',
     ),
     'password' => array(
