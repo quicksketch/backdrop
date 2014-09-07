@@ -380,15 +380,10 @@ function system_theme_settings($form, &$form_state, $key = '') {
 
   // Toggle settings
   $toggles = array(
-    'logo'                      => t('Logo'),
-    'name'                      => t('Site name'),
-    'slogan'                    => t('Site slogan'),
     'node_user_picture'         => t('User pictures in posts'),
     'comment_user_picture'      => t('User pictures in comments'),
     'comment_user_verification' => t('User verification status in comments'),
     'favicon'                   => t('Shortcut icon'),
-    'main_menu'                 => t('Main menu'),
-    'secondary_menu'            => t('Secondary menu'),
   );
 
   // Some features are not always available
@@ -2210,13 +2205,8 @@ function system_batch_page() {
   if ($output === FALSE) {
     backdrop_access_denied();
   }
-  elseif (isset($output)) {
-    // Force a page without blocks or messages to
-    // display a list of collected messages later.
-    backdrop_set_page_content($output);
-    $page = element_info('page');
-    $page['#show_messages'] = FALSE;
-    return $page;
+  else {
+    return $output;
   }
 }
 

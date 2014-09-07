@@ -11,30 +11,6 @@
  */
 
 /**
- * @todo.
- *
- * @param array $result
- *   @todo.
- * @param object $page
- *   @todo.
- */
-function hook_page_manager_operations_alter(&$result, &$page) {
-  // @todo.
-}
-
-/**
- * @todo.
- *
- * @param array $operations
- *   @todo.
- * @param object $handler
- *   @todo.
- */
-function hook_page_manager_variant_operations_alter(&$operations, &$handler) {
-  // @todo.
-}
-
-/**
  * Provides a list of layouts that can be used within the Layout module.
  *
  * This hook returns an array keyed by a unique identifier for a layout name.
@@ -53,14 +29,18 @@ function hook_page_manager_variant_operations_alter(&$operations, &$handler) {
  *     "mymodule_super_layout" would assume a template of
  *     "mymodule-super-layout.tpl.php".
  */
-function layout_layout_info() {
+function hook_layout_info() {
   $layouts['onecol'] = array(
     'title' => t('Single column'),
     'path' => 'layouts/onecol',
     'icon' => 'onecol.png',
     'css' => 'onecol.css',
     'theme' => 'layout_onecol',
-    'regions' => array('middle' => t('Middle column')),
+    'regions' => array(
+      'header' => t('Header'),
+      'content' => t('Content'),
+      'footer' => t('Footer'),
+    ),
   );
   $layouts['twocol'] = array(
     'title' => t('Two column'),
@@ -69,8 +49,10 @@ function layout_layout_info() {
     'css' => 'twocol.css',
     'theme' => 'layout_twocol',
     'regions' => array(
-      'left' => t('Left side'),
-      'right' => t('Right side')
+      'header' => t('Header'),
+      'content' => t('Content'),
+      'sidebar' => t('Sidebar'),
+      'footer' => t('Footer'),
     ),
   );
   return $layouts;

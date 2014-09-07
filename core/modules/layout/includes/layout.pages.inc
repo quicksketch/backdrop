@@ -39,6 +39,7 @@ function layout_page_callback() {
 
   // Use the selected layout and render it.
   $renderer = layout_create_renderer('standard', $layout);
+  $renderer->ensurePageContentBlock(FALSE);
   return $renderer->render();
 }
 

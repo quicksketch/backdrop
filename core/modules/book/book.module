@@ -887,12 +887,12 @@ function book_node_view(Node $node, $view_mode) {
 }
 
 /**
- * Implements hook_page_alter().
+ * Implements hook_init().
  *
  * Adds the book menu to the list of menus used to build the active trail when
  * viewing a book page.
  */
-function book_page_alter(&$page) {
+function book_init() {
   if (($node = menu_get_object()) && !empty($node->book['bid'])) {
     $active_menus = menu_get_active_menu_names();
     $active_menus[] = $node->book['menu_name'];

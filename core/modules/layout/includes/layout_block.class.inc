@@ -177,6 +177,17 @@ class LayoutBlock extends LayoutHandler {
   }
 
   /**
+   * Clone this block to give it a new UUID but the same configuration.
+   */
+  function getClone() {
+    $new_block = clone $this;
+    $uuid = new Uuid();
+    $new_block->uuid = $uuid->generate();
+    $new_block->is_new = TRUE;
+    return $new_block;
+  }
+
+  /**
    * Convert the configuration of this block to an array for storage.
    */
   function toArray() {

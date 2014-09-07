@@ -38,7 +38,7 @@ class LayoutRendererEditor extends LayoutRendererStandard {
     $this->addMeta();
 
     $output = '<div id="layout-edit-main">';
-    $output .= $this->render_layout();
+    $output .= $this->renderLayout();
     $output .= '</div>';
 
     return $output;

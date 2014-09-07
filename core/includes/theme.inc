@@ -1492,22 +1492,6 @@ function theme_get_setting($setting_name, $theme = NULL) {
         }
       }
 
-      // Generate the path to the logo image.
-      if ($cache[$theme]['toggle_logo']) {
-        if ($cache[$theme]['default_logo']) {
-          if (file_exists($logo = dirname($theme_object->filename) . '/logo.png')) {
-            $cache[$theme]['logo'] = file_create_url($logo);
-          }
-          else {
-            $cache[$theme]['logo'] = '';
-            $cache[$theme]['toggle_logo'] = FALSE;
-          }
-        }
-        elseif ($cache[$theme]['logo_path']) {
-          $cache[$theme]['logo'] = file_create_url($cache[$theme]['logo_path']);
-        }
-      }
-
       // Generate the path to the favicon.
       if ($cache[$theme]['toggle_favicon']) {
         if ($cache[$theme]['default_favicon']) {
@@ -2590,43 +2574,29 @@ function template_process(&$variables, $hook) {
 }
 
 /**
- * Preprocess variables for html.tpl.php
+ * Preprocess variables for header.tpl.php
+ */
+function template_preprocess_header(&$variables) {
+  $variables['front_page'] = url();
+}
+
+/**
+ * Preprocess variables for page.tpl.php
  *
  * @see system_elements()
- * @see html.tpl.php
+ * @see page.tpl.php
  */
-function template_preprocess_html(&$variables) {
+function template_preprocess_page(&$variables) {
   // Compile a list of classes that are going to be applied to the body element.
   // This allows advanced theming based on context (home page, node of certain type, etc.).
   // Add a class that tells us whether we're on the front page or not.
-  $variables['classes_array'][] = $variables['is_front'] ? 'front' : 'not-front';
+  if ($variables['is_front']) {
+    $variables['classes_array'][] = 'front';
+  }
+
   // Add a class that tells us whether the page is viewed by an authenticated user or not.
-  $variables['classes_array'][] = $variables['logged_in'] ? 'logged-in' : 'not-logged-in';
-
-  // Add information about the number of sidebars.
-  if (!empty($variables['page']['sidebar_first']) && !empty($variables['page']['sidebar_second'])) {
-    $variables['classes_array'][] = 'two-sidebars';
-  }
-  elseif (!empty($variables['page']['sidebar_first'])) {
-    $variables['classes_array'][] = 'one-sidebar sidebar-first';
-  }
-  elseif (!empty($variables['page']['sidebar_second'])) {
-    $variables['classes_array'][] = 'one-sidebar sidebar-second';
-  }
-  else {
-    $variables['classes_array'][] = 'no-sidebars';
-  }
-
-  // Populate the body classes.
-  if ($suggestions = theme_get_suggestions(arg(), 'page', '-')) {
-    foreach ($suggestions as $suggestion) {
-      if ($suggestion != 'page-front') {
-        // Add current suggestion to page classes to make it possible to theme
-        // the page depending on the current page type (e.g. node, admin, user,
-        // etc.) as well as more specific data like node-12 or node-edit.
-        $variables['classes_array'][] = backdrop_html_class($suggestion);
-      }
-    }
+  if ($variables['logged_in']) {
+    $variables['classes_array'][] = 'logged-in';
   }
 
   // If on an individual node page, add the node type to body classes.
@@ -2665,126 +2635,6 @@ function template_preprocess_html(&$variables) {
   }
   $variables['head_title_array'] = $head_title;
   $variables['head_title'] = implode(' | ', $head_title);
-
-  // Populate the page template suggestions.
-  if ($suggestions = theme_get_suggestions(arg(), 'html')) {
-    $variables['theme_hook_suggestions'] = $suggestions;
-  }
-}
-
-/**
- * Preprocess variables for page.tpl.php
- *
- * Most themes utilize their own copy of page.tpl.php. The default is located
- * inside "modules/system/page.tpl.php". Look in there for the full list of
- * variables.
- *
- * Uses the arg() function to generate a series of page template suggestions
- * based on the current path.
- *
- * Any changes to variables in this preprocessor should also be changed inside
- * template_preprocess_maintenance_page() to keep all of them consistent.
- *
- * @see backdrop_render_page()
- * @see template_process_page()
- * @see page.tpl.php
- */
-function template_preprocess_page(&$variables) {
-  // Move some variables to the top level for themer convenience and template cleanliness.
-  $variables['show_messages'] = $variables['page']['#show_messages'];
-  $site_config = config('system.site');
-
-  foreach (system_region_list($GLOBALS['theme']) as $region_key => $region_name) {
-    if (!isset($variables['page'][$region_key])) {
-      $variables['page'][$region_key] = array();
-    }
-  }
-
-  // Set up layout variable.
-  $variables['layout'] = 'none';
-  if (!empty($variables['page']['sidebar_first'])) {
-    $variables['layout'] = 'first';
-  }
-  if (!empty($variables['page']['sidebar_second'])) {
-    $variables['layout'] = ($variables['layout'] == 'first') ? 'both' : 'second';
-  }
-
-  $variables['base_path']         = base_path();
-  $variables['front_page']        = url();
-  $variables['feed_icons']        = backdrop_get_feeds();
-  $variables['language']          = $GLOBALS['language_interface'];
-  $variables['language']->dir     = $GLOBALS['language_interface']->direction ? 'rtl' : 'ltr';
-  $variables['logo']              = theme_get_setting('logo');
-  $variables['action_links']      = menu_local_actions();
-  $variables['site_name']         = (theme_get_setting('toggle_name') ? filter_xss_admin($site_config->get('site_name')) : '');
-  $variables['site_slogan']       = (theme_get_setting('toggle_slogan') ? filter_xss_admin($site_config->get('site_slogan')) : '');
-  $variables['tabs']              = menu_local_tabs();
-
-  $variables['main_menu'] = theme_get_setting('toggle_main_menu') ? menu_main_menu() : array();
-  $variables['secondary_menu'] = theme_get_setting('toggle_secondary_menu') ? menu_secondary_menu() : array();
-  
-  // Pass the main menu and secondary menu to the template as render arrays.
-  if (!empty($variables['main_menu'])) {
-    $variables['main_menu'] = array(
-      '#theme' =>'links__system_main_menu',
-      '#links' => $variables['main_menu'],
-      '#heading' => array(
-        'text' => t('Main menu'),
-        'class' => array('element-invisible'),
-      ),
-      '#set_active_class' => TRUE,
-    );
-  }
-  if (!empty($variables['secondary_menu'])) {
-    $variables['secondary_menu'] = array(
-      '#theme' =>'links__system_secondary_menu',
-      '#links' => $variables['secondary_menu'],
-      '#heading' => array(
-        'text' => t('Secondary menu'),
-        'level' => 'h2',
-        'class' => array('element-invisible'),
-      ),
-      '#set_active_class' => TRUE,
-    );
-  }
-
-
-  if ($node = menu_get_object()) {
-    $variables['node'] = $node;
-  }
-
-  // Populate the page template suggestions.
-  if ($suggestions = theme_get_suggestions(arg(), 'page')) {
-    $variables['theme_hook_suggestions'] = $suggestions;
-  }
-}
-
-/**
- * Process variables for page.tpl.php
- *
- * Perform final addition of variables before passing them into the template.
- * To customize these variables, simply set them in an earlier step.
- *
- * @see template_preprocess_page()
- * @see page.tpl.php
- */
-function template_process_page(&$variables) {
-  if (!isset($variables['breadcrumb'])) {
-    // Build the breadcrumb last, so as to increase the chance of being able to
-    // re-use the cache of an already rendered menu containing the active link
-    // for the current page.
-    // @see menu_tree_page_data()
-    $variables['breadcrumb'] = theme('breadcrumb', array('breadcrumb' => backdrop_get_breadcrumb()));
-  }
-  if (!isset($variables['title'])) {
-    $variables['title'] = backdrop_get_title();
-  }
-
-  // Generate messages last in order to capture as many as possible for the
-  // current page.
-  if (!isset($variables['messages'])) {
-    $variables['messages'] = $variables['show_messages'] ? theme('status_messages') : '';
-  }
 }
 
 /**
@@ -2794,19 +2644,15 @@ function template_process_page(&$variables) {
  * the template. To customize these variables, call backdrop_render() on elements
  * in $variables['page'] during THEME_preprocess_page().
  *
- * @see template_preprocess_html()
- * @see html.tpl.php
+ * @see template_preprocess_page()
+ * @see page.tpl.php
  */
-function template_process_html(&$variables) {
+function template_process_page(&$variables) {
   // Flatten out html_attributes and body_attributes.
   $variables['html_attributes'] = backdrop_attributes($variables['html_attributes_array']);
   $variables['body_attributes'] = backdrop_attributes($variables['body_attributes_array']);
 
-  // Render page_top and page_bottom into top level variables.
-  $variables['page_top'] = backdrop_render($variables['page']['page_top']);
-  $variables['page_bottom'] = backdrop_render($variables['page']['page_bottom']);
-  // Place the rendered HTML for the page body into a top level variable.
-  $variables['page']              = $variables['page']['#children'];
+  // Add footer JS to the page bottom.
   $variables['page_bottom'] .= backdrop_get_js('footer');
 
   $variables['head']    = backdrop_get_html_head();

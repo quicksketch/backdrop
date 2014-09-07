@@ -553,6 +553,8 @@ function views_page($name, $display_id) {
 
 /**
  * Implements hook_page_alter().
+ *
+ * @todo: Port this to an alternative now that hook_page_alter() no longer exists.
  */
 function views_page_alter(&$page) {
   // If the main content of this page contains a view, attach its contextual
@@ -571,6 +573,8 @@ function views_page_alter(&$page) {
 
 /**
  * Implements MODULE_preprocess_HOOK().
+ *
+ * @todo: Convert this to something that works with the new layout system.
  */
 function views_preprocess_html(&$variables) {
   // If the page contains a view as its main content, contextual links may have

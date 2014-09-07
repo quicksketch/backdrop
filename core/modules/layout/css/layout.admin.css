@@ -57,21 +57,26 @@
 
 /* Layout editor. */
 .layout-editor-region {
-  border: 1px dashed #CCC;
-  padding: 0 12px;
+  /*border: 1px dashed #CCC;*/
+  /*padding: 0 12px;*/
 }
 .layout-editor-region-content {
-  min-height: 120px;
+  min-height: 70px;
+  border: 1px dashed #CCC;
+  padding: 5px;
+  background: white;
 }
 .layout-editor-region-title .label {
   float: left;
   vertical-align: middle;
-  margin: 10px 0;
+  margin: 10px 12px 10px 0; /* LTR */
+}
+[dir="rtl"] .layout-editor-region-title .label {
+  margin: 10px 0 10px 12px;
 }
 .layout-editor-region-title .dropbutton-wrapper {
   float: left;
-  width: 300px;
-  padding: 0 12px;
+  width: 94px;
   margin: 7px 0;
 }
 .ui-sortable .layout-editor-block {
@@ -80,6 +85,9 @@
 .layout-editor-block {
   margin: -1px -1px 1em -1px;
   background: #FFF;
+}
+.layout-editor-block:last-child {
+  margin-bottom: 0;
 }
 .layout-editor-block-title {
   border: 1px solid #CCC;

@@ -28,7 +28,13 @@ function layout_list_page() {
       '#links' => _layout_get_group_operations($path, $group),
     );
     $row = array();
-    $row[] = array('data' => check_plain($path), 'colspan' => 2);
+    // Default layouts have a null path.
+    if ($path === '') {
+      $row[] = array('data' => t('Default layouts (used on all paths without a specific layout)'), 'colspan' => 2);
+    }
+    else {
+      $row[] = array('data' => check_plain($path), 'colspan' => 2);
+    }
     $row[] = backdrop_render($operations);
     $rows[] = array('data' => $row, 'class' => array('layout-group'));
 
@@ -73,7 +79,7 @@ function layout_list_page() {
  */
 function _layout_get_operations(Layout $layout) {
   $links = array();
-  if ($layout->disabled) {
+  if ($layout->disabled && !$layout->isDefault()) {
     $links['enable'] = array(
       'title' => t('Enable'),
       'href' => 'admin/structure/layouts/manage/' . $layout->name . '/enable',
@@ -84,29 +90,33 @@ function _layout_get_operations(Layout $layout) {
     'title' => t('Edit'),
     'href' => 'admin/structure/layouts/manage/' . $layout->name,
   );
-  $links['clone'] = array(
-    'title' => t('Clone'),
-    'href' => 'admin/structure/layouts/manage/' . $layout->name . '/clone',
-  );
-  if (!$layout->disabled) {
-    $links['disable'] = array(
-      'title' => t('Disable'),
-      'href' => 'admin/structure/layouts/manage/' . $layout->name . '/disable',
-      'query' => array('token' => backdrop_get_token($layout->name)),
+  if (!$layout->isDefault()) {
+    $links['clone'] = array(
+      'title' => t('Clone'),
+      'href' => 'admin/structure/layouts/manage/' . $layout->name . '/clone',
     );
+    if (!$layout->disabled) {
+      $links['disable'] = array(
+        'title' => t('Disable'),
+        'href' => 'admin/structure/layouts/manage/' . $layout->name . '/disable',
+        'query' => array('token' => backdrop_get_token($layout->name)),
+      );
+    }
+    if ($layout->storage == LAYOUT_STORAGE_NORMAL) {
+      $links['delete'] = array(
+        'title' => t('Delete'),
+        'href' => 'admin/structure/layouts/manage/' . $layout->name . '/delete',
+      );
+    }
   }
-  if ($layout->storage == LAYOUT_STORAGE_NORMAL) {
-    $links['delete'] = array(
-      'title' => t('Delete'),
-      'href' => 'admin/structure/layouts/manage/' . $layout->name . '/delete',
-    );
-  }
-  elseif ($layout->storage == LAYOUT_STORAGE_OVERRIDE) {
+
+  if ($layout->storage == LAYOUT_STORAGE_OVERRIDE) {
     $links['revert'] = array(
       'title' => t('Revert'),
       'href' => 'admin/structure/layouts/manage/' . $layout->name . '/revert',
     );
   }
+
   return $links;
 }
 
@@ -115,6 +125,12 @@ function _layout_get_operations(Layout $layout) {
  */
 function _layout_get_group_operations($path, array $group) {
   $links = array();
+
+  // The default layouts have no operations.
+  if ($path === '') {
+    return $links;
+  }
+
   $last_layout = end($group);
   reset($group);
   if ($last_layout->menu_item) {
@@ -122,15 +138,6 @@ function _layout_get_group_operations($path, array $group) {
       'title' => t('Menu settings'),
       'href' => 'admin/structure/layouts/menu/' . $last_layout->menu_item->name,
     );
-    // This page currently has no separate functional purpose. Remove?
-    /*
-    if (strpos($path, '%')) {
-      $links['arguments'] = array(
-        'title' => t('Arguments'),
-        'href' => 'admin/structure/layouts/menu/' . $last_layout->menu_item->name . '/arguments',
-      );
-    }
-    */
     $links['access'] = array(
       'title' => t('Access control'),
       'href' => 'admin/structure/layouts/menu/' . $last_layout->menu_item->name . '/access',
@@ -151,7 +158,7 @@ function _layout_get_group_operations($path, array $group) {
  */
 function layout_add_page() {
   if (isset($_SESSION['layout_new_name'])) {
-    $layout = layout_cache_load($_SESSION['layout_new_name']);
+    $layout = layout_tempstore_load($_SESSION['layout_new_name']);
   }
   if (empty($layout)) {
     $config = array(
@@ -177,6 +184,8 @@ function layout_settings_form($form, &$form_state, Layout $layout) {
     '#type' => 'textfield',
     '#maxlength' => 128,
     '#default_value' => $layout->title,
+    '#required' => TRUE,
+    '#access' => !$layout->isDefault(),
   );
   $form['name'] = array(
     '#type' => 'machine_name',
@@ -186,6 +195,8 @@ function layout_settings_form($form, &$form_state, Layout $layout) {
     ),
     '#maxlength' => 128,
     '#default_value' => $layout->name,
+    '#required' => TRUE,
+    '#access' => !$layout->isDefault(),
   );
   $form['layout'] = array(
     '#title' => t('Layout'),
@@ -204,7 +215,9 @@ function layout_settings_form($form, &$form_state, Layout $layout) {
     '#title' => t('Path'),
     '#type' => 'textfield',
     '#default_value' => $layout->getPath(),
+    '#required' => TRUE,
     '#description' => t('Use the "%" (percent) symbol to indicate a wildcard in the path. i.e. "node/%" or "node/%/edit".'),
+    '#access' => !$layout->isDefault(),
   );
   $form['path_update'] = array(
     '#type' => 'submit',
@@ -221,9 +234,11 @@ function layout_settings_form($form, &$form_state, Layout $layout) {
       'callback' => 'layout_settings_form_path_ajax',
       'wrapper' => 'layout-contexts',
     ),
+    '#access' => !$layout->isDefault(),
   );
 
   $contexts = $layout->getContexts();
+  $form['context_wrapper']['#access'] = !$layout->isDefault();
   $form['context_wrapper']['#prefix'] = '<div id="layout-contexts">';
   $form['context_wrapper']['#suffix'] = '</div>';
   $form['context_wrapper']['context'] = array(
@@ -268,6 +283,7 @@ function layout_settings_form($form, &$form_state, Layout $layout) {
     '#type' => 'item',
     '#description' => t('Conditions allow this layout to selectively apply to different situations, such as different types of content at the same wildcard path.'),
     '#id' => 'layout-access',
+    '#access' => !$layout->isDefault(),
   );
   $form['conditions']['active'] = array(
     '#type' => 'container',
@@ -371,20 +387,9 @@ function layout_settings_form($form, &$form_state, Layout $layout) {
  */
 function layout_settings_form_validate(&$form, &$form_state) {
   $layout = $form_state['layout'];
-  $name = !empty($form_state['values']['name']) ? $form_state['values']['name'] : $layout->name;
-  if (empty($name)) {
-    form_error($form['name'], t('Name is required.'));
-  }
-
-  $path = $form_state['values']['path'];
-  if (empty($form_state['values']['path'])) {
-    form_error($form['path'], t('Path is required.'));
-    // Stop validation here if there is no path.
-    return;
-  }
 
   // Remove trailing and preceding slashes.
-  $path = $form_state['values']['path'] = trim($path, '/');
+  $path = $form_state['values']['path'] = trim($form_state['values']['path'], '/');
 
   if (strpos($path, '%') === 0) {
     form_error($form['path'], t('The first part of a path may not be a wildcard.'));
@@ -439,7 +444,7 @@ function layout_settings_form_condition_add($form, &$form_state) {
 function layout_settings_form_condition_remove($form, &$form_state) {
   $removed_condition = $form_state['clicked_button']['#array_parents'][2];
   unset($form_state['layout']->conditions[$removed_condition]);
-  layout_set_layout_cache($form_state['layout']);
+  layout_set_layout_tempstore($form_state['layout']);
 
   $form_state['ajax_rebuild_form'] = 'layout_settings_form';
   $form_state['ajax_update'] = array('conditions');
@@ -509,7 +514,7 @@ function layout_settings_form_update_layout($form, &$form_state) {
       $layout->original_name = $form_state['values']['name'];
     }
   }
-  layout_set_layout_cache($layout);
+  layout_set_layout_tempstore($layout);
 }
 
 /**
@@ -520,7 +525,7 @@ function layout_settings_form_reset($form, &$form_state) {
   if (isset($_SESSION['layout_new_name'])) {
     unset($_SESSION['layout_new_name']);
   }
-  layout_clear_layout_cache($layout->name);
+  layout_clear_layout_tempstore($layout->name);
   backdrop_set_message(t('Layout changes discarded.'));
   if (empty($layout->is_new)) {
     $form_state['redirect'] = 'admin/structure/layouts/manage/' . $layout->name;
@@ -535,8 +540,27 @@ function layout_settings_form_save_submit($form, &$form_state) {
   if (isset($_SESSION['layout_new_name'])) {
     unset($_SESSION['layout_new_name']);
   }
-  layout_clear_layout_cache($layout->name);
+
+  // If this is a new layout, populate default blocks.
+  if ($layout->is_new) {
+    $default_layout_name = path_is_admin($layout->getPath()) ? 'layout_admin_default' : 'layout_default';
+    $default_layout = layout_load($default_layout_name);
+    $layout_info = layout_get_layout_info($layout->layout);
+    foreach ($default_layout->positions as $region => $region_block_list) {
+      if (array_key_exists($region, $layout_info['regions'])) {
+        foreach ($region_block_list as $uuid) {
+          $block = $default_layout->content[$uuid];
+          $new_block = $block->getClone();
+          $layout->positions[$region][] = $new_block->uuid;
+          $layout->content[$new_block->uuid] = $new_block;
+        }
+      }
+    }
+  }
+
   $layout->save();
+
+  layout_clear_layout_tempstore($layout->name);
   if (!empty($layout->is_new)) {
     backdrop_set_message(t('Layout created. Blocks may now be added to this layout.'));
     $form_state['redirect'] = 'admin/structure/layouts/manage/' . $layout->name;
@@ -723,7 +747,7 @@ function layout_content_form_submit($form, &$form_state) {
   $layout->save();
 
   // Delete the tempstore copy of the layout.
-  layout_clear_layout_cache($layout->name);
+  layout_clear_layout_tempstore($layout->name);
 
   backdrop_set_message(t('Layout content saved.'));
 }
@@ -959,7 +983,7 @@ function layout_block_configure_form_condition_add($form, &$form_state) {
   $block = $form_state['block'];
 
   $layout->in_progress['section'] = 'conditions';
-  layout_set_layout_cache($layout);
+  layout_set_layout_tempstore($layout);
   $form_state['redirect'] = 'admin/structure/layouts/manage/' . $layout->name . '/condition/add/' . $block->uuid;
 }
 
@@ -971,7 +995,7 @@ function layout_block_configure_form_condition_edit($form, &$form_state) {
   $block = $form_state['block'];
 
   $layout->in_progress['section'] = 'conditions';
-  layout_set_layout_cache($layout);
+  layout_set_layout_tempstore($layout);
   $edit_condition = $form_state['clicked_button']['#array_parents'][2];
   $form_state['redirect'] = 'admin/structure/layouts/manage/' . $layout->name . '/condition/edit/' . $edit_condition . '/' . $block->uuid;
 }
@@ -986,7 +1010,7 @@ function layout_block_configure_form_condition_remove($form, &$form_state) {
   $removed_condition = $form_state['clicked_button']['#array_parents'][2];
   unset($block->conditions[$removed_condition]);
   $layout->in_progress['section'] = 'conditions';
-  layout_set_layout_cache($layout);
+  layout_set_layout_tempstore($layout);
 
   $form_state['ajax_rebuild_form'] = 'layout_block_configure_form';
   $form_state['ajax_update'] = array('conditions');
@@ -1031,7 +1055,7 @@ function layout_block_configure_form_submit($form, &$form_state) {
 
   // Temporarily store any unfinished blocks (those that do not yet have a
   // position but were just added) in the layout so it can be retrieved. See
-  // layout_cache_block_load().
+  // layout_tempstore_block_load().
   if (!empty($form_state['triggering_element']['#save_in_progress'])) {
     $layout->in_progress['region_name'] = $form_state['region_name'];
     $layout->in_progress['block'] = $block;
@@ -1048,7 +1072,7 @@ function layout_block_configure_form_submit($form, &$form_state) {
     $layout->in_progress = NULL;
   }
 
-  layout_set_layout_cache($layout);
+  layout_set_layout_tempstore($layout);
 }
 
 /**
@@ -1084,7 +1108,7 @@ function layout_block_remove_page(Layout $layout, LayoutBlock $block, $renderer_
 
   if (isset($layout->content[$block->uuid])) {
     unset($layout->content[$block->uuid]);
-    layout_set_layout_cache($layout);
+    layout_set_layout_tempstore($layout);
   }
 
   if (backdrop_is_ajax()) {
@@ -1280,7 +1304,7 @@ function layout_condition_edit_form_submit($form, &$form_state) {
       $layout->conditions[] = $handler;
     }
   }
-  layout_set_layout_cache($layout);
+  layout_set_layout_tempstore($layout);
 
   // Blocks return to the dialog/page for editing that block.
   if ($block) {
@@ -1642,85 +1666,6 @@ function layout_page_form_access($form, &$form_state) {
 function layout_page_form_access_submit(&$form, &$form_state) {
   $form_state['page']->subtask['subtask']->access['logic'] = $form_state['values']['logic'];
   $form_state['page']->path_changed = TRUE;
-}
-
-/**
- * Basic settings form for a page manager page.
- */
-function layout_page_argument_form_settings($form, &$form_state) {
-  $page = &$form_state['page']->subtask['subtask'];
-  $keyword = &$form_state['keyword'];
-
-  if (isset($page->temporary_arguments[$keyword])) {
-    $conf = $page->temporary_arguments[$keyword];
-  }
-  else if (isset($page->arguments[$keyword])) {
-    $conf = $page->temporary_arguments[$keyword] = $page->arguments[$keyword];
-  }
-
-  if (!isset($conf)) {
-    // This should be impossible and thus never seen.
-    $form['error'] = array('#value' => t('Error: missing argument.'));
-    return;
-  }
-
-  ctools_include('context');
-  $plugin = ctools_get_argument($conf['name']);
-
-  $form['settings'] = array(
-    '#tree' => TRUE,
-  );
-
-  $form['identifier'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Context identifier'),
-    '#description' => t('This is the title of the context used to identify it later in the administrative process. This will never be shown to a user.'),
-    '#default_value' => $conf['identifier'],
-  );
-
-  if (!$plugin) {
-    // This should be impossible and thus never seen.
-    $form['error'] = array('#value' => t('Error: missing or invalid argument plugin %argument.', array('%argument', $argument)));
-    return;
-  }
-
-  if ($function = ctools_plugin_get_function($plugin, 'settings form')) {
-    $function($form, $form_state, $conf['settings']);
-  }
-
-  $form_state['plugin'] = $plugin;
-  return $form;
-}
-
-/**
- * Validate handler for argument settings.
- */
-function layout_page_argument_form_settings_validate(&$form, &$form_state) {
-  if ($function = ctools_plugin_get_function($form_state['plugin'], 'settings form validate')) {
-    $function($form, $form_state);
-  }
-}
-
-/**
- * Submit handler for argument settings.
- */
-function layout_page_argument_form_settings_submit(&$form, &$form_state) {
-  if ($function = ctools_plugin_get_function($form_state['plugin'], 'settings form submit')) {
-    $function($form, $form_state);
-  }
-
-  $page = &$form_state['page']->subtask['subtask'];
-  $keyword = &$form_state['keyword'];
-  // Copy the form to our temporary location which will get moved again when
-  // finished. Yes, finished is always next but finish can happen from other
-  // locations so we funnel through that path rather than duplicate.
-  $page->temporary_arguments[$keyword]['identifier'] = $form_state['values']['identifier'];
-  if (isset($form_state['values']['settings'])) {
-    $page->temporary_arguments[$keyword]['settings'] = $form_state['values']['settings'];
-  }
-  else {
-    $page->temporary_arguments[$keyword]['settings'] = array();
-  }
 }
 
 /**

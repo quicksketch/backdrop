@@ -320,26 +320,6 @@ function system_test_lock_exit() {
 }
 
 /**
- * Implements hook_page_build().
- */
-function system_test_page_build(&$page) {
-  $menu_item = menu_get_item();
-  $main_content_display = &backdrop_static('system_main_content_added', FALSE);
-
-  if ($menu_item['path'] == 'system-test/main-content-handling') {
-    $page['footer'] = backdrop_set_page_content();
-    $page['footer']['main']['#markup'] = '<div id="system-test-content">' . $page['footer']['main']['#markup'] . '</div>';
-  }
-  elseif ($menu_item['path'] == 'system-test/main-content-fallback') {
-    backdrop_set_page_content();
-    $main_content_display = FALSE;
-  }
-  elseif ($menu_item['path'] == 'system-test/main-content-duplication') {
-    backdrop_set_page_content();
-  }
-}
-
-/**
  * Menu callback to test main content fallback().
  */
 function system_test_main_content_fallback() {

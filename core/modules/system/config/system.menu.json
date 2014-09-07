@@ -1,4 +1,5 @@
 {
     "_config_name": "system.menu",
-    "active_menus_default": []
+    "active_menus_default": [],
+    "menu_route_handler": null
 }

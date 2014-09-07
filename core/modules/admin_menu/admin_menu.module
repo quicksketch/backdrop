@@ -100,28 +100,25 @@ function admin_menu_menu_link_delete($link) {
 }
 
 /**
- * Implements hook_page_build().
+ * Implements hook_preprocess_page().
  */
-function admin_menu_page_build(&$page) {
+function admin_menu_preprocess_page(&$variables) {
   if (!user_access('access administration menu') || admin_menu_suppress(FALSE)) {
     return;
   }
+
   // Performance: Skip this entirely for AJAX requests.
-  if (backdrop_is_ajax()) {
+  if (!backdrop_is_html()) {
     return;
   }
 
   global $user, $language_interface;
   $path = backdrop_get_path('module', 'admin_menu');
 
-  $page['page_bottom']['admin_menu'] = array(
-    '#attached' => array(),
-  );
-  $attached = &$page['page_bottom']['admin_menu']['#attached'];
   $options = array('every_page' => TRUE);
 
-  $attached['css'][$path . '/css/admin_menu.css'] = $options;
-  $attached['js'][$path . '/admin_menu.js'] = $options;
+  backdrop_add_css($path . '/css/admin_menu.css', $options);
+  backdrop_add_js($path . '/admin_menu.js', $options);
 
   // Add current path to support menu item highlighting.
   $args = explode('/', $_GET['q']);
@@ -159,7 +156,7 @@ function admin_menu_page_build(&$page) {
   // Otherwise, add the full menu to the page.
   else {
     module_load_include('inc', 'admin_menu');
-    $page['page_bottom']['admin_menu']['#markup'] = admin_menu_output($complete);
+    $variables['page_bottom'] .= admin_menu_output($complete);
   }
 
   $replacements = module_invoke_all('admin_menu_replacements', $complete);
@@ -176,16 +173,10 @@ function admin_menu_page_build(&$page) {
 
     // In fixed positioning, supply a callback function for tableheader.js to
     // allow it to determine the top viewport offset.
-    $attached['js'][] = array(
-      'data' => array('tableHeaderOffset' => 'Backdrop.adminMenu.height'),
-      'type' => 'setting',
-    );
+    backdrop_add_js(array('tableHeaderOffset' => 'Backdrop.adminMenu.height'), array('type' => 'setting'));
   }
 
-  $attached['js'][] = array(
-    'data' => array('admin_menu' => $settings),
-    'type' => 'setting',
-  );
+  backdrop_add_js(array('admin_menu' => $settings), array('type' => 'setting'));
 }
 
 /**

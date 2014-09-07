@@ -1,15 +1,49 @@
 /**
- * CSS for the default two column layout provided by Layout module.
+ * @file
+ * CSS for the three-three-four layout.
  */
-.layout-twocol .layout-col {
-  float: left; 
-  width: 50%; 
+.layout-twocol #page  {
+  height: 100%;
+}
+.layout-twocol #page-wrapper {
+  min-height: 100%;
+}
+.layout-twocol #header div.section,
+.layout-twocol #main,
+.layout-twocol #footer {
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+}
+.layout-twocol #content .section,
+.layout-twocol .sidebar .section {
+  padding: 0 15px;
 }
 
-.layout-twocol .layout-col-first .inside {
-  margin: 0 .5em 1em 0;
-}
-
-.layout-twocol .layout-col-last .inside {
-  margin: 0 0 1em .5em;
+@media all and (min-width: 851px) {
+  .layout-twocol #content,
+  .layout-twocol #sidebar {
+    display: inline;
+    float: left; /* LTR */
+    position: relative;
+  }
+  [dir="rtl"] .layout-twocol #content,
+  [dir="rtl"] .layout-twocol #sidebar {
+    float: right;
+  }
+  .layout-twocol #content {
+    margin-right: 30%;
+    width: 70%;
+  }
+  [dir="rtl"] .layout-twocol #content {
+    margin-left: 30%;
+    margin-right: 0;
+  }
+  .layout-twocol #sidebar {
+    width: 30%;
+    margin-left: -30%; /* LTR */
+  }
+  [dir="rtl"] .layout-twocol #sidebar {
+    margin-right: -30%;
+  }
 }

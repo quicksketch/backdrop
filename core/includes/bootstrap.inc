@@ -3429,6 +3429,13 @@ function backdrop_is_cli() {
 /**
  * Detects if this is an AJAX HTTP request.
  */
+function backdrop_is_html() {
+  return strpos($_SERVER['HTTP_ACCEPT'], 'text/html') === 0 && empty($_SERVER['X_REQUESTED_WITH']);
+}
+
+/**
+ * Detects if this is an AJAX HTTP request.
+ */
 function backdrop_is_ajax() {
   return strpos($_SERVER['HTTP_ACCEPT'], 'application/vnd.backdrop-ajax') === 0;
 }

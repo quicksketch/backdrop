@@ -3,3 +3,17 @@
  * @file
  * Install, update and uninstall functions for the Layout module.
  */
+
+/**
+ * Implements hook_enable().
+ */
+function layout_enable() {
+  config_set('system.menu', 'menu_route_handler', 'layout_route_handler');
+}
+
+/**
+ * Implements hook_disable().
+ */
+function layout_disable() {
+  config_set('system.menu', 'menu_route_handler', NULL);
+}

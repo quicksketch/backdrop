@@ -24,20 +24,6 @@ class LayoutBlockLegacy extends LayoutBlock {
   /**
    * {@inheritdoc}
    */
-  function getTitle() {
-    $title = parent::getTitle();
-    if ($this->settings['title_display'] === LAYOUT_TITLE_DEFAULT) {
-      $block_content = $this->buildBlock();
-      if (isset($block_content['subject'])) {
-        $title = $block_content['subject'];
-      }
-    }
-    return $title;
-  }
-
-  /**
-   * {@inheritdoc}
-   */
   function getContent() {
     $block_content = $this->buildBlock();
     return isset($block_content['content']) ? $block_content['content'] : '';

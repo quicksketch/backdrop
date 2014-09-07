@@ -505,10 +505,11 @@ function menu_execute_active_handler($path = NULL, $deliver = TRUE) {
   if ($page_callback_result == MENU_SITE_ONLINE) {
     if ($router_item = menu_get_item($path)) {
       if ($router_item['access']) {
-        if ($router_item['include_file']) {
-          require_once BACKDROP_ROOT . '/' . $router_item['include_file'];
+        $route_handler = config_get('system.menu', 'menu_route_handler');
+        if (empty($route_handler) || !function_exists($route_handler)) {
+          $route_handler = 'menu_default_route_handler';
         }
-        $page_callback_result = call_user_func_array($router_item['page_callback'], $router_item['page_arguments']);
+        $page_callback_result = $route_handler($router_item);
       }
       else {
         $page_callback_result = MENU_ACCESS_DENIED;
@@ -528,6 +529,24 @@ function menu_execute_active_handler($path = NULL, $deliver = TRUE) {
   else {
     return $page_callback_result;
   }
+}
+
+/**
+ * Executes the current router item's page callback.
+ *
+ * This function is only called if no other menu_router_handler has been
+ * specified by a module to handle the execution of page routes. In Backdrop
+ * core, Layout module usually will take precedence over this callback with its
+ * function layout_router_handler().
+ *
+ * @see menu_execute_active_handler()
+ * @see layout_router_handler()
+ */
+function menu_default_route_handler($router_item) {
+  if ($router_item['include_file']) {
+    require_once BACKDROP_ROOT . '/' . $router_item['include_file'];
+  }
+  return call_user_func_array($router_item['page_callback'], $router_item['page_arguments']);
 }
 
 /**
@@ -1013,6 +1032,8 @@ function menu_tree($menu_name) {
  *   A structured array to be rendered by backdrop_render().
  */
 function menu_tree_output($tree) {
+  global $language_url;
+
   $build = array();
   $items = array();
 
@@ -1056,7 +1077,14 @@ function menu_tree_output($tree) {
     // trees, so if the current path is a local task, and this link is its
     // tab root, then we have to set the class manually.
     if ($data['link']['href'] == $router_item['tab_root_href'] && $data['link']['href'] != $_GET['q']) {
+      $class[] = 'active';
       $data['link']['localized_options']['attributes']['class'][] = 'active';
+    }
+    // Add the active class to the wrapper itself if necessary as the l()
+    // function would.
+    if (($data['link']['href'] == $_GET['q'] || ($data['link']['href'] == '<front>' && backdrop_is_front_page())) &&
+      (empty($data['link']['language']) || $data['link']['language']->langcode == $language_url->langcode)) {
+      $class[] = 'active';
     }
 
     // Allow menu-specific theme overrides.
@@ -1694,6 +1722,17 @@ function theme_menu_local_action($variables) {
 }
 
 /**
+ * Returns rendered HTML for the local actions.
+ */
+function theme_menu_local_actions(&$variables) {
+  $output = backdrop_render($variables['actions']);
+  if ($output) {
+    $output = '<ul class="action-links">' . $output . '</ul>';
+  }
+  return $output;
+}
+
+/**
  * Gets the custom theme for the current page, if there is one.
  *
  * @param $initialize
@@ -2205,7 +2244,7 @@ function menu_secondary_local_tasks() {
  */
 function menu_local_actions() {
   $links = menu_local_tasks();
-  return $links['actions']['output'];
+  return theme('menu_local_actions', array('actions' => $links['actions']['output']));
 }
 
 /**
@@ -2217,14 +2256,13 @@ function menu_tab_root_path() {
 }
 
 /**
- * Returns a renderable element for the primary and secondary tabs.
+ * Returns rendered HTML for the primary and secondary tabs.
  */
 function menu_local_tabs() {
-  return array(
-    '#theme' => 'menu_local_tasks',
-    '#primary' => menu_primary_local_tasks(),
-    '#secondary' => menu_secondary_local_tasks(),
-  );
+  return theme('menu_local_tasks', array(
+    'primary' => menu_primary_local_tasks(),
+    'secondary' => menu_secondary_local_tasks(),
+  ));
 }
 
 /**

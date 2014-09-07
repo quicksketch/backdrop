@@ -2694,9 +2694,7 @@ function backdrop_deliver_html_page($page_callback_result) {
           $return = t('The requested page "@path" could not be found.', array('@path' => request_uri()));
         }
 
-        backdrop_set_page_content($return);
-        $page = element_info('page');
-        print backdrop_render_page($page);
+        print backdrop_render_page($return);
         break;
 
       case MENU_ACCESS_DENIED:
@@ -5438,8 +5436,8 @@ function _backdrop_bootstrap_full() {
     // - Modules with hook_init() implementations that call theme() or
     //   theme_get_registry() don't initialize the incorrect theme.
     // - The theme can have hook_*_alter() implementations affect page building
-    //   (e.g., hook_form_alter(), hook_node_view_alter(), hook_page_alter()),
-    //   ahead of when rendering starts.
+    //   (e.g., hook_form_alter() or hook_node_view_alter()), ahead of when
+    //   rendering starts.
     menu_set_custom_theme();
     backdrop_theme_initialize();
     module_invoke_all('init');
@@ -5733,37 +5731,6 @@ function backdrop_system_listing($mask, $directory, $key = 'name', $min_depth = 
 }
 
 /**
- * Sets the main page content value for later use.
- *
- * Given the nature of the Backdrop page handling, this will be called once with
- * a string or array. We store that and return it later as the block is being
- * displayed.
- *
- * @param $content
- *   A string or renderable array representing the body of the page.
- *
- * @return
- *   If called without $content, a renderable array representing the body of
- *   the page.
- */
-function backdrop_set_page_content($content = NULL) {
-  $content_block = &backdrop_static(__FUNCTION__, NULL);
-  $main_content_display = &backdrop_static('system_main_content_added', FALSE);
-
-  if (!empty($content)) {
-    $content_block = (is_array($content) ? $content : array('main' => array('#markup' => $content)));
-  }
-  else {
-    // Indicate that the main content has been requested. We assume that
-    // the module requesting the content will be adding it to the page.
-    // A module can indicate that it does not handle the content by setting
-    // the static variable back to FALSE after calling this function.
-    $main_content_display = TRUE;
-    return $content_block;
-  }
-}
-
-/**
  * Pre-render callback: Renders #browsers into #prefix and #suffix.
  *
  * @param $elements
@@ -6026,47 +5993,13 @@ function backdrop_pre_render_dropbutton($element) {
 }
 
 /**
- * Renders the page, including all theming.
+ * Renders the page, including the HTML, HEAD, and BODY tags.
  *
  * @param $page
- *   A string or array representing the content of a page. The array consists of
- *   the following keys:
- *   - #type: Value is always 'page'. This pushes the theming through
- *     page.tpl.php (required).
- *   - #show_messages: Suppress backdrop_get_message() items. Used by Batch
- *     API (optional).
- *
- * @see hook_page_alter()
- * @see element_info()
+ *   A string or renderable array representing the content of a page.
  */
 function backdrop_render_page($page) {
-  $main_content_display = &backdrop_static('system_main_content_added', FALSE);
-
-  // Allow menu callbacks to return strings or arbitrary arrays to render.
-  // If the array returned is not of #type page directly, we need to fill
-  // in the page with defaults.
-  if (is_string($page) || (is_array($page) && (!isset($page['#type']) || ($page['#type'] != 'page')))) {
-    backdrop_set_page_content($page);
-    $page = element_info('page');
-  }
-
-  // Modules can add elements to $page as needed in hook_page_build().
-  foreach (module_implements('page_build') as $module) {
-    $function = $module . '_page_build';
-    $function($page);
-  }
-  // Modules alter the $page as needed. Blocks are populated into regions like
-  // 'sidebar_first', 'footer', etc.
-  backdrop_alter('page', $page);
-
-  // If no module has taken care of the main content, add it to the page now.
-  // This allows the site to still be usable even if no modules that
-  // control page regions (for example, the Block module) are enabled.
-  if (!$main_content_display) {
-    $page['content']['system_main'] = backdrop_set_page_content();
-  }
-
-  return backdrop_render($page);
+  return theme('page', array('page' => render($page)));
 }
 
 /**
@@ -7140,17 +7073,13 @@ function backdrop_array_nested_key_exists(array $array, array $parents) {
 function backdrop_common_theme() {
   return array(
     // From theme.inc.
-    'html' => array(
-      'render element' => 'page',
-      'template' => 'html',
-    ),
     'page' => array(
-      'render element' => 'page',
-      'template' => 'page',
+      'variables' => array('page_top' => '', 'page' => '', 'page_bottom' => ''),
+      'template' => 'templates/page',
     ),
-    'region' => array(
-      'render element' => 'elements',
-      'template' => 'region',
+    'header' => array(
+      'variables' => array('logo' => NULL, 'site_name' => NULL, 'site_slogan' => NULL, 'menu' => NULL),
+      'template' => 'templates/header',
     ),
     'datetime' => array(
       'variables' => array('timestamp' => NULL, 'text' => NULL, 'attributes' => array(), 'html' => FALSE),
@@ -7221,7 +7150,7 @@ function backdrop_common_theme() {
     // From theme.maintenance.inc.
     'maintenance_page' => array(
       'variables' => array('content' => NULL, 'show_messages' => TRUE),
-      'template' => 'maintenance-page',
+      'template' => 'templates/maintenance-page',
     ),
     'update_page' => array(
       'variables' => array('content' => NULL, 'show_messages' => TRUE),
@@ -7269,6 +7198,9 @@ function backdrop_common_theme() {
     ),
     'menu_local_action' => array(
       'render element' => 'element',
+    ),
+    'menu_local_actions' => array(
+      'variables' => array('actions' => array()),
     ),
     'menu_local_tasks' => array(
       'variables' => array('primary' => array(), 'secondary' => array()),

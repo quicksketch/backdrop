@@ -12,29 +12,35 @@ function layout_layout_info() {
     'title' => t('Single column'),
     'path' => 'layouts/onecol',
     'icon' => 'onecol.png',
-    'css' => 'onecol.css',
-    'theme' => 'layout_onecol',
+    // Note that the onecol layout provides the default layout.tpl.php file.
+    'theme' => 'layout',
     'regions' => array(
-      'middle' => t('Middle column'),
+      'header' => t('Header'),
+      'content' => t('Content'),
+      'footer' => t('Footer'),
     ),
+    'default region' => 'content',
   );
   $layouts['twocol'] = array(
     'title' => t('Two column'),
     'path' => 'layouts/twocol',
     'icon' => 'twocol.png',
     'css' => 'twocol.css',
-    'theme' => 'layout_twocol',
+    'theme' => 'layout__twocol',
     'regions' => array(
-      'left' => t('Left side'),
-      'right' => t('Right side')
+      'header' => t('Header'),
+      'content' => t('Content'),
+      'sidebar' => t('Sidebar'),
+      'footer' => t('Footer'),
     ),
+    'default region' => 'content',
   );
   $layouts['three_three_four'] = array(
     'title' => t('Three/three/four stacked'),
     'path' => 'layouts/three_three_four',
     'icon' => 'three-three-four.png',
     'css' => 'three-three-four.css',
-    'theme' => 'layout_three_three_four',
+    'theme' => 'layout__three_three_four',
     'regions' => array(
       'header' => t('Header'),
       'featured' => t('Featured'),
@@ -51,6 +57,7 @@ function layout_layout_info() {
       'footer_fourthcolumn' => t('Footer fourth'),
       'footer' => t('Footer bottom'),
     ),
+    'default region' => 'content',
   );
   return $layouts;
 }
@@ -206,9 +213,6 @@ function layout_layout_renderer_info() {
   );
   $info['editor'] = array(
     'class' => 'LayoutRendererEditor',
-  );
-  $info['simple'] = array(
-    'class' => 'LayoutRendererSimple',
   );
   $info['standard'] = array(
     'class' => 'LayoutRendererStandard',

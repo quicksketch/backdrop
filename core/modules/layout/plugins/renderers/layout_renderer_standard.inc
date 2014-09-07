@@ -142,8 +142,8 @@ class LayoutRendererStandard {
    * method via parent::prepare(), or manually set $this->prep_run = TRUE.
    */
   function prepare() {
-    $this->prepare_blocks($this->layout->content);
-    $this->prepare_regions($this->layout->positions, $this->layout->settings);
+    $this->prepareBlocks($this->layout->content);
+    $this->prepareRegions($this->layout->positions, $this->layout->settings);
     $this->prep_run = TRUE;
   }
 
@@ -165,7 +165,7 @@ class LayoutRendererStandard {
    *  An associative array of blocks to be rendered, keyed on UUID and sorted
    *  into proper rendering order.
    */
-  function prepare_blocks($blocks) {
+  function prepareBlocks($blocks) {
     // Use local variables as writing to them is very slightly faster
     $first = $normal = $last = array();
 
@@ -235,7 +235,7 @@ class LayoutRendererStandard {
    * @return array
    *   An array of regions prepared for rendering.
    */
-  function prepare_regions($region_block_list, $settings) {
+  function prepareRegions($region_block_list, $settings) {
     // Initialize defaults to be used for regions without their own explicit
     // settings. Use display settings if they exist, else hardcoded defaults.
     $default = array(
@@ -282,7 +282,7 @@ class LayoutRendererStandard {
    */
   function render() {
     $this->addMeta();
-    return $this->render_layout();
+    return $this->renderLayout();
   }
 
   /**
@@ -297,7 +297,7 @@ class LayoutRendererStandard {
    * @return string
    *   The HTML string representing the entire rendered, themed layout.
    */
-  function render_layout() {
+  function renderLayout() {
     if (empty($this->prep_run)) {
       $this->prepare();
     }
@@ -311,7 +311,8 @@ class LayoutRendererStandard {
       $theme = $this->layout_info['theme'];
     }
 
-    $this->rendered['layout'] = theme($theme, array('content' => $this->rendered['regions'], 'settings' => $this->layout->settings, 'layout' => $this->layout, 'layout_info' => $this->layout_info, 'renderer' => $this));
+    module_load_include('inc', 'layout', 'includes/layout.theme');
+    $this->rendered['layout'] = theme($theme, array('content' => $this->rendered['regions'], 'settings' => $this->layout->settings, 'layout' => $this->layout, 'layout_info' => $this->layout_info, 'renderer' => $this, 'admin' => $this->admin));
     return $this->prefix . $this->rendered['layout'] . $this->suffix;
   }
 
@@ -324,15 +325,15 @@ class LayoutRendererStandard {
   function addMeta() {
     if (!empty($this->layout_info['css'])) {
       if (file_exists(path_to_theme() . '/' . $this->layout_info['css'])) {
-        $this->add_css(path_to_theme() . '/' . $this->layout_info['css']);
+        $this->addCss(path_to_theme() . '/' . $this->layout_info['css']);
       }
       else {
-        $this->add_css($this->layout_info['path'] . '/' . $this->layout_info['css']);
+        $this->addCss($this->layout_info['path'] . '/' . $this->layout_info['css']);
       }
     }
 
     if ($this->admin && isset($this->layout_info['admin css'])) {
-      $this->add_css($this->layout_info['path'] . '/' . $this->layout_info['admin css']);
+      $this->addCss($this->layout_info['path'] . '/' . $this->layout_info['admin css']);
     }
   }
 
@@ -348,7 +349,7 @@ class LayoutRendererStandard {
    *
    * @see backdrop_add_css
    */
-  function add_css($filename) {
+  function addCss($filename) {
     switch ($this->meta_location) {
       case 'standard':
         backdrop_add_css($filename);
@@ -406,7 +407,7 @@ class LayoutRendererStandard {
       );
 
       if (isset($style) && isset($style['block theme'])) {
-        $output = theme($style['block theme'], array('layout' => $this->layout, 'block' => $block, 'content' => $content, 'style' => $style, 'settings' => $block->style->settings));
+        $output = theme($style['block theme'] . '__' . $block->module . '__' . $block->delta, array('layout' => $this->layout, 'block' => $block, 'content' => $content, 'style' => $style, 'settings' => $block->style->settings));
       }
       else {
         // Fallback.
@@ -471,5 +472,41 @@ class LayoutRendererStandard {
     }
 
     return $output;
+  }
+
+  /**
+   * Ensure that the page content block is included in the default region.
+   *
+   * This method is used specifically when the "layout_default" layout is used,
+   * to make sure that the current page content is rendered in the default
+   * region of the fallback layout; thus ensuring the UI of the site remains
+   * usable.
+   */
+  function ensurePageContentBlock() {
+    $page_content_uuid = NULL;
+    $default_region = $this->layout_info['default region'];
+
+    // Check that the page content block exists in the layout.
+    foreach ($this->layout->content as $uuid => $block) {
+      if ($block->delta === 'system' && $block->delta === 'main') {
+        $page_content_uuid = $uuid;
+      }
+    }
+
+    // If no page content block found at all, create one on the fly.
+    if (!$page_content_uuid) {
+      $block = layout_create_handler('block', 'system:main');
+      $block->uuid = 'default';
+      $this->layout->content['default'] = $block;
+      $page_content_uuid = $block->uuid;
+    }
+
+    // Add the page content block to the default region in the first position.
+    if (!isset($this->layout->positions[$default_region])) {
+      $this->layout->positions[$default_region] = array();
+    }
+    if (!in_array($page_content_uuid, $this->layout->positions[$default_region])) {
+      array_unshift($this->layout->positions[$default_region], $page_content_uuid);
+    }
   }
 }

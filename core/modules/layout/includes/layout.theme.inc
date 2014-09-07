@@ -136,9 +136,77 @@ function theme_layout_settings_context_table($variables) {
   ));
 }
 
+/**
+ * Preprocess variables for layout.tpl.php files.
+ */
+function template_preprocess_layout(&$variables) {
+  $variables += array(
+    'action_links' => NULL,
+    'tabs' => NULL,
+    'messages' => NULL,
+    'title' => NULL,
+  );
+
+  if (!$variables['admin']) {
+    $variables['action_links'] = menu_local_actions();
+    $variables['tabs'] =  menu_local_tabs();
+  }
+}
 
 /**
- * Clean up the panel pane variables for the template.
+ * Process variables for the three-three-four layout.
+ */
+function template_preprocess_layout__three_three_four(&$variables) {
+  if ($variables['content']['sidebar_first'] && $variables['content']['sidebar_second']) {
+    $variables['classes_array'][] = 'layout-two-sidebars';
+  }
+  elseif ($variables['content']['sidebar_first'] || $variables['content']['sidebar_second']) {
+    $variables['classes_array'][] = 'layout-one-sidebar';
+    if ($variables['content']['sidebar_first']) {
+      $variables['classes_array'][] = 'layout-sidebar-first';
+    }
+    else {
+      $variables['classes_array'][] = 'layout-sidebar-second';
+    }
+  }
+  else {
+    $variables['classes_array'][] = 'layout-no-sidebars';
+  }
+}
+
+/**
+ * Process variables for layout.tpl.php files.
+ *
+ * Perform final addition of variables before passing them into the template.
+ * To customize these variables, simply set them in an earlier step.
+ *
+ * @see template_preprocess_layout()
+ * @see page.tpl.php
+ */
+function template_process_layout(&$variables) {
+  $variables += array(
+    'title' => NULL,
+    'messages' => NULL,
+  );
+
+  if (!$variables['admin']) {
+    if (!isset($variables['title'])) {
+      $variables['title'] = backdrop_get_title();
+    }
+
+    // Generate messages last in order to capture as many as possible for the
+    // current page.
+    if (!isset($variables['messages'])) {
+      $variables['messages'] = theme('status_messages');
+    }
+  }
+  else {
+    $variables['title'] = t('Page title');
+  }
+}
+
+/**
+ * Clean up the layout block variables for the template.
  */
 function template_preprocess_layout_block(&$variables) {
   $content = $variables['content'];
@@ -186,6 +254,7 @@ function template_preprocess_layout_block(&$variables) {
 
   // Basic classes.
   $variables['classes_array'][] = 'block';
+  $variables['classes_array'][] = backdrop_html_class('block-' . $block->module . '-' . $block->delta);
 
   // Add custom classes if sent in.
   if (!empty($content->content)) {

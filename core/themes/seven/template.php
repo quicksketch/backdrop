@@ -1,18 +1,6 @@
 <?php
 
 /**
- * Override or insert variables into the page template.
- */
-function seven_preprocess_page(&$variables) {
-  $variables['primary_local_tasks'] = $variables['tabs'];
-  unset($variables['primary_local_tasks']['#secondary']);
-  $variables['secondary_local_tasks'] = array(
-    '#theme' => 'menu_local_tasks',
-    '#secondary' => $variables['tabs']['#secondary'],
-  );
-}
-
-/**
  * Display the list of available node types for node creation.
  */
 function seven_node_add_list($variables) {

@@ -71,65 +71,65 @@ function layout_menu() {
     'type' => MENU_CALLBACK,
   ) + $base;
 
-  $items['admin/structure/layouts/manage/%layout_cache'] = array(
+  $items['admin/structure/layouts/manage/%layout_tempstore'] = array(
     'title' => 'Edit layout settings',
     'page callback' => 'backdrop_get_form',
     'page arguments' => array('layout_content_form', 4),
     'type' => MENU_NORMAL_ITEM,
   ) + $base;
 
-  $items['admin/structure/layouts/manage/%layout_cache/edit'] = array(
+  $items['admin/structure/layouts/manage/%layout_tempstore/edit'] = array(
     'title' => 'Layout',
     'type' => MENU_DEFAULT_LOCAL_TASK,
   ) + $base;
 
-  $items['admin/structure/layouts/manage/%layout_cache/add-block/%/%'] = array(
+  $items['admin/structure/layouts/manage/%layout_tempstore/add-block/%/%'] = array(
     'title' => 'Add block',
     'page callback' => 'layout_block_add_page',
     'page arguments' => array(4, 6, 7),
   ) + $base;
 
-  $items['admin/structure/layouts/manage/%layout_cache/configure-block/%/%layout_cache_block'] = array(
+  $items['admin/structure/layouts/manage/%layout_tempstore/configure-block/%/%layout_tempstore_block'] = array(
     'title' => 'Configure block',
     'load arguments' => array(4),
     'page callback' => 'backdrop_get_form',
     'page arguments' => array('layout_block_configure_form', 4, 7, 6),
   ) + $base;
 
-  $items['admin/structure/layouts/manage/%layout_cache/remove-block/%/%layout_cache_block'] = array(
+  $items['admin/structure/layouts/manage/%layout_tempstore/remove-block/%/%layout_tempstore_block'] = array(
     'title' => 'Remove block',
     'load arguments' => array(4),
     'page callback' => 'layout_block_remove_page',
     'page arguments' => array(4, 7, 6),
   ) + $base;
 
-  $items['admin/structure/layouts/manage/%layout_cache/settings'] = array(
+  $items['admin/structure/layouts/manage/%layout_tempstore/settings'] = array(
     'title' => 'Settings',
     'page callback' => 'backdrop_get_form',
     'page arguments' => array('layout_settings_form', 4),
     'type' => MENU_LOCAL_TASK,
   ) + $base;
 
-  $items['admin/structure/layouts/manage/%layout_cache/clone'] = array(
+  $items['admin/structure/layouts/manage/%layout_tempstore/clone'] = array(
     'title' => 'Clone layout',
     'page callback' => 'backdrop_get_form',
     'page arguments' => array('layout_clone_form', 4),
     'type' => MENU_CALLBACK,
   ) + $base;
 
-  $items['admin/structure/layouts/manage/%layout_cache/enable'] = array(
+  $items['admin/structure/layouts/manage/%layout_tempstore/enable'] = array(
     'page callback' => 'layout_enable_layout',
     'page arguments' => array(TRUE, 4),
     'type' => MENU_CALLBACK,
   ) + $base;
 
-  $items['admin/structure/layouts/manage/%layout_cache/disable'] = array(
+  $items['admin/structure/layouts/manage/%layout_tempstore/disable'] = array(
     'page callback' => 'layout_enable_layout',
     'page arguments' => array(FALSE, 4),
     'type' => MENU_CALLBACK,
   ) + $base;
 
-  $items['admin/structure/layouts/manage/%layout_cache/delete'] = array(
+  $items['admin/structure/layouts/manage/%layout_tempstore/delete'] = array(
     'page callback' => 'backdrop_get_form',
     'page arguments' => array('layout_delete_form', 4),
     'type' => MENU_CALLBACK,
@@ -142,35 +142,35 @@ function layout_menu() {
     'type' => MENU_LOCAL_ACTION,
   ) + $base;
 
-  $items['admin/structure/layouts/menu/%layout_cache_menu_item'] = array(
+  $items['admin/structure/layouts/menu/%layout_tempstore_menu_item'] = array(
     'title' => 'Menu settings',
     'page callback' => 'backdrop_get_form',
     'page arguments' => array('layout_menu_item_settings_form', 4),
     'type' => MENU_CALLBACK,
   ) + $base;
 
-  $items['admin/structure/layouts/menu/%layout_cache_menu_item/arguments'] = array(
+  $items['admin/structure/layouts/menu/%layout_tempstore_menu_item/arguments'] = array(
     'title' => 'Arguments',
     'page callback' => 'backdrop_get_form',
     'page arguments' => array('layout_menu_item_arguments_form', 4),
     'type' => MENU_CALLBACK,
   ) + $base;
 
-  $items['admin/structure/layouts/menu/%layout_cache_menu_item/access'] = array(
+  $items['admin/structure/layouts/menu/%layout_tempstore_menu_item/access'] = array(
     'title' => 'Access control',
     'page callback' => 'backdrop_get_form',
     'page arguments' => array('layout_menu_item_access_form', 4),
     'type' => MENU_CALLBACK,
   ) + $base;
 
-  $items['admin/structure/layouts/manage/%layout_cache/condition/add'] = array(
+  $items['admin/structure/layouts/manage/%layout_tempstore/condition/add'] = array(
     'title' => 'Add condition',
     'page callback' => 'backdrop_get_form',
     'page arguments' => array('layout_condition_add_form', 4),
     'type' => MENU_CALLBACK,
   ) + $base;
 
-  $items['admin/structure/layouts/manage/%layout_cache/condition/edit/%'] = array(
+  $items['admin/structure/layouts/manage/%layout_tempstore/condition/edit/%'] = array(
     'title' => 'Configure condition',
     'title callback' => 'layout_condition_edit_title',
     'title arguments' => array(4, 7),
@@ -180,7 +180,7 @@ function layout_menu() {
   ) + $base;
 
   // Add/configure conditions for a block uses the same callback as layout.
-  $items['admin/structure/layouts/manage/%layout_cache/condition/add/%layout_cache_block'] = array(
+  $items['admin/structure/layouts/manage/%layout_tempstore/condition/add/%layout_tempstore_block'] = array(
     'title' => 'Add condition',
     'load arguments' => array(4),
     'page callback' => 'backdrop_get_form',
@@ -188,7 +188,7 @@ function layout_menu() {
     'type' => MENU_CALLBACK,
   ) + $base;
 
-  $items['admin/structure/layouts/manage/%layout_cache/condition/edit/%/%layout_cache_block'] = array(
+  $items['admin/structure/layouts/manage/%layout_tempstore/condition/edit/%/%layout_tempstore_block'] = array(
     'title' => 'Configure condition',
     'load arguments' => array(4),
     'title callback' => 'layout_condition_edit_title',
@@ -347,15 +347,80 @@ function layout_js_load($js) {
   return 0;
 }
 
-/*
+/**
+ * Route handler callback; Execute the current route item or wrap in a layout.
+ *
+ * @param $router_item
+ *   The menu router item for the page currently being loaded.
+ * @return
+ *   The fully built HTML content for this page, which will be wrapped in
+ *   page.tpl.php.
+ *
+ * @ingroup callbacks
+ */
+function layout_route_handler($router_item) {
+  // If not returning HTML (e.g. AJAX or something else), use the default route
+  // handler instead of layouts.
+  if (!backdrop_is_html() || $router_item['page_callback'] === 'layout_page_callback') {
+    return menu_default_route_handler($router_item);
+  }
+
+  $layouts = layout_get_path_layout_names($router_item['path']);
+  $selected_layout = NULL;
+  foreach ($layouts as $layout_name) {
+    $layout = layout_load($layout_name);
+    if ($layout->checkAccess()) {
+      $selected_layout = $layout;
+    }
+  }
+
+  if (!$selected_layout) {
+    if (path_is_admin($_GET['q'])) {
+      $selected_layout = layout_load('layout_admin_default');
+    }
+    else {
+      $selected_layout = layout_load('layout_default');
+    }
+  }
+
+  if ($selected_layout) {
+    // Set the data in each context based on the provided menu handler.
+    $contexts = $selected_layout->getContexts();
+    foreach ($contexts as $position => $context) {
+      if (is_numeric($position)) {
+        $context->setData($router_item['map'][$position]);
+      }
+    }
+
+    // Render the layout.
+    $renderer = layout_create_renderer('standard', $selected_layout);
+    if ($selected_layout->isDefault()) {
+      $renderer->ensurePageContentBlock();
+    }
+    return $renderer->render();
+  }
+
+  // Fallback code if even the expected default layout cannot be found.
+  return menu_default_route_handler($router_item);
+}
+
+/**
  * Implements hook_theme()
  */
 function layout_theme() {
+  // Include the theme file so that the base process/preprocess functions are
+  // in the global namespace.
+  module_load_include('inc', 'layout', 'includes/layout.theme');
+
   $base = array(
     'file' => 'includes/layout.theme.inc',
   );
 
   $items = array(
+    'layout' => array(
+      'variables' => array('content' => NULL, 'settings' => NULL, 'layout' => NULL, 'layout_info' => NULL, 'renderer' => NULL, 'attributes_array' => array(), 'admin' => FALSE),
+      'template' => 'layouts/onecol/layout',
+    ) + $base,
     'layout_reorder_layouts' => array(
       'render element' => 'element',
     ) + $base,
@@ -375,6 +440,11 @@ function layout_theme() {
     'layout_settings_context_table' => array(
       'render element' => 'element',
     ) + $base,
+    'layout_block__system__main' => array(
+      'template' => 'templates/layout-block--system--main',
+      'variables' => array('layout' => NULL, 'content' => NULL, 'block' => NULL, 'style' => NULL, 'settings' => array(), 'attributes_array' => array()),
+      'preprocess functions' => array('template_preprocess', 'template_preprocess_layout_block'),
+    ) + $base,
   );
 
   // Register all layouts.
@@ -383,8 +453,9 @@ function layout_theme() {
     foreach (array('theme', 'admin theme') as $callback) {
       if (!empty($layout[$callback])) {
         $items[$layout[$callback]] = array(
-          'variables' => array('content' => NULL, 'settings' => NULL, 'layout' => NULL, 'layout_info' => NULL, 'renderer' => NULL, 'attributes_array' => array()),
+          'variables' => array('content' => NULL, 'settings' => NULL, 'layout' => NULL, 'layout_info' => NULL, 'renderer' => NULL, 'attributes_array' => array(), 'admin' => FALSE),
           'path' => $layout['path'],
+          'base hook' => 'layout',
         );
         if (isset($layout['file'])) {
           $items[$layout[$callback]]['file'] = $layout['file'];
@@ -403,6 +474,7 @@ function layout_theme() {
     if (!empty($style['block theme'])) {
       $items[$style['block theme']] = array(
         'variables' => array('layout' => NULL, 'content' => NULL, 'block' => NULL, 'style' => NULL, 'settings' => array(), 'attributes_array' => array()),
+        'base hook' => 'layout_style',
       );
       if (isset($style['file'])) {
         $items[$style['block theme']]['file'] = $style['file'];
@@ -417,6 +489,7 @@ function layout_theme() {
     if (!empty($style['region theme'])) {
       $items[$style['region theme']] = array(
         'variables' => array('layout' => NULL, 'blocks' => NULL, 'style' => NULL, 'settings' => array(), 'attributes_array' => array()),
+        'base hook' => 'layout_region',
       );
       if (isset($style['file'])) {
         $items[$style['region theme']]['file'] = $style['file'];
@@ -532,7 +605,7 @@ function layout_get_all_layouts() {
         );
         $configs[$data['name']] = $data;
       }
-      // Sort the configs by name and weight.
+      // Sort the configs by path and weight.
       uasort($configs, function($a, $b) {
         if ($a['path'] == $b['path']) {
           if ($a['weight'] == $b['weight']) {
@@ -541,6 +614,13 @@ function layout_get_all_layouts() {
           return ($a['weight'] < $b['weight']) ? -1 : 1;
         }
         else {
+          // NULL paths mean default layouts, put them last.
+          if ($b['path'] === NULL) {
+            return -1;
+          }
+          elseif ($a['path'] === NULL) {
+            return 1;
+          }
           return strcmp($a['path'], $b['path']);
         }
       });
@@ -599,6 +679,7 @@ function layout_get_all_layout_menu_items() {
  */
 function layout_get_path_layout_names($path) {
   $path_map = array();
+  // @todo: This desperately needs optimization or at least its own cache.
   $layouts = layout_get_all_layouts();
   foreach ($layouts as $name => $layout) {
     $path_map[$layout->getPath()][] = $name;
@@ -887,7 +968,7 @@ function layout_create_renderer($renderer_plugin_name, Layout $layout) {
  * @param string $type
  *   The type of item to load. Must be either "layout" or "menu_item".
  */
-function layout_get_layout_cache($name, $type = 'layout') {
+function layout_get_layout_tempstore($name, $type = 'layout') {
   $caches = &backdrop_static(__FUNCTION__, array());
   if (!isset($caches[$type][$name])) {
     // Try loading from tempstore first to get in-progress changes.
@@ -909,7 +990,7 @@ function layout_get_layout_cache($name, $type = 'layout') {
 /**
  * Store changes to a task handler in the object cache.
  */
-function layout_set_layout_cache($item, $type = 'layout') {
+function layout_set_layout_tempstore($item, $type = 'layout') {
   if (!empty($item->locked)) {
     return;
   }
@@ -923,30 +1004,30 @@ function layout_set_layout_cache($item, $type = 'layout') {
 /**
  * Remove an item from the object cache.
  */
-function layout_clear_layout_cache($name, $type = 'layout') {
+function layout_clear_layout_tempstore($name, $type = 'layout') {
   tempstore_clear('layout.' . $type, $name);
 }
 
 /**
  * Menu loader callback to load a Layout cache object.
  */
-function layout_cache_load($layout_name) {
-  return layout_get_layout_cache($layout_name, 'layout');
+function layout_tempstore_load($layout_name) {
+  return layout_get_layout_tempstore($layout_name, 'layout');
 }
 
 
 /**
  * Menu loader callback to load a Layout cache object.
  */
-function layout_cache_menu_item_load($layout_name) {
-  return layout_get_layout_cache($layout_name, 'menu_item');
+function layout_tempstore_menu_item_load($layout_name) {
+  return layout_get_layout_tempstore($layout_name, 'menu_item');
 }
 
 /**
  * Menu loader to load an individual block from a layout.
  */
-function layout_cache_block_load($layout_block_uuid, $layout_name) {
-  $layout = layout_cache_load($layout_name);
+function layout_tempstore_block_load($layout_block_uuid, $layout_name) {
+  $layout = layout_tempstore_load($layout_name);
   $block = FALSE;
   if (isset($layout->in_progress['block']) && $layout->in_progress['block']->uuid === $layout_block_uuid) {
     $block = $layout->in_progress['block'];
@@ -1009,7 +1090,7 @@ function layout_context_required_by_path($path) {
   ksort($required_context_info);
 
   // Convert required context info into objects.
-  $required_contexts = array();
+  $required_contexts[$path] = array();
   foreach ($required_context_info as $context_position => $context_info) {
     $context = layout_create_handler('layout_context', $context_info['plugin']);
     $context->required = TRUE;
@@ -1017,14 +1098,14 @@ function layout_context_required_by_path($path) {
     $context->locked = $context_info['plugin'] !== 'string';
     $context->position = $context_position;
     $context->plugin = $context_info['plugin'];
-    $required_contexts[$context_position] = $context;
+    $required_contexts[$path][$context_position] = $context;
   }
 
-  return $required_contexts;
+  return $required_contexts[$path];
 }
 
 /**
- * Helper function for settings contexts on a layout handler.
+ * Helper function for setting contexts on a layout handler.
  *
  * @param array $contexts
  *   An array of contexts that will be set by reference if all required contexts

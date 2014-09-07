@@ -139,6 +139,13 @@ class Layout {
   var $positions = array();
 
   /**
+   * An array of LayoutContext instances used by this menu item.
+   *
+   * @var array
+   */
+  private $contexts;
+
+  /**
    * Constructor for a Layout class.
    *
    * @param array $config
@@ -386,30 +393,42 @@ class Layout {
    * Return all contexts (from both the layout and menu item) for this Layout.
    */
   function getContexts() {
-    if ($this->menu_item) {
-      $contexts = $this->menu_item->getContexts();
-    }
-    elseif ($this->path) {
-      $contexts = layout_context_required_by_path($this->path);
-    }
-    else {
-      $contexts = array();
+    if (is_null($this->contexts)) {
+      if ($this->menu_item) {
+        $this->contexts = $this->menu_item->getContexts();
+      }
+      elseif ($this->path) {
+        $this->contexts = layout_context_required_by_path($this->path);
+      }
+      else {
+        $this->contexts = array();
+      }
     }
 
     // Add on the current user context, which is always available.
-    $contexts['current_user'] = layout_create_context('user');
-    $contexts['current_user']->setData($GLOBALS['user']);
-    $contexts['current_user']->plugin = 'user';
+    if (!isset($this->contexts['current_user'])) {
+      $this->contexts['current_user'] = layout_create_context('user');
+      $this->contexts['current_user']->setData($GLOBALS['user']);
+      $this->contexts['current_user']->plugin = 'user';
+    }
 
-    return $contexts;
+    return $this->contexts;
   }
 
   /**
-   * Set contexts on the layout.
+   * Check if this layout is a fallback default layout.
+   */
+  function isDefault() {
+    return in_array($this->name, array('layout_default', 'layout_admin_default'));
+  }
+
+  /**
+   * Check access to this layout based on the current contexts.
    *
-   * Before this method will work, all contexts must be initialized on this
-   * layout's menu item by using LayoutContext::setData(), otherwise access will
-   * always return FALSE.
+   * This method is generally called on all layouts that share the same path.
+   * The first layout that grants access will be used to render the page, and if
+   * no layouts grant access, then Layout module will fall through to using the
+   * default site-wide layout.
    */
   function checkAccess() {
     $contexts = $this->getContexts();

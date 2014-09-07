@@ -7,3 +7,4 @@ hidden = TRUE
 dependencies[] = node
 dependencies[] = block
 dependencies[] = dblog
+dependencies[] = layout
