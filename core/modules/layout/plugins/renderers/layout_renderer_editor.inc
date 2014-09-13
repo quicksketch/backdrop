@@ -66,7 +66,7 @@ class LayoutRendererEditor extends LayoutRendererStandard {
   /**
    * {@inheritdoc}
    */
-  function renderBlock(&$block) {
+  function renderBlock($block) {
     $buttons = $this->getBlockLinks($block);
     $content = $block->getAdminPreview();
 

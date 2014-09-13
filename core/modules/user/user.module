@@ -1056,7 +1056,7 @@ function user_block_view($delta = '', $settings = array()) {
         }
 
         $block['subject'] = t('Who\'s online');
-        $block['content'] = $max_users . $output;
+        $block['content'] = $output;
       }
       return $block;
   }

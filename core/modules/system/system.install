@@ -2048,13 +2048,16 @@ function system_update_1022() {
   $node_layout = clone($layout);
   $node_layout->title = t('Node layout');
   $node_layout->name = 'node';
+  $node_layout->setPath('node/%');
+  $node_layout->is_new = TRUE;
   $node_layout_required = FALSE;
 
   $layout_info = layout_get_layout_info($layout_name);
-  $result = db_query("SELECT * FROM {block} WHERE theme = :theme AND status = 1 ORDER BY region, weight", array(':theme' => $current_theme));
+
+  $result = db_query("SELECT * FROM {block} WHERE theme = :theme AND status = 1 AND module <> 'system' AND delta <> 'main' ORDER BY region, weight", array(':theme' => $current_theme));
 
   foreach ($result as $block_row) {
-    if (in_array($block_row->region, $layout_info['regions'])) {
+    if (array_key_exists($block_row->region, $layout_info['regions'])) {
       $region = $block_row->region;
       $is_node_block = FALSE;
 
@@ -2065,12 +2068,12 @@ function system_update_1022() {
       $block->uuid = $uuid->generate();
 
       // Add any path restrictions, excluding PHP visibility rules.
-      $pages = trim($block->pages);
-      $visibility = (int) $block->visibility;
+      $pages = trim($block_row->pages);
+      $visibility = (int) $block_row->visibility;
       if ($pages && $visibility !== 2) {
         $settings = array(
           'paths' => $pages,
-          'visibility_setting' => $block->visibility,
+          'visibility_setting' => $visibility,
         );
         $role_access = layout_create_handler('layout_access', 'path', array('settings' => $settings));
         $block->conditions[] = $role_access;
@@ -2108,13 +2111,13 @@ function system_update_1022() {
 
       // Position the block in the default layout if not node-type specific.
       if (!$is_node_block) {
-        $layout->positions[$region][] = $uuid;
-        $layout->content[$uuid] = $block;
+        $layout->positions[$region][] = $block->uuid;
+        $layout->content[$block->uuid] = $block;
       }
 
       // Position the block in the node layout.
-      $node_layout->positions[$region][] = $uuid;
-      $node_layout->content[$uuid] = $block;
+      $node_layout->positions[$region][] = $block->uuid;
+      $node_layout->content[$block->uuid] = $block;
     }
   }
 

@@ -17,7 +17,7 @@ function theme_layout_reorder_layouts($variables) {
       $row = array();
       $row[] = array(
         'data' => render($element[$layout_name]['title']),
-        'class' => array('layout'),
+        'class' => array('layout-name'),
       );
       $element[$layout_name]['weight']['#attributes']['class'][] = 'weight';
       $row[] = render($element[$layout_name]['weight']);
@@ -26,7 +26,7 @@ function theme_layout_reorder_layouts($variables) {
   }
 
   $header = array(
-    array('data' => t('Layout'), 'class' => array('layout')),
+    array('data' => t('Layout'), 'class' => array('layout-name')),
     t('Weight'),
   );
 

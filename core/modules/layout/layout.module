@@ -438,8 +438,8 @@ function layout_theme() {
     ) + $base,
     'layout_block__system__main' => array(
       'template' => 'templates/layout-block--system--main',
-      'variables' => array('layout' => NULL, 'content' => NULL, 'block' => NULL, 'style' => NULL, 'settings' => array(), 'attributes_array' => array()),
-      'preprocess functions' => array('template_preprocess', 'template_preprocess_layout_block'),
+      'variables' => array('content' => NULL, 'layout' => NULL, 'block' => NULL, 'style' => NULL, 'settings' => array(), 'attributes_array' => array()),
+      'base hook' => 'layout_block',
     ) + $base,
   );
 
@@ -469,8 +469,7 @@ function layout_theme() {
   foreach ($styles as $style) {
     if (!empty($style['block theme'])) {
       $items[$style['block theme']] = array(
-        'variables' => array('layout' => NULL, 'content' => NULL, 'block' => NULL, 'style' => NULL, 'settings' => array(), 'attributes_array' => array()),
-        'base hook' => 'layout_style',
+        'variables' => array('content' => NULL, 'layout' => NULL, 'block' => NULL, 'style' => NULL, 'settings' => array(), 'attributes_array' => array()),
       );
       if (isset($style['file'])) {
         $items[$style['block theme']]['file'] = $style['file'];
@@ -611,6 +610,13 @@ function layout_get_all_layouts() {
           return ($a['weight'] < $b['weight']) ? -1 : 1;
         }
         else {
+          // Put default layouts at the bottom.
+          if (empty($b['path'])) {
+            return -1;
+          }
+          elseif (empty($a['path'])) {
+            return 1;
+          }
           return strcmp($a['path'], $b['path']);
         }
       });

@@ -394,7 +394,7 @@ class LayoutRendererStandard {
    * @param LayoutBlock $block
    *   The block to be rendered.
    */
-  function renderBlock(&$block) {
+  function renderBlock($block) {
     if ($this->layout->settings['title_display'] === LAYOUT_TITLE_BLOCK) {
       if ($block->uuid === $this->layout->settings['title_block']) {
         $this->layout->settings['title'] = $block->getTitle();
@@ -405,6 +405,17 @@ class LayoutRendererStandard {
     if ($content = $block->getContent()) {
       $style = layout_get_style_info($block->style->plugin);
 
+      // Ensure block content is a renderable array for contextual links.
+      if (is_string($content)) {
+        $content = array(
+          '#markup' => $content,
+        );
+      }
+      // Add the contextual links.
+      if (!($block->module === 'system' && $block->delta === 'main')) {
+        $content['#contextual_links']['block'] = array('admin/structure/block/manage', array($block->module, $block->delta));
+      }
+
       // Assemble a structured content array.
       $content = (object) array(
         'title' => $block->getTitle(),
@@ -412,11 +423,11 @@ class LayoutRendererStandard {
       );
 
       if (isset($style) && isset($style['block theme'])) {
-        $output = theme($style['block theme'] . '__' . $block->module . '__' . $block->delta, array('layout' => $this->layout, 'block' => $block, 'content' => $content, 'style' => $style, 'settings' => $block->style->settings));
+        $output = theme($style['block theme'] . '__' . $block->module . '__' . $block->delta, array('content' => $content, 'layout' => $this->layout, 'block' => $block, 'style' => $style, 'settings' => $block->style->settings));
       }
       else {
         // Fallback.
-        $output = theme('layout_block', array('layout' => $this->layout, 'block' => $block, 'content' => $content));
+        $output = theme('layout_block', array('content' => $content, 'layout' => $this->layout, 'block' => $block));
       }
     }
     return $output;

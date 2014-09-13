@@ -94,7 +94,7 @@ class LayoutBlock extends LayoutHandler {
   }
 
   /**
-   * Return the title of a block as provided by hook_block_view().
+   * Return the title of a block as configured in the layout.
    *
    * @return mixed
    */

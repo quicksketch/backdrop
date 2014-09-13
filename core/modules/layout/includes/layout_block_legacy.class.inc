@@ -16,9 +16,33 @@ class LayoutBlockLegacy extends LayoutBlock {
    */
   protected function buildBlock() {
     if (!isset($this->content)) {
+      // The old block API does not expect fully built block objects, stub out a
+      // pseudo block for the time being.
+      $legacy_block = (object) array(
+        'module' => $this->module,
+        'delta' => $this->delta,
+      );
       $this->content = module_invoke($this->module, 'block_view', $this->delta, $this->settings['block_settings']);
+      backdrop_alter('block_view', $this->content, $legacy_block);
     }
     return $this->content;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  function getTitle() {
+    $title = parent::getTitle();
+
+    // Use the default title if expected.
+    if (empty($title) && $this->settings['title_display'] === LAYOUT_TITLE_DEFAULT) {
+      $block_content = $this->buildBlock();
+      if (isset($block_content['subject'])) {
+        $title = $block_content['subject'];
+      }
+    }
+
+    return $title;
   }
 
   /**
@@ -27,6 +51,14 @@ class LayoutBlockLegacy extends LayoutBlock {
   function getContent() {
     $block_content = $this->buildBlock();
     return isset($block_content['content']) ? $block_content['content'] : '';
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  function getAdminTitle() {
+    $info = module_invoke($this->module, 'block_info');
+    return $info[$this->delta]['info'];
   }
 
   /**
