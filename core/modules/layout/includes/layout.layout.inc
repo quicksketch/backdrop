@@ -44,7 +44,6 @@ function layout_layout_info() {
     'regions' => array(
       'header' => t('Header'),
       'featured' => t('Featured'),
-      'highlighted' => t('Highlighted'),
       'content' => t('Content'),
       'sidebar_first' => t('Sidebar first'),
       'sidebar_second' => t('Sidebar second'),
@@ -90,28 +89,6 @@ function layout_layout_context_info() {
     // main context data.
     'load callback' => 'node_load',
   );
-  $info['node_add'] = array(
-    'title' => t('Node add form'),
-    'description' => t('Form for adding a new node.'),
-    'class' => 'NodeAddLayoutContext',
-    'menu parts' => array(
-      '%type' => 'type',
-    ),
-    'menu paths' => array(
-      'node/add/%type',
-    ),
-  );
-  $info['node_edit'] = array(
-    'title' => t('Node edit form'),
-    'description' => t('Form for editing an existing node.'),
-    'class' => 'NodeEditLayoutContext',
-    'menu loaders' => array(
-      '%node' => 'nid',
-    ),
-    'menu paths' => array(
-      'node/%node/edit',
-    ),
-  );
   $info['user'] = array(
     'title' => t('User'),
     'description' => t('A user object.'),
@@ -125,6 +102,14 @@ function layout_layout_context_info() {
     ),
     'path placeholder' => '%user',
     'load callback' => 'user_load',
+  );
+  $info['overrides_path'] = array(
+    'title' => t('Overrides path'),
+    'description' => t('Layout overrides existing path provided by another module.'),
+    'class' => 'LayoutOverridesPathContext',
+    'menu loaders' => array(),
+    'menu paths' => array(),
+    'hidden' => TRUE,
   );
   $info['string'] = array(
     'title' => t('String pass-through'),
@@ -140,16 +125,19 @@ function layout_layout_context_info() {
  * Implements hook_layout_access_info().
  */
 function layout_layout_access_info() {
-  $entities = entity_get_info();
-  // Remove vocabularity related entities.
-  unset($entities['taxonomy_vocabulary']);
+  $entity_types = entity_get_info();
 
   // Provide a bundle (type) plugin for each entity type.
-  foreach ($entities as $entity_type => $entity) {
-    $bundle_label = array_key_exists('bundle label', $entity) ? $entity['bundle label'] : 'Type';
-    $info['entity:' . $entity_type] = array(
-      'title' => t('@entity: @bundle', array('@entity' => $entity['label'], '@bundle' => $bundle_label)),
-      'description' => t('Control access by @entity entity bundle.', array('@entity' => $entity_type)),
+  foreach ($entity_types as $entity_type => $entity_info) {
+    // Skip users, which don't support multiple types.
+    if (empty($entity_info['bundle keys'])) {
+      continue;
+    }
+
+    $bundle_label = array_key_exists('bundle label', $entity_info) ? $entity_info['bundle label'] : 'Type';
+    $info['entity:' . $entity_type . ':bundle'] = array(
+      'title' => t('@entity: @bundle', array('@entity' => $entity_info['label'], '@bundle' => $bundle_label)),
+      'description' => t('Control access by @entity_type @bundle_label.', array('@entity_type' => $entity_type, '@bundle_label' => backdrop_strtolower($bundle_label))),
       'keyword' => $entity_type,
       'class' => 'EntityBundleLayoutAccess',
       'required contexts' => array(
@@ -158,11 +146,6 @@ function layout_layout_access_info() {
     );
   }
 
-  $info['front'] = array(
-    'title' => t('Front page'),
-    'description' => t('Is this the front page.'),
-    'class' => 'FrontLayoutAccess',
-  );
   $info['front'] = array(
     'title' => t('Front page'),
     'description' => t('Is this the front page.'),

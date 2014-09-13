@@ -62,49 +62,6 @@ abstract class LayoutHandler {
       'settings' => $this->settings,
     );
   }
-
-  /**
-   * Provides a child plugin's info based on the plugin name.
-   *
-   * For example the "Entity field value" class provides not a single plugin but
-   * one for every field configured on the site. In this situation the "parent"
-   * name would be the name of the providing plugin, e.g. "entity_field_value",
-   * and the child name would be the entity type, bundle, and field name, e.g.
-   * "node:article:field_image".
-   *
-   * @param array $plugin_info
-   *   This plugin's info array as provided by hook_layout_access_info().
-   * @param string $parent_name
-   *   The name of the parent plugin.
-   * @param string $child_name
-   *   The identifier for the child plugin.
-   * @return array
-   *   An array of plugin info, as would be provided by
-   *   hook_layout_access_info(), or NULL if the child is not found.
-   */
-  static function getChild(array $plugin_info, $parent_name, $child_name) {
-    return NULL;
-  }
-
-  /**
-   * Provides an array of all child plugins provided by this class.
-   *
-   * This can be used to make a single class provide multiple plugins. This is
-   * particularly useful when an abstracted system can handle a lot of different
-   * things in the same manner, e.g. the Field system provides a single class
-   * that creates plugins for all fields in the system.
-   *
-   * @param array $plugin_info
-   *   This plugin's info array as provided by hook_layout_access_info().
-   * @param string $parent_name
-   *   The name of the parent plugin.
-   * @return array
-   *   An array of plugin info, as would be provided by
-   *   hook_layout_access_info().
-   */
-  static function getChilden(array $plugin_info, $parent) {
-    return NULL;
-  }
 }
 
 /**

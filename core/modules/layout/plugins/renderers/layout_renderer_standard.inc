@@ -171,11 +171,16 @@ class LayoutRendererStandard {
 
     // Prepare the list of blocks to be rendered
     foreach ($blocks as $uuid => $block) {
+      // First, check that all required contexts at least exist.
+      $has_contexts = $this->layout->hasContexts($block->getRequiredContexts());
+
       // Assign contexts to each block.
-      $block->setContexts($this->layout->getContexts());
+      if ($has_contexts) {
+        $block->setContexts($this->layout->getContexts());
+      }
 
       // Then check access on the block.
-      if (empty($this->admin) && !$block->checkAccess()) {
+      if (empty($this->admin) && (!$has_contexts || !$block->checkAccess())) {
         continue;
       }
 

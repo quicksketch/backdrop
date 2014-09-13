@@ -2030,8 +2030,104 @@ function system_update_1020() {
 function system_update_1021() {
   variable_del('js_cache_files');
 }
- 
- /**
+
+/**
+ * Convert block positioning and configuration to the default layout.
+ */
+function system_update_1022() {
+  module_enable(array('layout'));
+
+  $current_theme = variable_get('theme_default', 'bartik');
+
+  // Load the default layout to prepare copying blocks into it.
+  $layout = layout_load('layout_default');
+  $layout_name = state_get('upgrade_layout_name', 'three_three_four');
+  $layout->layout = $layout_name;
+
+  // Prepare a node-specific layout to be used if necessary.
+  $node_layout = clone($layout);
+  $node_layout->title = t('Node layout');
+  $node_layout->name = 'node';
+  $node_layout_required = FALSE;
+
+  $layout_info = layout_get_layout_info($layout_name);
+  $result = db_query("SELECT * FROM {block} WHERE theme = :theme AND status = 1 ORDER BY region, weight", array(':theme' => $current_theme));
+
+  foreach ($result as $block_row) {
+    if (in_array($block_row->region, $layout_info['regions'])) {
+      $region = $block_row->region;
+      $is_node_block = FALSE;
+
+      // Create a new layout block object.
+      $block_key = $block_row->module . ':' . $block_row->delta;
+      $block = layout_create_handler('block', $block_key);
+      $uuid = new Uuid();
+      $block->uuid = $uuid->generate();
+
+      // Add any path restrictions, excluding PHP visibility rules.
+      $pages = trim($block->pages);
+      $visibility = (int) $block->visibility;
+      if ($pages && $visibility !== 2) {
+        $settings = array(
+          'paths' => $pages,
+          'visibility_setting' => $block->visibility,
+        );
+        $role_access = layout_create_handler('layout_access', 'path', array('settings' => $settings));
+        $block->conditions[] = $role_access;
+      }
+
+      // Add any role restrictions.
+      if (db_table_exists('block_role')) {
+        $role_result = db_query("SELECT * FROM {block_role} WHERE module = :module AND delta = :delta", array(':module' => $block_row->module, ':delta' => $block_row->delta));
+        $roles = array();
+        foreach ($role_result as $role_row) {
+          $roles[] = $role_row->rid;
+        }
+        if ($roles) {
+          $settings = array('rids' => $roles);
+          $role_access = layout_create_handler('layout_access', 'user_role', array('settings' => $settings));
+          $block->conditions[] = $role_access;
+        }
+      }
+
+      // Add any node type restrictions.
+      if (db_table_exists('block_node_type')) {
+        $type_result = db_query("SELECT * FROM {block_node_type} WHERE module = :module AND delta = :delta", array(':module' => $block_row->module, ':delta' => $block_row->delta));
+        $types = array();
+        foreach ($type_result as $type_row) {
+          $types[] = $type_row->type;
+          $node_layout_required = TRUE;
+          $is_node_block = TRUE;
+        }
+        if ($types) {
+          $settings = array('bundles' => $types);
+          $type_access = layout_create_handler('layout_access', 'entity:node:bundle', array('settings' => $settings));
+          $block->conditions[] = $type_access;
+        }
+      }
+
+      // Position the block in the default layout if not node-type specific.
+      if (!$is_node_block) {
+        $layout->positions[$region][] = $uuid;
+        $layout->content[$uuid] = $block;
+      }
+
+      // Position the block in the node layout.
+      $node_layout->positions[$region][] = $uuid;
+      $node_layout->content[$uuid] = $block;
+    }
+  }
+
+  // Save the layout with the migrated blocks in position.
+  $layout->save();
+
+  // If any node-specific blocks were found, save the node layout as well.
+  if ($node_layout_required) {
+    $node_layout->save();
+  }
+}
+
+/**
  * @} End of "defgroup updates-7.x-to-1.x"
  * The next series of updates should start at 2000.
  */

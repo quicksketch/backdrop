@@ -100,6 +100,18 @@ class LayoutContextBroken extends LayoutContext {
 /**
  * Pass-through context used when an unknown argument is encountered.
  */
+class LayoutOverridesPathContext extends LayoutContext {
+  function type() {
+    return 'overrides_path';
+  }
+  function label() {
+    return t('Layout overrides path');
+  }
+}
+
+/**
+ * Pass-through context used when an unknown argument is encountered.
+ */
 class LayoutStringContext extends LayoutContext {
   function type() {
     return 'string';

@@ -47,12 +47,6 @@
 
   <div id="main-wrapper" class="clearfix"><div id="main" class="clearfix">
     <main id="content" class="column" role="main"><div class="section">
-      <?php if ($content['highlighted']): ?>
-        <div id="highlighted">
-          <?php print $content['highlighted']; ?>
-        </div>
-      <?php endif; ?>
-
       <a id="main-content"></a>
       <?php print render($title_prefix); ?>
       <?php if ($title): ?>
@@ -68,7 +62,7 @@
       <?php endif; ?>
 
       <?php print $action_links; ?>
-      <?php print $content['content']; ?>
+      <?php print $content['content'] ? $content['content'] : '&nbsp;'; ?>
     </div></main> <!-- /.section, /#content -->
 
     <?php if ($content['sidebar_first']): ?>

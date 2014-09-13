@@ -10,7 +10,7 @@ class EntityBundleLayoutAccess extends LayoutAccess {
   function __construct($plugin_name, array $data = array()) {
     parent::__construct($plugin_name, $data);
     $this->settings += array(
-      'type' => array()
+      'bundles' => array()
     );
 
     // Set entity type.
@@ -29,11 +29,11 @@ class EntityBundleLayoutAccess extends LayoutAccess {
       $options[$type] = check_plain($info['label']);
     }
 
-    $form['type'] = array(
+    $form['bundles'] = array(
       '#title' => t('@entity @bundle', array('@entity' => $entity_info['label'], '@bundle' => $entity_info['bundle label'])),
       '#type' => 'checkboxes',
       '#options' => $options,
-      '#default_value' => $this->settings['type'],
+      '#default_value' => $this->settings['bundles'],
     );
   }
 
@@ -42,7 +42,7 @@ class EntityBundleLayoutAccess extends LayoutAccess {
    */
   function formSubmit($form, &$form_state) {
     parent::formSubmit($form, $form_state);
-    $this->settings['type'] = array_keys(array_filter($form_state['values']['type']));
+    $this->settings['bundles'] = array_keys(array_filter($form_state['values']['bundles']));
   }
 
   /**
@@ -52,7 +52,7 @@ class EntityBundleLayoutAccess extends LayoutAccess {
     $entity_info = entity_get_info($this->entity_type);
 
     $names = array();
-    foreach (array_filter($this->settings['type']) as $bundle) {
+    foreach (array_filter($this->settings['bundles']) as $bundle) {
       $names[] = check_plain($entity_info['bundles'][$bundle]['label']);
     }
 
@@ -67,7 +67,7 @@ class EntityBundleLayoutAccess extends LayoutAccess {
    * {@inheritdoc}
    */
   function checkAccess() {
-    if (!$this->settings['type']) {
+    if (!$this->settings['bundles']) {
       return FALSE;
     };
 
@@ -79,7 +79,7 @@ class EntityBundleLayoutAccess extends LayoutAccess {
       return FALSE;
     }
 
-    if (!in_array($bundle, $this->settings['type'])) {
+    if (!in_array($bundle, $this->settings['bundles'])) {
       return FALSE;
     }
 

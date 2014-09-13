@@ -12,12 +12,6 @@ function layout_page_callback() {
   $menu_item_name = array_shift($args);
   $menu_item = layout_menu_item_load($menu_item_name);
 
-  // Set contexts on the menu item contexts.
-  $contexts = $menu_item->getContexts();
-  foreach ($contexts as $position => $context) {
-    $context->setData($args[$position]);
-  }
-
   // Determine the correct layout to use at this path.
   $layouts = layout_get_path_layout_names($menu_item->path);
   $match_found = FALSE;
@@ -26,7 +20,7 @@ function layout_page_callback() {
     // Note that because all layouts share the same menu_item, and that has
     // already been loaded and had its contexts set, the layout also has those
     // contexts available when checking access.
-    if ($layout->checkAccess()) {
+    if (!$layout->disabled && $layout->checkAccess()) {
       $match_found = TRUE;
       break;
     }
@@ -39,7 +33,6 @@ function layout_page_callback() {
 
   // Use the selected layout and render it.
   $renderer = layout_create_renderer('standard', $layout);
-  $renderer->ensurePageContentBlock(FALSE);
   return $renderer->render();
 }
 
@@ -50,12 +43,16 @@ function layout_page_callback() {
  */
 function _layout_page_access() {
   $args = func_get_args();
-  $layout_name = array_shift($args);
-  $layout = layout_load($layout_name);
-  $contexts = $layout->getContexts();
-//  foreach ($contexts as $position => $context) {
-//    $context->setData($args[$position]);
-//  }
+  $menu_item_name = array_shift($args);
+  $menu_item = layout_menu_item_load($menu_item_name);
 
-  return TRUE;
+  // Populate the contexts from the menu system.
+  $contexts = $menu_item->getContexts();
+  foreach ($contexts as $position => $context) {
+    if (is_numeric($position) && isset($args[$position])) {
+      $context->setData($args[$position]);
+    }
+  }
+
+  return $menu_item->checkAccess();
 }

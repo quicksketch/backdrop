@@ -61,7 +61,12 @@ class LayoutAccess extends LayoutHandler {
    * Settings form for configuring this access item.
    */
   function form(&$form, &$form_state) {
-    $layout = $form_state['layout'];
+    if ($form_state['menu_item']) {
+      $item = $form_state['menu_item'];
+    }
+    else {
+      $item = $form_state['layout'];
+    }
     $info = layout_get_access_info($this->plugin);
 
     $form['contexts'] = array(
@@ -78,7 +83,7 @@ class LayoutAccess extends LayoutHandler {
           $label = $context_info['title'];
         }
         $options = array();
-        foreach ($layout->getContexts() as $layout_context_key => $context) {
+        foreach ($item->getContexts() as $layout_context_key => $context) {
           if ($context->plugin === $context_type) {
             $options[$layout_context_key] = $context->label();
           }
@@ -129,37 +134,19 @@ class LayoutAccess extends LayoutHandler {
    *   rule.
    */
   function setContexts(array $all_contexts) {
-    $access_info = layout_get_access_info($this->plugin);
-    if (empty($access_info['required contexts'])) {
+    $required_contexts = $this->getRequiredContexts();
+    if (empty($required_contexts)) {
       return TRUE;
     }
-    return layout_set_handler_contexts($this->contexts, $all_contexts, $access_info['required contexts'], $this->settings['contexts']);
+    return layout_set_handler_contexts($this->contexts, $all_contexts, $required_contexts, $this->settings['contexts']);
+  }
 
-//    // Match available contexts to ones required by this access item.
-//    foreach ($access_info['required contexts'] as $context_key => $context_type) {
-//      foreach ($all_contexts as $all_context_key => $context) {
-//        if ($context_type === $context->plugin) {
-//          // Check if the context requires a specific match, such as when there
-//          // are two contexts of the same type available.
-//          if (isset($this->settings['contexts'][$context_key])) {
-//            if ($this->settings['contexts'][$context_key] === $all_context_key) {
-//              $this->contexts[$context_key] = $context;
-//            }
-//          }
-//          // Set the context on match if there is no specific configuration.
-//          elseif (!isset($this->contexts[$context_key])) {
-//            $this->contexts[$context_key] = $context;
-//          }
-//        }
-//      }
-//    }
-//
-//    // Success if all contexts are met.
-//    if (count($access_info['required contexts']) !== count($this->contexts)) {
-//      $this->contexts = array();
-//      return FALSE;
-//    }
-//    return TRUE;
+  /**
+   * Get a list of all context plugin names required for this access check.
+   */
+  function getRequiredContexts() {
+    $access_info = layout_get_access_info($this->plugin);
+    return isset($access_info['required contexts']) ? $access_info['required contexts'] : array();
   }
 
   /**

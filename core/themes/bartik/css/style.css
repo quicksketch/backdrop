@@ -296,9 +296,10 @@ ul.tips {
 #featured .section,
 #triptych .section,
 #footer-columns .section {
-  max-width: 920px;
+  max-width: 960px;
   margin: 0 auto;
   padding: 0 20px;
+  box-sizing: border-box;
 }
 
 /* ------------------ Header ------------------ */
@@ -591,13 +592,6 @@ ul.tips {
 #featured p {
   margin: 0;
   padding: 0;
-}
-
-/* --------------- Highlighted ---------------- */
-
-#highlighted {
-  border-bottom: 1px solid #d3d7d9;
-  font-size: 120%;
 }
 
 /* ----------------- Content ------------------ */

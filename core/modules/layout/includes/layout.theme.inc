@@ -47,21 +47,8 @@ function theme_layout_reorder_layouts($variables) {
  */
 function theme_layout_info($variables) {
   $layout = $variables['layout'];
-
-  if ($layout->storage === LAYOUT_STORAGE_DEFAULT) {
-    $storage = t('Module-provided default');
-  }
-  elseif ($layout->storage === LAYOUT_STORAGE_OVERRIDE) {
-    $storage = t('User overriding default');
-  }
-  else {
-    $storage = t('User-created');
-  }
-
   $output = '';
   $output .= '<div class="layout-title">' . check_plain($layout->title) . '</div>';
-  $output .= '<div class="layout-name">' . check_plain($layout->name) . '</div>';
-  $output .= '<div class="layout-storage">' . $storage . '</div>';
   return $output;
 }
 

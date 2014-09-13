@@ -64,11 +64,23 @@ function layout_menu() {
     'type' => MENU_NORMAL_ITEM,
   ) + $base;
 
+  $items['admin/structure/layouts/list'] = array(
+    'title' => 'List layouts',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+  ) + $base;
+
   $items['admin/structure/layouts/reorder'] = array(
     'title' => 'List',
     'page callback' => 'backdrop_get_form',
     'page arguments' => array('layout_reorder_form'),
     'type' => MENU_CALLBACK,
+  ) + $base;
+
+  $items['admin/structure/layouts/add'] = array(
+    'title' => 'Add new layout',
+    'page callback' => 'layout_add_page',
+    'page arguments' => array(),
+    'type' => MENU_LOCAL_ACTION,
   ) + $base;
 
   $items['admin/structure/layouts/manage/%layout_tempstore'] = array(
@@ -135,31 +147,9 @@ function layout_menu() {
     'type' => MENU_CALLBACK,
   ) + $base;
 
-  $items['admin/structure/layouts/add'] = array(
-    'title' => 'Add new layout',
-    'page callback' => 'layout_add_page',
-    'page arguments' => array(),
-    'type' => MENU_LOCAL_ACTION,
-  ) + $base;
-
-  $items['admin/structure/layouts/menu/%layout_tempstore_menu_item'] = array(
-    'title' => 'Menu settings',
-    'page callback' => 'backdrop_get_form',
-    'page arguments' => array('layout_menu_item_settings_form', 4),
-    'type' => MENU_CALLBACK,
-  ) + $base;
-
-  $items['admin/structure/layouts/menu/%layout_tempstore_menu_item/arguments'] = array(
-    'title' => 'Arguments',
-    'page callback' => 'backdrop_get_form',
-    'page arguments' => array('layout_menu_item_arguments_form', 4),
-    'type' => MENU_CALLBACK,
-  ) + $base;
-
-  $items['admin/structure/layouts/menu/%layout_tempstore_menu_item/access'] = array(
-    'title' => 'Access control',
-    'page callback' => 'backdrop_get_form',
-    'page arguments' => array('layout_menu_item_access_form', 4),
+  $items['admin/structure/layouts/manage/%layout_tempstore/break-lock'] = array(
+    'page callback' => 'layout_break_lock_page',
+    'page arguments' => array(4, 'layout'),
     'type' => MENU_CALLBACK,
   ) + $base;
 
@@ -173,9 +163,9 @@ function layout_menu() {
   $items['admin/structure/layouts/manage/%layout_tempstore/condition/edit/%'] = array(
     'title' => 'Configure condition',
     'title callback' => 'layout_condition_edit_title',
-    'title arguments' => array(4, 7),
+    'title arguments' => array(4, NULL, NULL, 7),
     'page callback' => 'backdrop_get_form',
-    'page arguments' => array('layout_condition_edit_form', 4, 7),
+    'page arguments' => array('layout_condition_edit_form', 4, NULL, NULL, 7),
     'type' => MENU_CALLBACK,
   ) + $base;
 
@@ -192,9 +182,44 @@ function layout_menu() {
     'title' => 'Configure condition',
     'load arguments' => array(4),
     'title callback' => 'layout_condition_edit_title',
-    'title arguments' => array(4, 7, 8),
+    'title arguments' => array(4, 8, NULL, 7),
     'page callback' => 'backdrop_get_form',
-    'page arguments' => array('layout_condition_edit_form', 4, 7, 8),
+    'page arguments' => array('layout_condition_edit_form', 4, 8, NULL, 7),
+    'type' => MENU_CALLBACK,
+  ) + $base;
+
+  $items['admin/structure/layouts/menu/%layout_tempstore_menu_item'] = array(
+    'title' => 'Menu settings',
+    'page callback' => 'backdrop_get_form',
+    'page arguments' => array('layout_menu_item_form', 4),
+    'type' => MENU_NORMAL_ITEM,
+  ) + $base;
+
+  $items['admin/structure/layouts/menu/%layout_tempstore_menu_item/settings'] = array(
+    'title' => 'Menu settings',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => -1,
+  ) + $base;
+
+  $items['admin/structure/layouts/menu/%layout_tempstore_menu_item/break-lock'] = array(
+    'page callback' => 'layout_break_lock_page',
+    'page arguments' => array(4, 'menu_item'),
+    'type' => MENU_CALLBACK,
+  ) + $base;
+
+  $items['admin/structure/layouts/menu/%layout_tempstore_menu_item/condition/add'] = array(
+    'title' => 'Add condition',
+    'page callback' => 'backdrop_get_form',
+    'page arguments' => array('layout_condition_add_form', NULL, NULL, 4),
+    'type' => MENU_CALLBACK,
+  ) + $base;
+
+  $items['admin/structure/layouts/menu/%layout_tempstore_menu_item/condition/edit/%'] = array(
+    'title' => 'Configure condition',
+    'title callback' => 'layout_condition_edit_title',
+    'title arguments' => array(NULL, NULL, 4, 7),
+    'page callback' => 'backdrop_get_form',
+    'page arguments' => array('layout_condition_edit_form', NULL, NULL, 4, 7),
     'type' => MENU_CALLBACK,
   ) + $base;
 
@@ -202,13 +227,6 @@ function layout_menu() {
   foreach (layout_get_all_layout_menu_items() as $menu_item) {
     if (!empty($menu_item->disabled)) {
       continue;
-    }
-
-    if (!isset($menu_item->access['type'])) {
-      $menu_item->access['type'] = 'none';
-    }
-    if (!isset($menu_item->access['settings'])) {
-      $menu_item->access['settings'] = NULL;
     }
 
     $path             = array();
@@ -258,24 +276,18 @@ function layout_path_load($arg_value, $layout_name, $path_parts, $arg_position) 
 }
 
 /**
- * Create a menu item for page manager pages.
+ * Create a menu item for Layout-provided pages.
  *
- * @param $menu
- *   The configuration to use. It will contain a type, and depending on the
- *   type may also contain weight, title and name. These are presumed to have
- *   been configured from the UI.
+ * @param array $menu
+ *   The configuration for this menu item as configured by the user.
  * @param $access_arguments
- *   Arguments that go with ctools_access_menu; it should be loaded with
- *   the access plugin type, settings, and positions of any arguments that
- *   may produce contexts.
+ *   The arguments for the menu system.
  * @param $page_arguments
- *   This should be seeded with the subtask name for easy loading and like
- *   the access arguments above should contain positions of arguments so
- *   that the menu system passes contexts through.
+ *   The page callback arguments for the menu system.
  * @param $load_arguments
- *   Arguments to send to the arg loader; should be the subtask id and '%index'.
+ *   The magic loader arguments for the menu system.
  */
-function layout_page_menu_item($menu, $access_arguments, $page_arguments, $load_arguments) {
+function layout_page_menu_item(array $menu, array $access_arguments, array $page_arguments, array $load_arguments) {
   $item = array(
     'access callback' => 'layout_page_access',
     'access arguments' => $access_arguments,
@@ -302,15 +314,12 @@ function layout_page_menu_item($menu, $access_arguments, $page_arguments, $load_
       // Insert item into the proper menu
       $item['menu_name'] = $menu['name'];
       break;
-
     case 'tab':
       $item['type'] = MENU_LOCAL_TASK;
       break;
-
     case 'action':
       $item['type'] = MENU_LOCAL_ACTION;
       break;
-
     case 'default tab':
       $item['type'] = MENU_DEFAULT_LOCAL_TASK;
       break;
@@ -333,21 +342,6 @@ function layout_page_access() {
 }
 
 /**
- * Check to see if the incoming menu item is js capable or not.
- *
- * This can be used as %layout_js as part of a path in hook menu. CTools
- * ajax functions will automatically change the phrase 'nojs' to 'ajax'
- * when it attaches ajax to a link. This can be used to autodetect if
- * that happened.
- */
-function layout_js_load($js) {
-  if ($js == 'ajax') {
-    return TRUE;
-  }
-  return 0;
-}
-
-/**
  * Route handler callback; Execute the current route item or wrap in a layout.
  *
  * @param $router_item
@@ -365,15 +359,17 @@ function layout_route_handler($router_item) {
     return menu_default_route_handler($router_item);
   }
 
+  // Find if this page has a specified layout.
   $layouts = layout_get_path_layout_names($router_item['path']);
   $selected_layout = NULL;
   foreach ($layouts as $layout_name) {
     $layout = layout_load($layout_name);
-    if ($layout->checkAccess()) {
+    if (!$layout->disabled && $layout->checkAccess()) {
       $selected_layout = $layout;
     }
   }
 
+  // If no specific layout is found at the given page, use the default layout.
   if (!$selected_layout) {
     if (path_is_admin($_GET['q'])) {
       $selected_layout = layout_load('layout_admin_default');
@@ -555,6 +551,7 @@ function layout_autoload_info() {
     // Context handlers.
     'LayoutContext' => 'plugins/context/layout_context.inc',
     'LayoutContextBroken' => 'plugins/context/layout_context.inc',
+    'LayoutOverridesPathContext' => 'plugins/context/layout_context.inc',
     'LayoutStringContext' => 'plugins/context/layout_context.inc',
     'NodeLayoutContext' => 'plugins/context/node_layout_context_handler.inc',
     'UserLayoutContext' => 'plugins/context/user_layout_context_handler.inc',
@@ -614,13 +611,6 @@ function layout_get_all_layouts() {
           return ($a['weight'] < $b['weight']) ? -1 : 1;
         }
         else {
-          // NULL paths mean default layouts, put them last.
-          if ($b['path'] === NULL) {
-            return -1;
-          }
-          elseif ($a['path'] === NULL) {
-            return 1;
-          }
           return strcmp($a['path'], $b['path']);
         }
       });
@@ -690,6 +680,8 @@ function layout_get_path_layout_names($path) {
 
 /**
  * Load an individual layout.
+ *
+ * @return Layout|boolean
  */
 function layout_load($layout_name) {
   $layouts = layout_get_all_layouts();
@@ -698,6 +690,8 @@ function layout_load($layout_name) {
 
 /**
  * Load an individual Layout menu item.
+ *
+ * @return LayoutMenuItem|boolean
  */
 function layout_menu_item_load($menu_item_name) {
   $menu_items = layout_get_all_layout_menu_items();
@@ -797,7 +791,14 @@ function _layout_get_all_info($data_type) {
 }
 
 /**
- * Load all layout information from modules.
+ * Load the layout information for a single layout name.
+ *
+ * @param string $plugin_name
+ *   The name of the layout plugin, e.g. "onecol" or "three_three_four".
+ * @return array|boolean
+ *   The layout information, as returned by hook_layout_info().
+ *
+ * @see hook_layout_info()
  */
 function layout_get_layout_info($plugin_name) {
   $info = _layout_get_all_info('layout');
@@ -872,9 +873,9 @@ function layout_get_handler_name($plugin_type, $plugin_name) {
   // Block "plugins" for Layouts are wrappers around the generic block system.
   if ($plugin_type === 'block') {
     $info = layout_get_block_info();
-    if ($info[$plugin_name]) {
+    if (isset($info[$plugin_name])) {
       if (isset($info[$plugin_name]['class'])) {
-        $class_name = 'LayoutBlockStandard';
+        $class_name = $info[$plugin_name]['class'];
       }
       else {
         $class_name = 'LayoutBlockLegacy';
@@ -956,12 +957,10 @@ function layout_create_renderer($renderer_plugin_name, Layout $layout) {
 }
 
 /**
- * Get the cached changes to a given task handler.
+ * Get a layout or menu item currently being edited from the tempstore.
  *
- * The page cache is used to store a page temporarily, using the ctools object
- * cache. When loading from the page cache, it will either load the cached
- * version, or if there is not one, load the real thing and create a cache
- * object which can then be easily stored.
+ * If a layout is not yet being edited, the layout will be loaded from
+ * configuration.
  *
  * @param string $name
  *   The machine name of the Layout item to load.
@@ -988,16 +987,27 @@ function layout_get_layout_tempstore($name, $type = 'layout') {
 }
 
 /**
- * Store changes to a task handler in the object cache.
+ * Store changes to a layout or menu item in the temporary store.
+ *
+ * @param string $name
+ *   The machine name of the Layout item to save into tempstore.
+ * @param string $type
+ *   The type of item to save. Must be either "layout" or "menu_item".
  */
 function layout_set_layout_tempstore($item, $type = 'layout') {
-  if (!empty($item->locked)) {
-    return;
-  }
   if (empty($item->name)) {
     return;
   }
-  $item->changed = TRUE;
+
+  // Layout contexts should not be stored in the tempstore, they're generated on
+  // the fly when needed.
+  if ($type === 'layout') {
+    $item->resetContexts();
+  }
+  $item->locked = array(
+    'uid' => $GLOBALS['user']->uid,
+    'updated' => REQUEST_TIME,
+  );
   tempstore_set('layout.' . $type, $item->name, $item, 604800);
 }
 
@@ -1102,6 +1112,39 @@ function layout_context_required_by_path($path) {
   }
 
   return $required_contexts[$path];
+}
+
+/**
+ * Determine if a block has the necessary contexts.
+ *
+ * This
+ *
+ * @param Layout $layout
+ *   The layout on which the specified block will be displayed.
+ * @param string $block_module
+ *   The module that provides the block to be checked.
+ * @param string $block_delta
+ *   The identifier for the block within hook_block_info().
+ */
+function layout_block_has_required_contexts(Layout $layout, $block_module, $block_delta) {
+  $block_info = module_invoke($block_module, 'block_info');
+  $required_contexts = array();
+  if (isset($block_info[$block_delta]['required contexts'])) {
+    $required_contexts = $block_info[$block_delta]['required contexts'];
+  }
+
+  $available_contexts = $layout->getContexts();
+  foreach ($required_contexts as $key => $required_context_plugin_name) {
+    foreach ($available_contexts as $context) {
+      if ($context->plugin === $required_context_plugin_name) {
+        // Matching context available, remove from required list.
+        unset($required_contexts[$key]);
+      }
+    }
+  }
+
+  // If there are no missing contexts, all required contexts are available.
+  return empty($required_contexts);
 }
 
 /**

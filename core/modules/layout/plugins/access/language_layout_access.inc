@@ -64,7 +64,6 @@ class LanguageLayoutAccess extends LayoutAccess {
     foreach (language_list() as $langcode => $language) {
       $options[$langcode] = $language->name;
     }
-    debug($options);
     $form['language'] = array(
       '#title' => t('Language'),
       '#type' => 'checkboxes',

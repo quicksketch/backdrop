@@ -143,34 +143,30 @@
   [dir="rtl"] .layout-three-three-four .region-footer-fourthcolumn {
     float: right;
   }
-  .layout-three-three-four main {
-    display: inline;
-    float: left;
-  }
-  .layout-three-three-four.layout-two-sidebars main {
+  .layout-three-three-four.layout-two-sidebars #content {
     margin-left: 25%;
     margin-right: 25%;
     width: 50%;
   }
-  .layout-three-three-four.layout-one-sidebar main {
+  .layout-three-three-four.layout-one-sidebar #content {
     width: 75%;
   }
-  .layout-three-three-four.layout-no-sidebars main {
+  .layout-three-three-four.layout-no-sidebars #content {
     width: 100%;
   }
-  .layout-three-three-four.layout-sidebar-first main {
+  .layout-three-three-four.layout-sidebar-first #content {
     margin-left: 25%; /* LTR */
     margin-right: 0; /* LTR */
   }
-  [dir="rtl"] .layout-three-three-four.layout-sidebar-first main {
+  [dir="rtl"] .layout-three-three-four.layout-sidebar-first #content {
     margin-left: 0;
     margin-right: 25%;
   }
-  .layout-three-three-four.layout-sidebar-second main {
+  .layout-three-three-four.layout-sidebar-second #content {
     margin-right: 25%; /* LTR */
     margin-left: 0; /* LTR */
   }
-  [dir="rtl"] .layout-three-three-four.layout-sidebar-second main {
+  [dir="rtl"] .layout-three-three-four.layout-sidebar-second #content {
     margin-right: 0;
     margin-left: 25%;
   }

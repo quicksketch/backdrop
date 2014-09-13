@@ -1068,7 +1068,12 @@ function theme($hook, $variables = array()) {
     }
   }
 
-  $info = $hooks[$hook];
+  $info = $hooks[$hook] + array(
+    'includes' => array(),
+    'preprocess functions' => array(),
+    'process functions' => array(),
+  );
+
   global $theme_path;
   $temp = $theme_path;
   // point path_to_theme() to the currently used theme path:
@@ -1076,10 +1081,8 @@ function theme($hook, $variables = array()) {
 
   // Include a file if the theme function or variable processor is held
   // elsewhere.
-  if (!empty($info['includes'])) {
-    foreach ($info['includes'] as $include_file) {
-      include_once BACKDROP_ROOT . '/' . $include_file;
-    }
+  foreach ($info['includes'] as $include_file) {
+    include_once BACKDROP_ROOT . '/' . $include_file;
   }
 
   // If a renderable array is passed as $variables, then set $variables to
@@ -1114,19 +1117,23 @@ function theme($hook, $variables = array()) {
   // be used unless overridden by a variable processor function.
   if (isset($info['base hook'])) {
     $base_hook = $info['base hook'];
-    $base_hook_info = $hooks[$base_hook];
+    $base_hook_info = isset($hooks[$base_hook]) ? $hooks[$base_hook] : array();
+    $base_hook_info += array(
+      'includes' => array(),
+      'preprocess functions' => array(),
+      'process functions' => array(),
+    );
     // Include files required by the base hook, since its variable processors
     // might reside there.
-    if (!empty($base_hook_info['includes'])) {
-      foreach ($base_hook_info['includes'] as $include_file) {
-        include_once BACKDROP_ROOT . '/' . $include_file;
-      }
+    foreach ($base_hook_info['includes'] as $include_file) {
+      include_once BACKDROP_ROOT . '/' . $include_file;
     }
-    if (isset($base_hook_info['preprocess functions']) || isset($base_hook_info['process functions'])) {
-      $variables['theme_hook_suggestion'] = $hook;
-      $hook = $base_hook;
-      $info = $base_hook_info;
-    }
+    $variables['theme_hook_suggestion'] = $hook;
+    $hook = $base_hook;
+
+    // Combine the process functions to call the base hook and child functions.
+    $info['preprocess functions'] = array_unique(array_merge($base_hook_info['preprocess functions'], $info['preprocess functions']));
+    $info['process functions'] = array_unique(array_merge($base_hook_info['process functions'], $info['process functions']));
   }
   if (isset($info['preprocess functions']) || isset($info['process functions'])) {
     $variables['theme_hook_suggestions'] = array();

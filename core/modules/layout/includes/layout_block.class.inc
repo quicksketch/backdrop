@@ -41,6 +41,11 @@ class LayoutBlock extends LayoutHandler {
   var $conditions = array();
 
   /**
+   * An array of LayoutContext instances used by this block.
+   */
+  private $contexts = array();
+
+  /**
    * Create a new LayoutBlock object.
    *
    * @param string $module
@@ -211,12 +216,27 @@ class LayoutBlock extends LayoutHandler {
   }
 
   /**
+   * Get a list of all required context plugin names for this block.
+   *
+   * @return array
+   *   An unindexed array of context plugin names.
+   */
+  function getRequiredContexts() {
+    $required_contexts = array();
+    $block_info = layout_get_block_info($this->module, $this->delta);
+    if (!empty($block_info['required contexts'])) {
+      $required_contexts = $block_info['required contexts'];
+    }
+    return $required_contexts;
+  }
+
+  /**
    * Set the contexts for this block.
    */
   function setContexts(array $all_contexts) {
     $block_info = layout_get_block_info($this->module, $this->delta);
     $all_contexts_set = TRUE;
-    if (!empty($block_info['required contexts'])) {
+    if (!empty($block_info['required contexts']) && $this->contexts) {
       $all_contexts_set = layout_set_handler_contexts($this->contexts, $all_contexts, $block_info['required contexts'], $this->settings['contexts']);
     }
     if (!$all_contexts_set) {
@@ -247,4 +267,30 @@ class LayoutBlock extends LayoutHandler {
     return TRUE;
   }
 
+}
+
+/**
+ * A class used for blocks when their providing module or delta does not exist.
+ */
+class LayoutBlockBroken extends LayoutBlock {
+  function getTitle() {
+    return '';
+  }
+  function getAdminTitle() {
+    return t('Broken block');
+  }
+  function getAdminPreview() {
+    if (!module_exists($this->module)) {
+      return t('This block requires the %module module. Either re-enable the module, or remove this block.', array('%module' => $this->module));
+    }
+    else {
+      return t('This block provided by the %module module is missing. The block has an identifier of %delta, which may have been deleted or is no longer valid.', array('%module' => $this->module, '%delta' => $this->delta));
+    }
+  }
+  function getContent() {
+    return '';
+  }
+  function checkAccess() {
+    return FALSE;
+  }
 }

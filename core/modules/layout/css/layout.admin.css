@@ -24,6 +24,10 @@
   width: 90px;
   margin-bottom: 1em;
 }
+#layout-settings-form .form-item-path {
+  display: inline-block;
+  vertical-align: middle;
+}
 
 /* Menu item argument settings. */
 #layout-arguments strong,

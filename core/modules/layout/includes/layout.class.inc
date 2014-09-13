@@ -412,7 +412,50 @@ class Layout {
       $this->contexts['current_user']->plugin = 'user';
     }
 
+    // Add on the overrides path context, which is always available.
+    if (empty($this->menu_item) && !isset($this->contexts['overrides_path'])) {
+      $this->contexts['overrides_path'] = layout_create_context('overrides_path');
+      $this->contexts['overrides_path']->plugin = 'overrides_path';
+    }
+
     return $this->contexts;
+  }
+
+  /**
+   * Reset the internally stored contexts.
+   *
+   * This is used before storing a layout, or when fresh contexts are important,
+   * such as when actively changing the layout's path.
+   */
+  function resetContexts() {
+    $this->contexts = NULL;
+  }
+
+  /**
+   * Check if the layout has a context of a particular name.
+   *
+   * @param array $required_contexts
+   *   An unindexed array of context plugin names.
+   * @return boolean
+   *   TRUE if this layout has all the required contexts, FALSE otherwise.
+   */
+  function hasContexts($required_contexts) {
+    $all_contexts = $this->getContexts();
+    foreach ($required_contexts as $required_context_name) {
+      $context_missing = TRUE;
+      foreach ($all_contexts as $context) {
+        if ($context->plugin === $required_context_name) {
+          // Matching context available, continue to the next one.
+          $context_missing = FALSE;
+          break;
+        }
+      }
+      if ($context_missing) {
+        return FALSE;
+      }
+    }
+
+    return TRUE;
   }
 
   /**

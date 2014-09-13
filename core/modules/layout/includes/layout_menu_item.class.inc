@@ -50,30 +50,14 @@ class LayoutMenuItem {
     'title' => NULL,
     'weight' => 0,
     'type' => 'none',
-    'name' => 'navigation',
+    'name' => 'main-menu',
     'parent' => array(
       'title' => NULL,
       'weight' => 0,
       'type' => 'none',
-      'name' => 'navigation',
+      'name' => 'main-menu',
     ),
   );
-
-  /**
-   * An array of layout arguments.
-   *
-   * Each argument is keyed by its position in the path. For example a path of
-   * node/%/view would have an argument in index 1. Each argument has the
-   * following properties:
-   *
-   * - plugin: The context plugin to which this argument maps.
-   * - name: A machine name used for token references.
-   * - position: The position in the path, indexed from 0.
-   * - uuid: A unique machine identifier for this argument.
-   *
-   * @var array
-   */
-  var $arguments = array();
 
   /**
    * The module that originally provided this layout (if any).
@@ -93,6 +77,20 @@ class LayoutMenuItem {
    * @var int
    */
   var $storage = LAYOUT_STORAGE_NORMAL;
+
+  /**
+   * An array of all conditional rules used by this menu item.
+   *
+   * @var array
+   */
+  var $conditions = array();
+
+  /**
+   * Whether this layout is locked (being currently edited).
+   *
+   * @var boolean
+   */
+  var $locked = FALSE;
 
   /**
    * An array of LayoutContext instances used by this menu item.
@@ -117,7 +115,7 @@ class LayoutMenuItem {
       'type' => 'none',
       'title' => '',
       'weight' => 0,
-      'name' => 'navigation',
+      'name' => 'main-menu',
     );
     if (!isset($this->menu['parent'])) {
       $this->menu['parent'] = array();
@@ -126,8 +124,13 @@ class LayoutMenuItem {
       'type' => 'none',
       'title' => '',
       'weight' => 0,
-      'name' => 'navigation',
+      'name' => 'main-menu',
     );
+
+    // Load conditions.
+    foreach ($this->conditions as $key => $condition) {
+      $this->conditions[$key] = layout_create_handler('layout_access', $condition['plugin'], $condition['data']);
+    }
   }
 
   /**
@@ -142,8 +145,17 @@ class LayoutMenuItem {
       'title' => $this->title,
       'path' => $this->path,
       'menu' => $this->menu,
-      'arguments' => $this->arguments,
+      'conditions' => array(),
     );
+
+    // Convert all conditions.
+    foreach ($this->conditions as $condition) {
+      unset($condition->is_new);
+      $data['conditions'][] = array(
+        'plugin' => $condition->plugin,
+        'data' => $condition->toArray(),
+      );
+    }
 
     config('layout.menu_item.' . $this->name)
       ->setData($data)
@@ -213,18 +225,57 @@ class LayoutMenuItem {
     if (is_null($this->contexts)) {
       // Required contexts are generated on-demand.
       $contexts = layout_context_required_by_path($this->path);
-      // Then add in customized contexts.
-      foreach ($contexts as $key => $context) {
-        if (!$context->locked && isset($this->arguments[$key])) {
-          $argument = $this->arguments[$key];
-          $contexts[$key] = layout_create_context($this->arguments[$key]['plugin']);
-          $contexts[$key]->position = $argument['position'];
-          $contexts[$key]->plugin = $argument['plugin'];
-          $contexts[$key]->required = TRUE;
-        }
-      }
+
+      // Add on the current user context, which is always available.
+      $contexts['current_user'] = layout_create_context('user');
+      $contexts['current_user']->setData($GLOBALS['user']);
+      $contexts['current_user']->plugin = 'user';
+
       $this->contexts = $contexts;
     }
     return $this->contexts;
+  }
+
+  /**
+   * Check if the menu item has a context of a particular name.
+   *
+   * @param array $required_contexts
+   *   An unindexed array of context plugin names.
+   * @return boolean
+   *   TRUE if this menu item has all the required contexts, FALSE otherwise.
+   */
+  function hasContexts(array $required_contexts) {
+    $all_contexts = $this->getContexts();
+    foreach ($required_contexts as $required_context_name) {
+      $context_missing = TRUE;
+      foreach ($all_contexts as $context) {
+        if ($context->plugin === $required_context_name) {
+          // Matching context available, continue to the next one.
+          $context_missing = FALSE;
+          break;
+        }
+      }
+      if ($context_missing) {
+        return FALSE;
+      }
+    }
+
+    return TRUE;
+  }
+
+  /**
+   * Check access to this menu item based on the current contexts.
+   *
+   * @see _layout_page_access()
+   */
+  function checkAccess() {
+    $contexts = $this->getContexts();
+    foreach ($this->conditions as $condition) {
+      $condition->setContexts($contexts);
+      if (!$condition->checkAccess()) {
+        return FALSE;
+      }
+    }
+    return TRUE;
   }
 }

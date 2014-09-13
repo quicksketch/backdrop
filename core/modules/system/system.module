@@ -2102,6 +2102,9 @@ function system_block_info() {
   $blocks['main'] = array(
     'info' => t('Main page content'),
     'cache' => BACKDROP_NO_CACHE,
+    'required contexts' => array(
+      'overrides_path',
+    ),
   );
   $blocks['header'] = array(
     'info' => t('Header block'),

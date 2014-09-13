@@ -40,18 +40,9 @@ function cache($bin = 'cache') {
 }
 
 /**
- * Expires data from the block and page caches.
+ * Expires data from the page cache.
  */
 function cache_clear_all() {
-  // @todo: remove before release.
-  if (func_get_args()) {
-    throw new Exception(t('cache_clear_all() no longer takes arguments, use cache() instead.'));
-  }
-  // Clear the block cache first, so stale data will
-  // not end up in the page cache.
-  if (module_exists('block')) {
-    cache('block')->expire();
-  }
   cache('page')->expire();
 }
 
