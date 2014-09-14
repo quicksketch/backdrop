@@ -479,7 +479,7 @@ function comment_permalink($cid) {
     $_GET['page'] = $page;
 
     // Return the node view, this will show the correct comment in context.
-    return menu_execute_active_handler('node/' . $node->nid, FALSE);
+    return menu_execute_active_handler('node/' . $node->nid, FALSE, 'menu_default_route_handler');
   }
   return MENU_NOT_FOUND;
 }

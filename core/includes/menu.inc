@@ -490,8 +490,13 @@ function menu_get_item($path = NULL, $router_item = NULL) {
  *   (optional) A boolean to indicate whether the content should be sent to the
  *   browser using the appropriate delivery callback (TRUE) or whether to return
  *   the result to the caller (FALSE).
+ * @param $route_handler
+ *   A callback function name to handle the content at this particular path. If
+ *   left empty, the default route handler will be used. In most installations
+ *   of Backdrop, the Layout module will provide the route handler, wrapping
+ *   HTML pages in a layout.
  */
-function menu_execute_active_handler($path = NULL, $deliver = TRUE) {
+function menu_execute_active_handler($path = NULL, $deliver = TRUE, $route_handler = NULL) {
   // Check if site is offline.
   $page_callback_result = _menu_site_is_offline() ? MENU_SITE_OFFLINE : MENU_SITE_ONLINE;
 
@@ -505,7 +510,9 @@ function menu_execute_active_handler($path = NULL, $deliver = TRUE) {
   if ($page_callback_result == MENU_SITE_ONLINE) {
     if ($router_item = menu_get_item($path)) {
       if ($router_item['access']) {
-        $route_handler = config_get('system.menu', 'menu_route_handler');
+        if (empty($route_handler)) {
+          $route_handler = config_get('system.menu', 'menu_route_handler');
+        }
         if (empty($route_handler) || !function_exists($route_handler)) {
           $route_handler = 'menu_default_route_handler';
         }

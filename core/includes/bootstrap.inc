@@ -3430,7 +3430,7 @@ function backdrop_is_cli() {
  * Detects if this is an AJAX HTTP request.
  */
 function backdrop_is_html() {
-  return strpos($_SERVER['HTTP_ACCEPT'], 'text/html') === 0 && empty($_SERVER['X_REQUESTED_WITH']);
+  return (strpos($_SERVER['HTTP_ACCEPT'], 'text/html') === 0 || empty($_SERVER['HTTP_ACCEPT']) || $_SERVER['HTTP_ACCEPT'] === '*/*') && empty($_SERVER['X_REQUESTED_WITH']);
 }
 
 /**
