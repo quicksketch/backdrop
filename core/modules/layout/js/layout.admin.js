@@ -59,6 +59,16 @@ Backdrop.behaviors.layoutDisplayEditor = {
         placeholder: 'layout-editor-placeholder layout-editor-block',
         forcePlaceholderSize: true
       });
+
+      // Open a dialog if editing a particular block.
+      var blockUuid = window.location.hash.replace(/#configure-block:/, '');
+      if (blockUuid) {
+        window.setTimeout(function() {
+          $('[data-block-id="' + blockUuid + '"]').find('li.configure > a').triggerHandler('click');
+          // Clear out the hash.
+          window.location.hash = '';
+        }, 100);
+      }
     }
 
     // Detect the addition of new blocks.

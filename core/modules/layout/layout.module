@@ -84,7 +84,7 @@ function layout_menu() {
   ) + $base;
 
   $items['admin/structure/layouts/manage/%layout_tempstore'] = array(
-    'title' => 'Edit layout settings',
+    'title' => 'Edit layout',
     'page callback' => 'backdrop_get_form',
     'page arguments' => array('layout_content_form', 4),
     'type' => MENU_NORMAL_ITEM,
@@ -93,6 +93,13 @@ function layout_menu() {
   $items['admin/structure/layouts/manage/%layout_tempstore/edit'] = array(
     'title' => 'Layout',
     'type' => MENU_DEFAULT_LOCAL_TASK,
+  ) + $base;
+
+  $items['admin/structure/layouts/manage/%layout_tempstore/settings'] = array(
+    'title' => 'Settings',
+    'page callback' => 'backdrop_get_form',
+    'page arguments' => array('layout_settings_form', 4),
+    'type' => MENU_LOCAL_TASK,
   ) + $base;
 
   $items['admin/structure/layouts/manage/%layout_tempstore/add-block/%/%'] = array(
@@ -106,6 +113,11 @@ function layout_menu() {
     'load arguments' => array(4),
     'page callback' => 'backdrop_get_form',
     'page arguments' => array('layout_block_configure_form', 4, 7, 6),
+    // To work with contextual links, we have to specify the context and also
+    // set the type to be a MENU_LOCAL_TASK, even though this page never shows
+    // up as a tab anywhere.
+    'context' => MENU_CONTEXT_INLINE,
+    'type' => MENU_DEFAULT_LOCAL_TASK,
   ) + $base;
 
   $items['admin/structure/layouts/manage/%layout_tempstore/remove-block/%/%layout_tempstore_block'] = array(
@@ -113,13 +125,6 @@ function layout_menu() {
     'load arguments' => array(4),
     'page callback' => 'layout_block_remove_page',
     'page arguments' => array(4, 7, 6),
-  ) + $base;
-
-  $items['admin/structure/layouts/manage/%layout_tempstore/settings'] = array(
-    'title' => 'Settings',
-    'page callback' => 'backdrop_get_form',
-    'page arguments' => array('layout_settings_form', 4),
-    'type' => MENU_LOCAL_TASK,
   ) + $base;
 
   $items['admin/structure/layouts/manage/%layout_tempstore/clone'] = array(
@@ -575,6 +580,25 @@ function layout_autoload_info() {
     'LayoutStyle' => 'plugins/styles/layout_style_default.inc',
     'LayoutStyleDynamic' => 'plugins/styles/layout_style_dynamic.inc',
   );
+}
+
+/**
+ * Implements hook_contextual_links_view_alter()
+ */
+function layout_contextual_links_view_alter(&$element, $items) {
+  // Convert the link to configure blocks to use a shortened URL that lands the
+  // user on the overall layout edit screen with a modal opened, instead of the
+  // path to the block edit page itself.
+  $links = &$element['#links'];
+  if (isset($links['layout-'])) {
+    if ($position = strpos($links['layout-']['href'], '/configure-block')) {
+      $last_slash = strrpos($links['layout-']['href'], '/');
+      $new_path = substr($links['layout-']['href'], 0, $position);
+      $uuid = substr($links['layout-']['href'], $last_slash + 1);
+      $links['layout-']['href'] = $new_path;
+      $links['layout-']['fragment'] = 'configure-block:' . $uuid;
+    }
+  }
 }
 
 /**

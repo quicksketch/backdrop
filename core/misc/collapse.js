@@ -57,11 +57,12 @@ Backdrop.collapseScrollIntoView = function (node) {
 
 Backdrop.behaviors.collapse = {
   attach: function (context, settings) {
+    var hasHash = location.hash && location.hash != '#' && $(window).find(location.hash).length;
     $('fieldset.collapsible', context).once('collapse', function () {
       var $fieldset = $(this);
       // Expand fieldset if there are errors inside, or if it contains an
       // element that is targeted by the URI fragment identifier.
-      var anchor = location.hash && location.hash != '#' ? ', ' + location.hash : '';
+      var anchor = hasHash ? ', ' + location.hash : '';
       if ($fieldset.find('.error' + anchor).length) {
         $fieldset.removeClass('collapsed');
       }

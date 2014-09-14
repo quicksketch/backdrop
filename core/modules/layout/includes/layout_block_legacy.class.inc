@@ -23,7 +23,7 @@ class LayoutBlockLegacy extends LayoutBlock {
         'delta' => $this->delta,
       );
       $this->content = module_invoke($this->module, 'block_view', $this->delta, $this->settings['block_settings']);
-      backdrop_alter('block_view', $this->content, $legacy_block);
+      backdrop_alter(array('block_view', 'block_view_' . $this->module . '_' . $this->delta), $this->content, $legacy_block, $this->settings['block_settings']);
     }
     return $this->content;
   }

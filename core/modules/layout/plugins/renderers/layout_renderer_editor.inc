@@ -93,7 +93,7 @@ class LayoutRendererEditor extends LayoutRendererStandard {
    * Short-cut to generate a URL path to a particular action.
    *
    * @param string $command
-   *   The command to which the URL should piont, usually "configure-block",
+   *   The command to which the URL should point, usually "configure-block",
    *   "remove-block", or "add-block".
    * @param ...
    *   Any additional parameters to be tacked on the end of the URL.

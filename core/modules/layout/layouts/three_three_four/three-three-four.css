@@ -73,15 +73,15 @@
   [dir="rtl"] .layout-three-three-four .region-footer-fourthcolumn {
     float: right;
   }
-  .layout-three-three-four #sidebar-first,
-  .layout-three-three-four #sidebar-second {
-    width: 50%;
+  .layout-three-three-four #sidebar-first {
+    width: 49%;
   }
   .layout-three-three-four #sidebar-second {
-    margin-left: 50%; /* LTR */
+    width: 49%;
+    margin-left: 51%; /* LTR */
   }
   [dir="rtl"] .layout-three-three-four #sidebar-second {
-    margin-right: 50%;
+    margin-right: 51%;
   }
   .layout-three-three-four .region-triptych-first,
   .layout-three-three-four .region-triptych-middle,

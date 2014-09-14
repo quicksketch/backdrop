@@ -413,12 +413,17 @@ class LayoutRendererStandard {
       }
       // Add the contextual links.
       if (!($block->module === 'system' && $block->delta === 'main')) {
-        $content['#contextual_links']['block'] = array('admin/structure/block/manage', array($block->module, $block->delta));
+        $content['#contextual_links']['layout'] = array('admin/structure/layouts/manage/' . $this->layout->name . '/configure-block/editor', array($block->uuid));
+      }
+
+      $title = '';
+      if ($block->settings['title_display'] !== LAYOUT_TITLE_NONE) {
+        $title = $block->getTitle();
       }
 
       // Assemble a structured content array.
       $content = (object) array(
-        'title' => $block->getTitle(),
+        'title' => $title,
         'content' => $content,
       );
 

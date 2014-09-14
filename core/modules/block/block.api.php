@@ -156,14 +156,17 @@ function hook_block_info_alter(&$blocks, $theme, $code_blocks) {
  * @see hook_block_info()
  * @see hook_block_save()
  */
-function hook_block_configure($delta = '') {
+function hook_block_configure($delta = '', $settings = array()) {
   // This example comes from node.module.
   $form = array();
   if ($delta == 'recent') {
-    $form['node_recent_block_count'] = array(
+    $settings += array(
+      'node_count' => 10,
+    );
+    $form['node_count'] = array(
       '#type' => 'select',
       '#title' => t('Number of recent content items to display'),
-      '#default_value' => variable_get('node_recent_block_count', 10),
+      '#default_value' => $settings['node_count'],
       '#options' => backdrop_map_assoc(array(2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 25, 30)),
     );
   }
@@ -174,32 +177,41 @@ function hook_block_configure($delta = '') {
  * Save the configuration options from hook_block_configure().
  *
  * This hook allows you to save the block-specific configuration settings
- * defined within your hook_block_configure().
+ * defined within your hook_block_configure(). Most settings will automatically
+ * be saved if using the Layout module to position blocks, but if your settings
+ * should be site-wide or saved in the database instead of the Layout
+ * configuration, you may use this hook to save your settings. If you wish
+ * Layout module to *not* save your settings, unset the value from the $edit
+ * array.
  *
  * @param $delta
  *   Which block is being configured. This is a unique identifier for the block
  *   within the module, defined in hook_block_info().
  * @param $edit
- *   The submitted form data from the configuration form.
- *
- * For a detailed usage example, see block_example.module.
+ *   The submitted form data from the configuration form. This is passed by
+ *   reference, so values can be changed or removed before they are saved into
+ *   the layout configuration.
  *
  * @see hook_block_configure()
  * @see hook_block_info()
  */
-function hook_block_save($delta = '', $edit = array()) {
-  // This example comes from node.module.
-  if ($delta == 'recent') {
-    variable_set('node_recent_block_count', $edit['node_recent_block_count']);
+function hook_block_save($delta = '', &$edit = array()) {
+  if ($delta == 'my_block_delta') {
+    config_set('mymodule.settings', 'my_global_value', $edit['my_global_value']);
+    // Remove the value so it is not saved by Layout module.
+    unset($edit['my_global_value']);
   }
 }
 
 /**
  * Return a rendered or renderable view of a block.
  *
- * @param $delta
+ * @param string $delta
  *   Which block to render. This is a unique identifier for the block
  *   within the module, defined in hook_block_info().
+ * @param array $settings
+ *   An array of settings for this block. Defaults may not be populated, so it's
+ *   best practice to merge in defaults within hook_block_view().
  *
  * @return
  *   Either an empty array so the block will not be shown or an array containing
@@ -216,7 +228,7 @@ function hook_block_save($delta = '', $edit = array()) {
  * @see hook_block_view_alter()
  * @see hook_block_view_MODULE_DELTA_alter()
  */
-function hook_block_view($delta = '') {
+function hook_block_view($delta = '', $settings = array()) {
   // This example is adapted from node.module.
   $block = array();
 
@@ -232,13 +244,17 @@ function hook_block_view($delta = '') {
 
     case 'recent':
       if (user_access('access content')) {
+        $settings += array(
+          'node_count' => 10,
+        );
         $block['subject'] = t('Recent content');
-        if ($nodes = node_get_recent(variable_get('node_recent_block_count', 10))) {
+        if ($nodes = node_get_recent($settings['node_count'])) {
           $block['content'] = array(
             '#theme' => 'node_recent_block',
             '#nodes' => $nodes,
           );
-        } else {
+        }
+        else {
           $block['content'] = t('No content available.');
         }
       }
@@ -269,11 +285,13 @@ function hook_block_view($delta = '') {
  *   - module: The name of the module that defined the block.
  *   - delta: The unique identifier for the block within that module, as defined
  *     in hook_block_info().
+ * @param array $settings
+ *   An array of settings for this block.
  *
  * @see hook_block_view_MODULE_DELTA_alter()
  * @see hook_block_view()
  */
-function hook_block_view_alter(&$data, $block) {
+function hook_block_view_alter(&$data, $block, $settings = array()) {
   // Remove the contextual links on all blocks that provide them.
   if (is_array($data['content']) && isset($data['content']['#contextual_links'])) {
     unset($data['content']['#contextual_links']);
@@ -304,11 +322,13 @@ function hook_block_view_alter(&$data, $block) {
  *   - module: The name of the module that defined the block.
  *   - delta: The unique identifier for the block within that module, as defined
  *     in hook_block_info().
+ * @param array $settings
+ *   An array of settings for this block.
  *
  * @see hook_block_view_alter()
  * @see hook_block_view()
  */
-function hook_block_view_MODULE_DELTA_alter(&$data, $block) {
+function hook_block_view_MODULE_DELTA_alter(&$data, $block, $settings = array()) {
   // This code will only run for a specific block. For example, if MODULE_DELTA
   // in the function definition above is set to "mymodule_somedelta", the code
   // will only run on the "somedelta" block provided by the "mymodule" module.

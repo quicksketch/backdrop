@@ -1758,7 +1758,7 @@ class NodeBlockFunctionalTest extends BackdropWebTestCase {
     // Set block title and variables.
     $block = array(
       'title' => $this->randomName(),
-      'node_recent_block_count' => 2,
+      'node_count' => 2,
     );
     $this->backdropPost('admin/structure/block/manage/node/recent/configure', $block, t('Save block'));
     $this->assertText(t('The block configuration has been saved.'), 'Block saved.');
@@ -1806,7 +1806,7 @@ class NodeBlockFunctionalTest extends BackdropWebTestCase {
     $this->backdropLogout();
     $this->backdropLogin($this->admin_user);
     $block = array(
-      'node_recent_block_count' => 10,
+      'node_count' => 10,
     );
     $this->backdropPost('admin/structure/block/manage/node/recent/configure', $block, t('Save block'));
     $this->assertText(t('The block configuration has been saved.'), t('Block saved.'));

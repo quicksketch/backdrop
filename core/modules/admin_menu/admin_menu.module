@@ -340,7 +340,7 @@ function admin_menu_admin_menu_replacements($complete) {
  * @see user_block(), user.module
  */
 function admin_menu_get_user_count() {
-  $interval   = REQUEST_TIME - variable_get('user_block_seconds_online', 900);
+  $interval   = REQUEST_TIME - 900;
   $count_anon = admin_menu_session_count($interval, TRUE);
   $count_auth = admin_menu_session_count($interval, FALSE);
 

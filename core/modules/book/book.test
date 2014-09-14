@@ -336,7 +336,7 @@ class BookTestCase extends BackdropWebTestCase {
      $edit['title'] = $block_title;
 
      // Set block display to 'Show block only on book pages'.
-     $edit['book_block_mode'] = 'book pages';
+     $edit['book_mode'] = 'book pages';
      $this->backdropPost('admin/structure/block/manage/book/navigation/configure', $edit, t('Save block'));
      $this->assertText(t('The block configuration has been saved.'), 'Block configuration set.');
 
