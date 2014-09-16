@@ -85,6 +85,8 @@ function layout_menu() {
 
   $items['admin/structure/layouts/manage/%layout_tempstore'] = array(
     'title' => 'Edit layout',
+    'title callback' => 'layout_page_title',
+    'title arguments' => array(4),
     'page callback' => 'backdrop_get_form',
     'page arguments' => array('layout_content_form', 4),
     'type' => MENU_NORMAL_ITEM,
@@ -335,6 +337,13 @@ function layout_page_menu_item(array $menu, array $access_arguments, array $page
   }
 
   return $item;
+}
+
+/**
+ * Menu title callback; Return the title for editing a layout.
+ */
+function layout_page_title(Layout &$layout) {
+  return t('Edit @layout', array('@layout' => $layout->title));
 }
 
 /**
