@@ -26,6 +26,10 @@ function block_menu() {
     'access arguments' => array('administer blocks'),
     'file' => 'block.admin.inc',
   );
+  $items['admin/structure/block/list'] = array(
+    'title' => 'List blocks',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+  );
   $items['admin/structure/block/manage/%'] = array(
     'title' => 'Configure block',
     'page callback' => 'backdrop_get_form',
@@ -72,8 +76,7 @@ function block_block_info() {
   $result = db_query('SELECT bid, info FROM {block_custom} ORDER BY info');
   foreach ($result as $block) {
     $blocks[$block->bid]['info'] = $block->info;
-    // Not worth caching.
-    $blocks[$block->bid]['cache'] = BACKDROP_NO_CACHE;
+    $blocks[$block->bid]['description'] = t('A custom block.');
   }
   return $blocks;
 }
@@ -154,17 +157,16 @@ function block_custom_block_form($edit = array()) {
     '#title' => t('Block description'),
     '#default_value' => $edit['info'],
     '#maxlength' => 64,
-    '#description' => t('A brief description of your block. Used on the <a href="@overview">Blocks administration page</a>.', array('@overview' => url('admin/structure/block'))),
+    '#description' => t('Used in administrative interfaces and not shown to end-users.'),
     '#required' => TRUE,
     '#weight' => -18,
   );
-  $form['body_field']['#weight'] = -17;
-  $form['body_field']['body'] = array(
+  $form['body'] = array(
     '#type' => 'text_format',
     '#title' => t('Block body'),
     '#default_value' => $edit['body'],
     '#format' => $edit['format'],
-    '#rows' => 15,
+    '#rows' => 8,
     '#description' => t('The content of the block as shown to the user.'),
     '#required' => TRUE,
     '#weight' => -17,
@@ -190,6 +192,7 @@ function block_custom_block_form($edit = array()) {
  *   Always returns TRUE.
  */
 function block_custom_block_save(array $edit, $delta = NULL) {
+  $custom_block = $delta ? block_custom_block_get($delta) : array('title' => '');
   $merge = db_merge('block_custom')
     ->key(array(
       'bid' => $delta,
@@ -197,7 +200,7 @@ function block_custom_block_save(array $edit, $delta = NULL) {
     ->fields(array(
       'body' => $edit['body']['value'],
       'info' => $edit['info'],
-      'title' => $edit['title'],
+      'title' => isset($edit['title']) ? $edit['title'] : $custom_block['title'],
       'format' => $edit['body']['format'],
     ));
   $result = $merge->execute();

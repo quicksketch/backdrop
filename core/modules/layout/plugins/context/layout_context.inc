@@ -65,6 +65,13 @@ abstract class LayoutContext {
   var $restrictions = array();
 
   /**
+   * Constructor for LayoutContext objects.
+   */
+  function __construct($plugin_name, $config = array()) {
+    $this->plugin = $plugin_name;
+  }
+
+  /**
    * Return the indicator for this context, i.e. "entity", "string".
    */
   abstract function type();

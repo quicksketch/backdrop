@@ -69,7 +69,7 @@ function layout_layout_context_info() {
     'title' => t('Node'),
     'description' => t('A node object.'),
     // Define the class which is used to handle this context.
-    'class' => 'NodeLayoutContext',
+    'class' => 'EntityLayoutContext',
     // Define menu paths where the node ID is a "known" context.
     'menu paths' => array(
       'node/%node',
@@ -92,7 +92,7 @@ function layout_layout_context_info() {
   $info['user'] = array(
     'title' => t('User'),
     'description' => t('A user object.'),
-    'class' => 'UserLayoutContext',
+    'class' => 'EntityLayoutContext',
     'menu paths' => array(
       'user/%user',
       'user/%user/view',
@@ -130,12 +130,12 @@ function layout_layout_access_info() {
   // Provide a bundle (type) plugin for each entity type.
   foreach ($entity_types as $entity_type => $entity_info) {
     // Skip users, which don't support multiple types.
-    if (empty($entity_info['bundle keys'])) {
+    if (empty($entity_info['entity keys']['bundle'])) {
       continue;
     }
 
     $bundle_label = array_key_exists('bundle label', $entity_info) ? $entity_info['bundle label'] : 'Type';
-    $info['entity:' . $entity_type . ':bundle'] = array(
+    $info[$entity_type . ':bundle'] = array(
       'title' => t('@entity: @bundle', array('@entity' => $entity_info['label'], '@bundle' => $bundle_label)),
       'description' => t('Control access by @entity_type @bundle_label.', array('@entity_type' => $entity_type, '@bundle_label' => backdrop_strtolower($bundle_label))),
       'keyword' => $entity_type,

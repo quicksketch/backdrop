@@ -409,8 +409,10 @@ function comment_views_api() {
  * Implements hook_block_info().
  */
 function comment_block_info() {
-  $blocks['recent']['info'] = t('Recent comments');
-  $blocks['recent']['properties']['administrative'] = TRUE;
+  $blocks['recent'] = array(
+    'info' => t('Recent comments'),
+    'description' => t('A list of recent comments posted to the site.'),
+  );
 
   return $blocks;
 }

@@ -1985,12 +1985,14 @@ function node_revision_list(Node $node) {
  * Implements hook_block_info().
  */
 function node_block_info() {
-  $blocks['syndicate']['info'] = t('Syndicate');
-  // Not worth caching.
-  $blocks['syndicate']['cache'] = BACKDROP_NO_CACHE;
-
-  $blocks['recent']['info'] = t('Recent content');
-  $blocks['recent']['properties']['administrative'] = TRUE;
+  $blocks['syndicate'] = array(
+    'info' => t('Syndicate'),
+    'description' => t('An RSS icon linking to the feed for the current page (if any).'),
+  );
+  $blocks['recent'] = array(
+    'info' => t('Recent content'),
+    'description' => t('A list of recently published content.'),
+  );
 
   return $blocks;
 }

@@ -171,6 +171,7 @@ function template_preprocess_layout__three_three_four(&$variables) {
  * @see page.tpl.php
  */
 function template_process_layout(&$variables) {
+  $settings = $variables['layout']->settings;
   $variables += array(
     'title' => NULL,
     'messages' => NULL,
@@ -178,7 +179,15 @@ function template_process_layout(&$variables) {
 
   if (!$variables['admin']) {
     if (!isset($variables['title'])) {
-      $variables['title'] = backdrop_get_title();
+      if ($settings['title_display'] === LAYOUT_TITLE_NONE) {
+        $variables['title'] = NULL;
+      }
+      elseif ($settings['title_display'] === LAYOUT_TITLE_CUSTOM) {
+        $variables['title'] = check_plain(t($settings['title']));
+      }
+      else {
+        $variables['title'] = backdrop_get_title();
+      }
     }
 
     // Generate messages last in order to capture as many as possible for the

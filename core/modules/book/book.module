@@ -257,11 +257,13 @@ function book_entity_info_alter(&$info) {
  * Implements hook_block_info().
  */
 function book_block_info() {
-  $block = array();
-  $block['navigation']['info'] = t('Book navigation');
-  $block['navigation']['cache'] = BACKDROP_CACHE_PER_PAGE | BACKDROP_CACHE_PER_ROLE;
+  $blocks['navigation'] = array(
+    'info' => t('Book navigation'),
+    'description' => t('Shows the table of contents expanded to the current page if viewing book content.'),
+    'cache' =>  BACKDROP_CACHE_PER_PAGE | BACKDROP_CACHE_PER_ROLE,
+  );
 
-  return $block;
+  return $blocks;
 }
 
 /**

@@ -45,9 +45,12 @@ a:active {
   border-color: #f9f9f9;
 }
 #page-wrapper,
-#footer-wrapper {
+#footer-columns,
+#footer {
   background: #292929;
 }
-#header a {
+#header a,
+#footer-columns,
+#footer-wrapper {
   color: #fffeff;
 }

@@ -84,10 +84,14 @@ class LayoutBlockLegacy extends LayoutBlock {
   function formSubmit($form, &$form_state) {
     parent::formSubmit($form, $form_state);
 
-    // Allow blocks to save their settings into the layout. The last parameter
-    // can be taken in by reference and modified.
+    // Allow blocks to save their settings into the layout. Because the last
+    // parameter can be taken in by reference and modified, we cannot use
+    // module_invoke() here.
     if (isset($form_state['values']['block_settings'])) {
-      module_invoke($this->module, 'block_save', $this->delta, $form_state['values']['block_settings']);
+      $function = $this->module . '_block_save';
+      if (function_exists($function)) {
+        $function($this->delta, $form_state['values']['block_settings']);
+      }
       $this->settings['block_settings'] = $form_state['values']['block_settings'];
     }
   }

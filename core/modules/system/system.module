@@ -2101,30 +2101,30 @@ function system_user_timezone(&$form, &$form_state) {
 function system_block_info() {
   $blocks['main'] = array(
     'info' => t('Main page content'),
-    'cache' => BACKDROP_NO_CACHE,
+    'description' => t('The default content for this page. <strong>This block may be required for this page to work properly.</strong>'),
     'required contexts' => array(
-      'overrides_path',
+      'overrides_path' => 'overrides_path',
     ),
   );
   $blocks['header'] = array(
     'info' => t('Header block'),
-    'cache' => BACKDROP_NO_CACHE,
+    'description' => t('Contains elements typically contained in a site header including the site logo, name, slogan, and optionally a navigational menu.'),
   );
   $blocks['breadcrumb'] = array(
     'info' => t('Breadcrumb'),
-    'cache' => BACKDROP_NO_CACHE,
+    'description' => t('The current page breadcrumb trail.'),
   );
   $blocks['powered-by'] = array(
     'info' => t('Powered by Backdrop'),
+    'description' => t('Displays a link to <a href="http://backdropcms.org">Backdrop CMS</a>.'),
     'weight' => '10',
-    'cache' => BACKDROP_NO_CACHE,
   );
   // System-defined menu blocks.
   foreach (menu_list_system_menus() as $menu_name => $title) {
-    $blocks[$menu_name]['info'] = t($title);
-    // Menu blocks can't be cached because each menu item can have
-    // a custom access callback. menu.inc manages its own caching.
-    $blocks[$menu_name]['cache'] = BACKDROP_NO_CACHE;
+    $blocks[$menu_name] = array(
+      'info' => check_plain(t($title)),
+      'description' => t('A hierarchical list of links for the @menu.', array('@menu' => t($title))),
+    );
   }
   return $blocks;
 }

@@ -15,7 +15,7 @@ class EntityBundleLayoutAccess extends LayoutAccess {
 
     // Set entity type.
     $entity_type = explode(':', $this->plugin);
-    $this->entity_type = $entity_type[1];
+    $this->entity_type = $entity_type[0];
   }
 
   /**

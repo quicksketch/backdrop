@@ -27,19 +27,20 @@ class views_plugin_display_block extends views_plugin_display {
    */
   function execute_hook_block_list($delta = 0, $edit = array()) {
     $delta = $this->view->name . '-' . $this->display->id;
-    $desc = $this->get_option('block_description');
+    $info = $this->get_option('block_description');
 
     if (empty($desc)) {
       if ($this->display->display_title == $this->definition['title']) {
-        $desc = t('View: !view', array('!view' => $this->view->get_human_name()));
+        $info = t('View: !view', array('!view' => $this->view->get_human_name()));
       }
       else {
-        $desc = t('View: !view: !display', array('!view' => $this->view->get_human_name(), '!display' => $this->display->display_title));
+        $info = t('View: !view: !display', array('!view' => $this->view->get_human_name(), '!display' => $this->display->display_title));
       }
     }
     return array(
       $delta => array(
-        'info' => $desc,
+        'info' => $info,
+        'description' => check_plain($this->view->description),
         'cache' => $this->get_cache_type()
       ),
     );

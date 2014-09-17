@@ -635,7 +635,7 @@ function layout_content_form($form, &$form_state, Layout $layout, $renderer_name
   $form['title_display']['title_display'] = array(
     '#type' => 'select',
     '#title' => t('Title type'),
-    '#default_value' => (int) $layout->settings['title_display'],
+    '#default_value' => $layout->settings['title_display'],
     '#options' => array(
       LAYOUT_TITLE_DEFAULT => t('Default title'),
       LAYOUT_TITLE_CUSTOM => t('Custom title'),
@@ -1088,10 +1088,21 @@ function layout_block_configure_ajax_update($form, $form_state) {
   $block = $form_state['block'];
   $renderer = $form_state['renderer'];
   $added_to_region = isset($layout->in_progress['region_name']) ? $layout->in_progress['region_name'] : $form_state['region_name'];
-  if ($added_to_region) {
+
+  // Display error messages in the form if any.
+  if (form_get_errors()) {
+    $html = '';
+    $html .= theme('status_messages');
+    $html .= backdrop_render($form);
+    $title = isset($form['#title']) ? $form['#title'] : backdrop_get_title();
+    $commands[] = ajax_command_open_modal_dialog($title, $html, array('dialogClass' => 'layout-dialog'));
+  }
+  // If a new block, add to the bottom of the region.
+  elseif ($added_to_region) {
     $commands[] = ajax_command_close_modal_dialog();
     $commands[] = ajax_command_append('#layout-editor-region-' . $added_to_region . ' .layout-editor-region-content', $renderer->renderBlock($block));
   }
+  // If editing a block, replace the block with its placeholder.
   else {
     $commands[] = ajax_command_close_modal_dialog();
     $commands[] = ajax_command_replace('#layout-editor-block-' . $block->uuid, $renderer->renderBlock($block));

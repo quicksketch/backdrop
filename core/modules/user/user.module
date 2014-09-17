@@ -948,17 +948,19 @@ function user_login_block($form) {
 function user_block_info() {
   global $user;
 
-  $blocks['login']['info'] = t('User login');
-  // Not worth caching.
-  $blocks['login']['cache'] = BACKDROP_NO_CACHE;
-
-  $blocks['new']['info'] = t('Who\'s new');
-  $blocks['new']['properties']['administrative'] = TRUE;
-
-  // Too dynamic to cache.
-  $blocks['online']['info'] = t('Who\'s online');
-  $blocks['online']['cache'] = BACKDROP_NO_CACHE;
-  $blocks['online']['properties']['administrative'] = TRUE;
+  $blocks['login'] = array(
+    'info' => t('User login'),
+    'description' => t('The user login form if logged out.'),
+  );
+  $blocks['new'] = array(
+    'info' => t('Who\'s new'),
+    'description' => t('A listing of newly registered users.'),
+    'cache' => BACKDROP_CACHE_PER_ROLE,
+  );
+  $blocks['online'] = array(
+    'info' => t('Who\'s online'),
+    'description' => t('A listing of currently online users.'),
+  );
 
   return $blocks;
 }

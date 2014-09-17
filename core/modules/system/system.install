@@ -2044,6 +2044,13 @@ function system_update_1022() {
   $layout_name = state_get('upgrade_layout_name', 'three_three_four');
   $layout->layout = $layout_name;
 
+  // Remove the powered-by block in the footer from the default layout, as
+  // it may already be there on the old site.
+  if (isset($layout->positions['footer'])) {
+    $uuid = array_pop($layout->positions['footer']);
+    unset($layout->content[$uuid]);
+  }
+
   // Prepare a node-specific layout to be used if necessary.
   $node_layout = clone($layout);
   $node_layout->title = t('Node layout');
@@ -2054,7 +2061,7 @@ function system_update_1022() {
 
   $layout_info = layout_get_layout_info($layout_name);
 
-  $result = db_query("SELECT * FROM {block} WHERE theme = :theme AND status = 1 AND module <> 'system' AND delta <> 'main' ORDER BY region, weight", array(':theme' => $current_theme));
+  $result = db_query("SELECT * FROM {block} WHERE theme = :theme AND status = 1 AND NOT (module = 'system' AND delta = 'main') ORDER BY region, weight", array(':theme' => $current_theme));
 
   foreach ($result as $block_row) {
     if (array_key_exists($block_row->region, $layout_info['regions'])) {

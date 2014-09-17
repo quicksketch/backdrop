@@ -13,8 +13,7 @@
 /**
  * Define all blocks provided by the module.
  *
- * This hook declares to Backdrop what blocks are provided by your module and
- * can optionally specify initial block configuration settings.
+ * This hook declares to Backdrop what blocks are provided by your module.
  *
  * In hook_block_info(), each block your module provides is given a unique
  * identifier referred to as "delta" (the array key in the return value). Delta
@@ -42,10 +41,19 @@
  *   - info: (required) The human-readable administrative name of the block.
  *     This is used to identify the block on administration screens, and
  *     is not displayed to non-administrative users.
+ *   - description: (optional) A human-readable administrative description of
+ *     the block. Although intended to be longer than "info", it should still
+ *     be no longer than a short sentence or two.
+ *   - required contexts: (optional) An array of contexts that this block
+ *     requires to display. These contexts are keyed by their internal name that
+ *     this block will receive as the key in the $context paramater of
+ *     hook_block_view(). The value of each item should be the type of context,
+ *     as listed by hook_layout_context_info().
  *   - cache: (optional) A bitmask describing what kind of caching is
  *     appropriate for the block. Backdrop provides the following bitmask
  *     constants for defining cache granularity:
- *     - BACKDROP_CACHE_PER_ROLE (default): The block can change depending on the
+ *     - BACKDROP_NO_CACHE (default): The block should not get cached.
+ *     - BACKDROP_CACHE_PER_ROLE: The block can change depending on the
  *       roles the user viewing the page belongs to.
  *     - BACKDROP_CACHE_PER_USER: The block can change depending on the user
  *       viewing the page. This setting can be resource-consuming for sites
@@ -56,46 +64,6 @@
  *     - BACKDROP_CACHE_GLOBAL: The block is the same for every user on every
  *       page where it is visible.
  *     - BACKDROP_CACHE_CUSTOM: The module implements its own caching system.
- *     - BACKDROP_NO_CACHE: The block should not get cached.
- *   - properties: (optional) Array of additional metadata to add to the block.
- *     Common properties include:
- *     - administrative: Boolean that categorizes this block as usable in an
- *       administrative context. This might include blocks that help an
- *       administrator approve/deny comments, or view recently created user
- *       accounts.
- *   - weight: (optional) Initial value for the ordering weight of this block.
- *     Most modules do not provide an initial value, and any value provided can
- *     be modified by a user on the block configuration screen.
- *   - status: (optional) Initial value for block enabled status. (1 = enabled,
- *     0 = disabled). An initial value for 'region' is required for 'status' to
- *     take effect.
- *     Most modules do not provide an initial value, and any value provided can
- *     be modified by a user on the block configuration screen.
- *   - region: (optional) Initial value for theme region within which this block
- *     is set. If the specified region is not available in a theme, the block
- *     will be disabled. The initial value for 'status' must be enabled or the
- *     initial region value is ignored.
- *     Most modules do not provide an initial value, and any value provided can
- *     be modified by a user on the block configuration screen.
- *   - visibility: (optional) Initial value for the visibility flag, which tells
- *     how to interpret the 'pages' value. Possible values are:
- *     - BLOCK_VISIBILITY_NOTLISTED: Show on all pages except listed pages.
- *       'pages' lists the paths where the block should not be shown.
- *     - BLOCK_VISIBILITY_LISTED: Show only on listed pages. 'pages' lists the
- *       paths where the block should be shown.
- *     - BLOCK_VISIBILITY_PHP: Use custom PHP code to determine visibility.
- *       'pages' gives the PHP code to use.
- *     Most modules do not provide an initial value for 'visibility' or 'pages',
- *     and any value provided can be modified by a user on the block
- *     configuration screen.
- *   - pages: (optional) See 'visibility' above. A string that contains one or
- *     more page paths separated by "\n", "\r", or "\r\n" when 'visibility' is
- *     set to BLOCK_VISIBILITY_NOTLISTED or BLOCK_VISIBILITY_LISTED (example:
- *     "<front>\nnode/1"), or custom PHP code when 'visibility' is set to
- *     BLOCK_VISIBILITY_PHP. Paths may use '*' as a wildcard (matching any
- *     number of characters); '<front>' designates the site's front page. For
- *     BLOCK_VISIBILITY_PHP, the PHP code's return value should be TRUE if the
- *     block is to be made visible or FALSE if the block should not be visible.
  *
  * For a detailed usage example, see block_example.module.
  *
@@ -105,15 +73,23 @@
  * @see hook_block_info_alter()
  */
 function hook_block_info() {
-  // This example comes from node.module.
   $blocks['syndicate'] = array(
     'info' => t('Syndicate'),
-    'cache' => BACKDROP_NO_CACHE
+    'description' => t('An RSS icon linking to the feed for the current page (if any).'),
   );
 
   $blocks['recent'] = array(
     'info' => t('Recent content'),
-    // BACKDROP_CACHE_PER_ROLE will be assumed.
+    'description' => t('A list of recently published content.'),
+  );
+
+  $blocks['author_picture'] = array(
+    'info' => t('Author picture'),
+    'description' => t('The user picture for the current content author.'),
+    // A context of type "node" (the value here) will be given the key "node"
+    // (specified as the key here) in hook_block_view() in the $context
+    // parameter.
+    'required contexts' => array('node' => 'node'),
   );
 
   return $blocks;
@@ -212,6 +188,9 @@ function hook_block_save($delta = '', &$edit = array()) {
  * @param array $settings
  *   An array of settings for this block. Defaults may not be populated, so it's
  *   best practice to merge in defaults within hook_block_view().
+ * @param array $context
+ *   An array of contexts required by this block. Each context will be keyed
+ *   by the string specified in this module's hook_block_info().
  *
  * @return
  *   Either an empty array so the block will not be shown or an array containing
@@ -228,7 +207,7 @@ function hook_block_save($delta = '', &$edit = array()) {
  * @see hook_block_view_alter()
  * @see hook_block_view_MODULE_DELTA_alter()
  */
-function hook_block_view($delta = '', $settings = array()) {
+function hook_block_view($delta = '', $settings = array(), $contexts = array()) {
   // This example is adapted from node.module.
   $block = array();
 
@@ -259,6 +238,12 @@ function hook_block_view($delta = '', $settings = array()) {
         }
       }
       break;
+
+    case 'author_picture':
+      $author_account = user_load($contexts['node']->uid);
+      $block['subject'] = '';
+      $block['content'] = theme('user_picture', array('account' => $author_account));
+      return $block;
   }
   return $block;
 }

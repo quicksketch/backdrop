@@ -117,7 +117,7 @@ class LayoutRendererEditor extends LayoutRendererStandard {
     }
     $links = array();
     $links['add'] = array(
-      'title' => t('Add content'),
+      'title' => t('Add block'),
       'href' => $this->getUrl('add-block', $region_id),
       'attributes' => array(
         'class' => array('use-ajax'),

@@ -132,9 +132,30 @@ class LayoutBlock extends LayoutHandler {
    */
   function getAdminPreview() {
     $info = module_invoke($this->module, 'block_info');
+    $preview = '';
     if (isset($info[$this->delta]['description'])) {
-      return $info[$this->delta]['description'];
+      $preview .= '<p>' . $info[$this->delta]['description'] . '</p>';
     }
+
+    if (!empty($this->conditions)) {
+      foreach ($this->conditions as $condition) {
+        $condition_list[] = $condition->summary();
+      }
+      $conditions = theme('item_list', array('items' => $condition_list, 'attributes' => array('class' => array('block-conditions'))));
+      $fieldset = array(
+        '#type' => 'fieldset',
+        '#collapsible' => TRUE,
+        '#collapsed' => TRUE,
+        '#title' => t('Conditions'),
+        '#children' => $conditions,
+        '#parents' => array(),
+      );
+      $form_state = array();
+      form_process_fieldset($fieldset, $form_state);
+      $preview .= backdrop_render($fieldset);
+    }
+
+    return $preview;
   }
 
   /**
@@ -280,12 +301,15 @@ class LayoutBlockBroken extends LayoutBlock {
     return t('Broken block');
   }
   function getAdminPreview() {
+    $preview = '';
     if (!module_exists($this->module)) {
-      return t('This block requires the %module module. Either re-enable the module, or remove this block.', array('%module' => $this->module));
+      $preview .= t('This block requires the %module module. Either re-enable the module, or remove this block.', array('%module' => $this->module));
     }
     else {
-      return t('This block provided by the %module module is missing. The block has an identifier of %delta, which may have been deleted or is no longer valid.', array('%module' => $this->module, '%delta' => $this->delta));
+      $preview .= t('This block provided by the %module module is missing. The block has an identifier of %delta, which may have been deleted or is no longer valid.', array('%module' => $this->module, '%delta' => $this->delta));
     }
+    $preview = '<p class="error">' . $preview . '</p>';
+    return $preview;
   }
   function getContent() {
     return '';

@@ -566,8 +566,7 @@ function layout_autoload_info() {
     'LayoutContextBroken' => 'plugins/context/layout_context.inc',
     'LayoutOverridesPathContext' => 'plugins/context/layout_context.inc',
     'LayoutStringContext' => 'plugins/context/layout_context.inc',
-    'NodeLayoutContext' => 'plugins/context/node_layout_context_handler.inc',
-    'UserLayoutContext' => 'plugins/context/user_layout_context_handler.inc',
+    'EntityLayoutContext' => 'plugins/context/entity_layout_context_handler.inc',
 
     // Access handlers.
     'EntityBundleLayoutAccess' => 'plugins/access/entity_bundle_layout_access.inc',
