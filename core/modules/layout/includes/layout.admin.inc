@@ -817,7 +817,6 @@ function layout_block_configure_form($form, &$form_state, Layout $layout, Layout
 
   $form_state['layout'] = $layout;
   $form_state['block'] = $block;
-  $form_state['region_name'] = $region_name;
   if (!isset($form_state['renderer'])) {
     $form_state['renderer'] = layout_create_renderer($renderer_name, $layout);
   }
@@ -828,6 +827,15 @@ function layout_block_configure_form($form, &$form_state, Layout $layout, Layout
   else {
     $form['#title'] = t('Configure block "@title"', array('@title' => $block->getAdminTitle()));
   }
+
+  $layout_info = layout_get_layout_info($layout->layout);
+  $form['region'] = array(
+    '#type' => 'select',
+    '#title' => t('Region'),
+    '#default_value' => $region_name,
+    '#options' => $layout_info['regions'],
+    '#access' => backdrop_is_html(), // Only show this on non-JS requests.
+  );
 
   // We overload the layout object with an "in_progress" key to hold information
   // about the block currently being edited, this eases the multi-dialog
@@ -842,7 +850,7 @@ function layout_block_configure_form($form, &$form_state, Layout $layout, Layout
   }
   // If resuming an in-progress edit, pull out the region name.
   else {
-    $form_state['region_name'] = $layout->in_progress['region_name'];
+    $form['region']['#default_value'] = $layout->in_progress['region_name'];
   }
 
   $form['actions']['#type'] = 'actions';
@@ -1062,21 +1070,22 @@ function layout_block_configure_form_submit($form, &$form_state) {
   // position but were just added) in the layout so it can be retrieved. See
   // layout_tempstore_block_load().
   if (!empty($form_state['triggering_element']['#save_in_progress'])) {
-    $layout->in_progress['region_name'] = $form_state['region_name'];
+    $layout->in_progress['region_name'] = $form_state['values']['region'];
     $layout->in_progress['block'] = $block;
     $layout->in_progress['renderer'] = $renderer;
   }
   // Insert new blocks into the layout. Updates to $block are already done by
   // reference, so no additional action is needed for updating.
   else {
-    if ($form_state['region_name']) {
+    if ($form_state['values']['region']) {
       $layout->content[$block->uuid] = $block;
-      $layout->positions[$form_state['region_name']][] = $block->uuid;
+      $layout->positions[$form_state['values']['region']][] = $block->uuid;
     }
     // Clean up the in_progress value now that we're fully done.
     $layout->in_progress = NULL;
   }
 
+  $form_state['redirect'] = 'admin/structure/layouts/manage/' . $layout->name;
   layout_set_layout_tempstore($layout);
 }
 
@@ -1087,7 +1096,7 @@ function layout_block_configure_ajax_update($form, $form_state) {
   $layout = $form_state['layout'];
   $block = $form_state['block'];
   $renderer = $form_state['renderer'];
-  $added_to_region = isset($layout->in_progress['region_name']) ? $layout->in_progress['region_name'] : $form_state['region_name'];
+  $added_to_region = isset($layout->in_progress['region_name']) ? $layout->in_progress['region_name'] : $form_state['values']['region'];
 
   // Display error messages in the form if any.
   if (form_get_errors()) {

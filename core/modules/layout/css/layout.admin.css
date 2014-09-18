@@ -45,7 +45,7 @@
   padding-left: 10px; /* LTR */
 }
 [dir="rtl"] .layout-access-remove,
-[dir="rtl"].layout-access-configure {
+[dir="rtl"] .layout-access-configure {
   padding-left: 0;
   padding-right: 10px;
 }

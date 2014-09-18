@@ -171,7 +171,7 @@ function hook_block_configure($delta = '', $settings = array()) {
  * @see hook_block_configure()
  * @see hook_block_info()
  */
-function hook_block_save($delta = '', &$edit = array()) {
+function hook_block_save($delta, &$edit = array()) {
   if ($delta == 'my_block_delta') {
     config_set('mymodule.settings', 'my_global_value', $edit['my_global_value']);
     // Remove the value so it is not saved by Layout module.
@@ -188,7 +188,7 @@ function hook_block_save($delta = '', &$edit = array()) {
  * @param array $settings
  *   An array of settings for this block. Defaults may not be populated, so it's
  *   best practice to merge in defaults within hook_block_view().
- * @param array $context
+ * @param array $contexts
  *   An array of contexts required by this block. Each context will be keyed
  *   by the string specified in this module's hook_block_info().
  *
@@ -272,11 +272,14 @@ function hook_block_view($delta = '', $settings = array(), $contexts = array()) 
  *     in hook_block_info().
  * @param array $settings
  *   An array of settings for this block.
+ * @param array $contexts
+ *   An array of contexts required by this block. Each context will be keyed
+ *   by the string specified in this module's hook_block_info().
  *
  * @see hook_block_view_MODULE_DELTA_alter()
  * @see hook_block_view()
  */
-function hook_block_view_alter(&$data, $block, $settings = array()) {
+function hook_block_view_alter(&$data, $block, $settings = array(), $contexts = array()) {
   // Remove the contextual links on all blocks that provide them.
   if (is_array($data['content']) && isset($data['content']['#contextual_links'])) {
     unset($data['content']['#contextual_links']);
