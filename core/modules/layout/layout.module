@@ -378,6 +378,15 @@ function layout_route_handler($router_item) {
   $selected_layout = NULL;
   foreach ($layouts as $layout_name) {
     $layout = layout_load($layout_name);
+
+    // Contexts must be set before the layout's access may be checked.
+    $contexts = $layout->getContexts();
+    foreach ($contexts as $position => $context) {
+      if (is_numeric($position)) {
+        $context->setData($router_item['map'][$position]);
+      }
+    }
+
     if (!$layout->disabled && $layout->checkAccess()) {
       $selected_layout = $layout;
     }
@@ -391,9 +400,7 @@ function layout_route_handler($router_item) {
     else {
       $selected_layout = layout_load('layout_default');
     }
-  }
 
-  if ($selected_layout) {
     // Set the data in each context based on the provided menu handler.
     $contexts = $selected_layout->getContexts();
     foreach ($contexts as $position => $context) {
@@ -401,7 +408,9 @@ function layout_route_handler($router_item) {
         $context->setData($router_item['map'][$position]);
       }
     }
+  }
 
+  if ($selected_layout) {
     // Render the layout.
     $renderer = layout_create_renderer('standard', $selected_layout);
     if ($selected_layout->isDefault()) {
