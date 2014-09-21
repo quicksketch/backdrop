@@ -65,11 +65,6 @@ class BlockTestCase extends BackdropWebTestCase {
     $this->assertLinkByHref('admin/structure/block/manage/' . $bid . '/configure', 0, 'Custom block configure link found.');
     $this->assertLinkByHref('admin/structure/block/manage/' . $bid . '/delete', 0, 'Custom block delete link found.');
 
-    // Set visibility only for authenticated users, to verify delete functionality.
-    $edit = array();
-    $edit['roles[2]'] = TRUE;
-    $this->backdropPost('admin/structure/block/manage/' . $bid . '/configure', $edit, 'Save block');
-
     // Delete the created custom block & verify that it's been deleted and no longer appearing on the page.
     $this->clickLink(t('Delete'));
     $this->backdropPost('admin/structure/block/manage/' . $bid . '/delete', array(), 'Delete');
@@ -91,10 +86,8 @@ class BlockTestCase extends BackdropWebTestCase {
     $this->backdropPost('admin/structure/block/add', $custom_block, 'Save block');
 
     // Set the created custom block to a specific region.
-    $bid = db_query("SELECT bid FROM {block_custom} WHERE info = :info", array(':info' => $custom_block['info']))->fetchField();
-    $edit = array();
-    $edit['blocks[block_' . $bid . '][region]'] = $this->regions[1];
-    $this->backdropPost('admin/structure/block', $edit, 'Save blocks');
+    $layout = layout_load('layout_default');
+    $this->moveBlockToRegion($layout, $custom_block, 'content');
 
     // Confirm that the custom block is being displayed using configured text format.
     $this->backdropGet('node');

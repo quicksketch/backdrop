@@ -167,7 +167,7 @@ function block_admin_configure_validate($form, &$form_state) {
  */
 function block_admin_configure_submit($form, &$form_state) {
   if (!form_get_errors()) {
-    module_invoke('block', 'block_save', $form_state['values']['delta'], $form_state['values']);
+    block_block_save($form_state['values']['delta'], $form_state['values']['delta'], $form_state['values']);
     backdrop_set_message(t('The block configuration has been saved.'));
     cache_clear_all();
     $form_state['redirect'] = 'admin/structure/block';
