@@ -80,7 +80,7 @@ function user_theme() {
       'file' => 'user.admin.inc',
     ),
     'user_permission_description' => array(
-      'variables' => array('permission_item' => NULL, 'hide' => NULL),
+      'variables' => array('permission_item' => NULL),
       'file' => 'user.admin.inc',
     ),
     'user_signature' => array(
@@ -1168,10 +1168,8 @@ function template_preprocess_username(&$variables) {
 
   $variables['extra'] = '';
   if (empty($account->uid)) {
-   $variables['uid'] = 0;
-   if (theme_get_setting('toggle_comment_user_verification')) {
-     $variables['extra'] = ' (' . t('not verified') . ')';
-   }
+    $variables['uid'] = 0;
+    $variables['extra'] = ' (' . t('not verified') . ')';
   }
   else {
     $variables['uid'] = (int) $account->uid;
