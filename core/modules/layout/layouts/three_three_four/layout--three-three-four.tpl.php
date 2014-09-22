@@ -11,8 +11,7 @@
  * - $content: An array of content, each item in the array is keyed to one
  *   region of the layout. This layout supports the following sections:
  *   - $content['header']
- *   - $content['featured']
- *   - $content['highlighted']
+ *   - $content['top']
  *   - $content['content']
  *   - $content['sidebar_first']
  *   - $content['sidebar_second']
@@ -33,16 +32,16 @@
     </div></header>
   <?php endif; ?>
 
+  <?php if ($content['top']): ?>
+    <div id="top"><div class="section clearfix">
+      <?php print $content['top']; ?>
+    </div></div> <!-- /.section, /#featured -->
+  <?php endif; ?>
+
   <?php if ($messages): ?>
     <div id="messages"><div class="section clearfix">
       <?php print $messages; ?>
     </div></div> <!-- /.section, /#messages -->
-  <?php endif; ?>
-
-  <?php if ($content['featured']): ?>
-    <div id="featured"><div class="section clearfix">
-      <?php print $content['featured']; ?>
-    </div></div> <!-- /.section, /#featured -->
   <?php endif; ?>
 
   <div id="main-wrapper" class="clearfix"><div id="main" class="clearfix">

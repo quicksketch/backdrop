@@ -16,6 +16,7 @@ function layout_layout_info() {
     'theme' => 'layout',
     'regions' => array(
       'header' => t('Header'),
+      'top' => t('Top'),
       'content' => t('Content'),
       'footer' => t('Footer'),
     ),
@@ -29,6 +30,7 @@ function layout_layout_info() {
     'theme' => 'layout__twocol',
     'regions' => array(
       'header' => t('Header'),
+      'top' => t('Top'),
       'content' => t('Content'),
       'sidebar' => t('Sidebar'),
       'footer' => t('Footer'),
@@ -43,7 +45,7 @@ function layout_layout_info() {
     'theme' => 'layout__three_three_four',
     'regions' => array(
       'header' => t('Header'),
-      'featured' => t('Featured'),
+      'top' => t('Top'),
       'content' => t('Content'),
       'sidebar_first' => t('Sidebar first'),
       'sidebar_second' => t('Sidebar second'),

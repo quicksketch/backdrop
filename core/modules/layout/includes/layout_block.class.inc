@@ -162,6 +162,7 @@ class LayoutBlock extends LayoutHandler {
    * Build the settings form for editing this block.
    */
   function form(&$form, &$form_state) {
+    $form['title_display']['#tree'] = FALSE;
     $form['title_display']['title_display'] = array(
       '#type' => 'select',
       '#title' => t('Title type'),
@@ -179,7 +180,7 @@ class LayoutBlock extends LayoutHandler {
       '#description' => t('The title of this layout. If left blank, a default title may be used.'),
       '#states' => array(
         'visible' => array(
-          'form.layout-block-configure-form :input[name="title_display[title_display]"]' => array('value' => LAYOUT_TITLE_CUSTOM),
+          'form.layout-block-configure-form :input[name="title_display"]' => array('value' => LAYOUT_TITLE_CUSTOM),
         ),
       ),
       '#maxlength' => 255,
@@ -197,8 +198,8 @@ class LayoutBlock extends LayoutHandler {
    * Submit handler to save the form settings.
    */
   function formSubmit($form, &$form_state) {
-    $this->settings['title_display'] = $form_state['values']['title_display']['title_display'];
-    $this->settings['title'] = $form_state['values']['title_display']['title'];
+    $this->settings['title_display'] = $form_state['values']['title_display'];
+    $this->settings['title'] = $form_state['values']['title'];
     $this->settings['style'] = $form_state['values']['style'];
   }
 

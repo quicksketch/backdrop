@@ -30,7 +30,7 @@ function block_menu() {
     'title' => 'List blocks',
     'type' => MENU_DEFAULT_LOCAL_TASK,
   );
-  $items['admin/structure/block/manage/%'] = array(
+  $items['admin/structure/block/manage/%block_custom_block'] = array(
     'title' => 'Configure block',
     'page callback' => 'backdrop_get_form',
     'page arguments' => array('block_admin_configure', 4),
@@ -86,7 +86,7 @@ function block_block_info() {
  */
 function block_block_configure($delta) {
   if ($delta) {
-    $custom_block = block_custom_block_get($delta);
+    $custom_block = block_custom_block_load($delta);
   }
   else {
     $custom_block = array();
@@ -132,7 +132,7 @@ function block_block_view($delta = '') {
  *   - body: Block contents.
  *   - format: Filter ID of the filter format for the body.
  */
-function block_custom_block_get($bid) {
+function block_custom_block_load($bid) {
   return db_query("SELECT * FROM {block_custom} WHERE bid = :bid", array(':bid' => $bid))->fetchAssoc();
 }
 
@@ -192,7 +192,7 @@ function block_custom_block_form($edit = array()) {
  *   Always returns TRUE.
  */
 function block_custom_block_save(array $edit, $delta = NULL) {
-  $custom_block = $delta ? block_custom_block_get($delta) : array('title' => '');
+  $custom_block = $delta ? block_custom_block_load($delta) : array('title' => '');
   $merge = db_merge('block_custom')
     ->key(array(
       'bid' => $delta,

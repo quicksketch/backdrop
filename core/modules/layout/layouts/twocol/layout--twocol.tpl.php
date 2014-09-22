@@ -10,8 +10,11 @@
  * - $attributes: A string of attributes to be added to the layout wrapper.
  * - $content: An array of content, each item in the array is keyed to one
  *   region of the layout. This layout supports the following sections:
- *   - $content['left']: Content in the left column.
- *   - $content['right']: Content in the right column.
+ *   - $content['header']
+ *   - $content['top']
+ *   - $content['content']
+ *   - $content['sidebar']
+ *   - $content['footer']
  */
 ?>
 <div class="layout-twocol <?php print $classes; ?>"<?php print $attributes; ?>>
@@ -22,6 +25,12 @@
     <header id="header" role="banner" aria-label="<?php print t('Site header'); ?>"><div class="section clearfix">
       <?php print $content['header']; ?>
     </div></header>
+  <?php endif; ?>
+
+  <?php if ($content['top']): ?>
+    <div id="top"><div class="section clearfix">
+      <?php print $content['top']; ?>
+    </div></div> <!-- /.section, /#top -->
   <?php endif; ?>
 
   <?php if ($messages): ?>

@@ -27,6 +27,9 @@
     ],
     "sidebar": [
       
+    ],
+    "top": [
+      "09f11b4e-877e-45ab-9000-a4c6254faa04"
     ]
   },
   "content": {
@@ -77,6 +80,33 @@
           ]
         },
         "uuid": "13b2f325-af26-40bb-8c61-97fe1d93f19f",
+        "style": {
+          "plugin": "default",
+          "data": {
+            "settings": {
+              "classes": ""
+            }
+          }
+        }
+      }
+    },
+    "09f11b4e-877e-45ab-9000-a4c6254faa04": {
+      "plugin": "system:breadcrumb",
+      "data": {
+        "module": "system",
+        "delta": "breadcrumb",
+        "settings": {
+          "title_display": "default",
+          "title": "",
+          "style": "default",
+          "block_settings": [
+            
+          ],
+          "contexts": [
+            
+          ]
+        },
+        "uuid": "09f11b4e-877e-45ab-9000-a4c6254faa04",
         "style": {
           "plugin": "default",
           "data": {

@@ -628,10 +628,7 @@ function layout_content_form($form, &$form_state, Layout $layout, $renderer_name
     );
   }
 
-  $form['title_display'] = array (
-    '#tree' => TRUE,
-  );
-
+  $form['title_display']['#tree'] = FALSE;
   $form['title_display']['title_display'] = array(
     '#type' => 'select',
     '#title' => t('Title type'),
@@ -652,7 +649,7 @@ function layout_content_form($form, &$form_state, Layout $layout, $renderer_name
     '#description' => t('The title of this layout. If left blank, a default title may be used.'),
     '#states' => array(
       'visible' => array(
-        ':input[name="title_display[title_display]"]' => array('value' => LAYOUT_TITLE_CUSTOM),
+        ':input[name="title_display"]' => array('value' => LAYOUT_TITLE_CUSTOM),
       ),
     ),
     '#maxlength' => 255,
@@ -735,9 +732,9 @@ function layout_content_form_submit($form, &$form_state) {
   }
 
   // Save title settings.
-  if (isset($form_state['values']['title_display']['title'])) {
-    $layout->settings['title'] = $form_state['values']['title_display']['title'];
-    $layout->settings['title_display'] = $form_state['values']['title_display']['title_display'];
+  if (isset($form_state['values']['title_display'])) {
+    $layout->settings['title'] = $form_state['values']['title'];
+    $layout->settings['title_display'] = $form_state['values']['title_display'];
   }
 
   // Let layouts save their own settings if needed.

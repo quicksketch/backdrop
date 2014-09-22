@@ -87,6 +87,9 @@ class BlockTestCase extends BackdropWebTestCase {
 
     // Set the created custom block to a specific region.
     $layout = layout_load('layout_default');
+    $bid = 1;
+    $custom_block['module'] = 'block';
+    $custom_block['delta'] = $bid;
     $this->moveBlockToRegion($layout, $custom_block, 'content');
 
     // Confirm that the custom block is being displayed using configured text format.

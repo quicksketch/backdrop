@@ -8,8 +8,11 @@
  * Variables:
  * - $attributes: A string of attributes to be added to the layout wrapper.
  * - $content: An array of content, each item in the array is keyed to one
- *   panel of the layout. This layout supports the following sections:
- *   $content['middle']: The only panel in the layout.
+ *   region of the layout. This layout supports the following sections:
+ *   - $content['header']
+ *   - $content['top']
+ *   - $content['content']
+ *   - $content['footer']
  */
 ?>
 <div class="layout-onecol <?php print $classes; ?>"<?php print $attributes; ?>>
@@ -21,6 +24,18 @@
     <header id="header" role="banner" aria-label="<?php print t('Site header'); ?>"><div class="section clearfix">
       <?php print $content['header']; ?>
     </div></header>
+  <?php endif; ?>
+
+  <?php if ($content['top']): ?>
+    <div id="top"><div class="section clearfix">
+      <?php print $content['top']; ?>
+    </div></div> <!-- /.section, /#top -->
+  <?php endif; ?>
+
+  <?php if ($messages): ?>
+    <div id="messages"><div class="section clearfix">
+      <?php print $messages; ?>
+    </div></div> <!-- /.section, /#messages -->
   <?php endif; ?>
 
   <main id="content" class="column" role="main"><div class="section">
@@ -39,12 +54,6 @@
     <?php endif; ?>
 
     <div id="page">
-      <?php if ($messages): ?>
-        <div id="messages"><div class="section clearfix">
-          <?php print $messages; ?>
-        </div></div> <!-- /.section, /#messages -->
-      <?php endif; ?>
-
       <?php print $action_links; ?>
       <?php print $content['content']; ?>
     </div>

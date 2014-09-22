@@ -94,7 +94,7 @@ function block_admin_display_form_submit($form, &$form_state) {
  */
 function block_admin_configure($form, &$form_state, $delta = NULL) {
   if ($delta) {
-    $custom_block = block_custom_block_get($delta);
+    $custom_block = block_custom_block_load($delta);
   }
   else {
     $custom_block = array(
@@ -148,14 +148,12 @@ function block_admin_configure($form, &$form_state, $delta = NULL) {
  * @see block_admin_configure_submit()
  */
 function block_admin_configure_validate($form, &$form_state) {
-  if ($form_state['values']['module'] == 'block') {
-    $custom_block_exists = (bool) db_query_range('SELECT 1 FROM {block_custom} WHERE bid <> :bid AND info = :info', 0, 1, array(
-      ':bid' => $form_state['values']['delta'],
-      ':info' => $form_state['values']['info'],
-    ))->fetchField();
-    if (empty($form_state['values']['info']) || $custom_block_exists) {
-      form_set_error('info', t('Ensure that each block description is unique.'));
-    }
+  $custom_block_exists = (bool) db_query_range('SELECT 1 FROM {block_custom} WHERE bid <> :bid AND info = :info', 0, 1, array(
+    ':bid' => $form_state['values']['delta'],
+    ':info' => $form_state['values']['info'],
+  ))->fetchField();
+  if (empty($form_state['values']['info']) || $custom_block_exists) {
+    form_set_error('info', t('Ensure that each block description is unique.'));
   }
 }
 
@@ -166,12 +164,10 @@ function block_admin_configure_validate($form, &$form_state) {
  * @see block_admin_configure_validate()
  */
 function block_admin_configure_submit($form, &$form_state) {
-  if (!form_get_errors()) {
-    block_block_save($form_state['values']['delta'], $form_state['values']['delta'], $form_state['values']);
-    backdrop_set_message(t('The block configuration has been saved.'));
-    cache_clear_all();
-    $form_state['redirect'] = 'admin/structure/block';
-  }
+  block_custom_block_save($form_state['values'], $form_state['values']['delta']);
+  backdrop_set_message(t('The block configuration has been saved.'));
+  cache_clear_all();
+  $form_state['redirect'] = 'admin/structure/block';
 }
 
 /**
@@ -231,7 +227,7 @@ function block_add_block_form_submit($form, &$form_state) {
  * @see block_custom_block_delete_submit()
  */
 function block_custom_block_delete($form, &$form_state, $delta) {
-  $custom_block = block_custom_block_get($delta);
+  $custom_block = block_custom_block_load($delta);
   $form['info'] = array('#type' => 'hidden', '#value' => $custom_block['info']);
   $form['bid'] = array('#type' => 'hidden', '#value' => $delta);
 

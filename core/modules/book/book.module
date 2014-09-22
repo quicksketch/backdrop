@@ -279,7 +279,7 @@ function book_block_view($delta = '', $settings = array()) {
     $current_bid = empty($node->book['bid']) ? 0 : $node->book['bid'];
   }
 
-  if ($settings['book_block_mode'] == 'all pages') {
+  if ($settings['book_mode'] == 'all pages') {
     $block['subject'] = t('Book navigation');
     $book_menus = array();
     $pseudo_tree = array(0 => array('below' => FALSE));

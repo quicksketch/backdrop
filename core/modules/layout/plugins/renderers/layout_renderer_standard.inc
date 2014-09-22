@@ -97,6 +97,15 @@ class LayoutRendererStandard {
   var $meta_location = 'standard';
 
   /**
+   * Stores the menu response if the main content is not found or access denied.
+   *
+   * This will either be NULL, MENU_ACCESS_DENIED, or MENU_NOT_FOUND.
+   *
+   * @var int
+   */
+  var $menu_response;
+
+  /**
    * Include rendered HTML prior to the layout.
    *
    * @var string
@@ -307,6 +316,12 @@ class LayoutRendererStandard {
       $this->prepare();
     }
     $this->renderBlocks();
+
+    // Return 404 or 403 if set by the main content block.
+    if ($this->menu_response) {
+      return $this->menu_response;
+    }
+
     $this->renderRegions();
 
     if ($this->admin && !empty($this->layout_info['admin theme'])) {
@@ -379,6 +394,16 @@ class LayoutRendererStandard {
       $content = $this->renderBlock($block);
       if ($content) {
         $this->rendered['blocks'][$uuid] = $content;
+      }
+      // Detect if the normal menu handler returned a page not found or access
+      // denied. This is then passed back as the entire layout response in
+      // LayoutRendererStandard::renderLayout().
+      if ($block->module === 'system' && $block->delta === 'main') {
+        $response_code = (int) $content;
+        if ($response_code === MENU_NOT_FOUND || $response_code === MENU_ACCESS_DENIED) {
+          $this->menu_response = $response_code;
+          break;
+        }
       }
     }
     return $this->rendered['blocks'];
