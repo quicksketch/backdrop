@@ -977,6 +977,7 @@ class MenuBreadcrumbTestCase extends MenuWebTestCase {
     // This test puts menu links in the Main menu and then tests for their
     // presence on the page, so we need to ensure that the Main block
     // will be displayed in all active themes.
+    /*
     db_update('block')
       ->fields(array(
         // Use a region that is valid for all themes.
@@ -986,6 +987,7 @@ class MenuBreadcrumbTestCase extends MenuWebTestCase {
       ->condition('module', 'system')
       ->condition('delta', 'main-menu')
       ->execute();
+    */
   }
 
   /**
@@ -1462,6 +1464,7 @@ class MenuTrailTestCase extends MenuWebTestCase {
     // This test puts menu links in the Main menu and then tests for their
     // presence on the page, so we need to ensure that the Main menu block
     // will be displayed in all active themes.
+    /*
     db_update('block')
       ->fields(array(
         // Use a region that is valid for all themes.
@@ -1484,6 +1487,7 @@ class MenuTrailTestCase extends MenuWebTestCase {
       ->condition('module', 'system')
       ->condition('delta', 'management')
       ->execute();
+    */
   }
 
   /**
