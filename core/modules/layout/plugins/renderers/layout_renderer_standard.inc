@@ -390,22 +390,34 @@ class LayoutRendererStandard {
    */
   function renderBlocks() {
     $this->rendered['blocks'] = array();
+
+    // Do a pass through all blocks to check for the main system content block.
+    // This serves a dual-purpose of rendering the system block first, allowing
+    // modifications to other blocks (such as breadcrumb), and it prevents
+    // rendering of all other blocks in the event of a 404 or 403 response from
+    // the system menu handler.
     foreach ($this->prepared['blocks'] as $uuid => $block) {
-      $content = $this->renderBlock($block);
-      if ($content) {
-        $this->rendered['blocks'][$uuid] = $content;
-      }
-      // Detect if the normal menu handler returned a page not found or access
-      // denied. This is then passed back as the entire layout response in
-      // LayoutRendererStandard::renderLayout().
       if ($block->module === 'system' && $block->delta === 'main') {
-        $response_code = (int) $content;
+        $system_content = $this->renderBlock($block);
+        $response_code = (int) $system_content;
+        // If a 404 or 403 skip rendering of all other blocks.
         if ($response_code === MENU_NOT_FOUND || $response_code === MENU_ACCESS_DENIED) {
           $this->menu_response = $response_code;
-          break;
+          return $this->rendered['blocks'];
         }
       }
     }
+
+    // Render all other blocks.
+    foreach ($this->prepared['blocks'] as $uuid => $block) {
+      if ($block->module === 'system' && $block->delta === 'main') {
+        $this->rendered['blocks'][$uuid] = $system_content;
+      }
+      elseif ($content = $this->renderBlock($block)) {
+        $this->rendered['blocks'][$uuid] = $content;
+      }
+    }
+
     return $this->rendered['blocks'];
   }
 

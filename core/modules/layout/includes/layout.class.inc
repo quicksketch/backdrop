@@ -334,6 +334,62 @@ class Layout {
   }
 
   /**
+   * Add a block to a particular region.
+   *
+   * @param string $block_module
+   *   The module providing the block to be positioned.
+   * @param string $block_delta
+   *   The block delta from hook_block_info().
+   * @param string $region_name
+   *   The name of the region within the layout.
+   * @param int $position
+   *   The position of the block within the region. If not specified, the block
+   *   will be the last block within the specified region.
+   * @return LayoutBlock
+   *   The newly added block instance.
+   */
+  function addBlock($block_module, $block_delta, $region_name, $position = NULL) {
+    $block = layout_create_handler('block', $block_module . ':' . $block_delta);
+    $uuid = new Uuid();
+    $block->uuid = $uuid->generate();
+
+    $this->content[$block->uuid] = $block;
+    $this->positions[$region_name][] = $block->uuid;
+
+    // Move the block into the correct position.
+    if ($position) {
+      $positions = array();
+      foreach ($this->positions[$region_name] as $n => $uuid) {
+        if ($position == $n) {
+          $positions[] = $block->uuid;
+        }
+        if ($uuid != $block->uuid) {
+          $positions[] = $uuid;
+        }
+      }
+      $this->positions[$region_name] = $positions;
+    }
+
+    return $block;
+  }
+
+  /**
+   * Remove a block from a layout.
+   *
+   * @param string $block_uuid
+   *   The UUID of the block being removed.
+   */
+  function removeBlock($block_uuid) {
+    unset($this->content[$block_uuid]);
+    foreach ($this->positions as $region => $positions) {
+      $key = array_search($block_uuid, $positions);
+      if ($key !== FALSE) {
+        unset($this->positions[$region][$key]);
+      }
+    }
+  }
+
+  /**
    * Validate the settings form.
    */
   function formValidate($form, &$form_state) {

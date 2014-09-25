@@ -848,7 +848,7 @@ class BackdropWebTestCase extends BackdropTestCase {
   /**
    * The URL currently loaded in the internal browser.
    *
-   * @var string
+   * @var string9
    */
   protected $url;
 

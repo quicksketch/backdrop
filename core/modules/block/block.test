@@ -52,13 +52,11 @@ class BlockTestCase extends BackdropWebTestCase {
     $this->assertEqual(check_markup($custom_block['body[value]'], $format), $data['content'], 'block_block_view() provides correct block content.');
 
     // Check whether the block can be moved to all available regions.
-    $custom_block['module'] = 'block';
-    $custom_block['delta'] = $bid;
     $layout = layout_load('layout_default');
-    $layout_info = layout_get_layout_info($layout->layout);
-    foreach (array_keys($layout_info['regions']) as $region) {
-      $this->moveBlockToRegion($layout, $custom_block, $region);
-    }
+    $layout->addBlock('block', $bid, 'sidebar');
+    $layout->save();
+    $this->backdropGet('<front>');
+    $this->assertText($data['subject'], 'Newly added block found.');
 
     // Verify presence of configure and delete links for custom block.
     $this->backdropGet('admin/structure/block');
@@ -86,11 +84,10 @@ class BlockTestCase extends BackdropWebTestCase {
     $this->backdropPost('admin/structure/block/add', $custom_block, 'Save block');
 
     // Set the created custom block to a specific region.
-    $layout = layout_load('layout_default');
     $bid = 1;
-    $custom_block['module'] = 'block';
-    $custom_block['delta'] = $bid;
-    $this->moveBlockToRegion($layout, $custom_block, 'content');
+    $layout = layout_load('layout_default');
+    $layout->addBlock('block', $bid, 'content');
+    $layout->save();
 
     // Confirm that the custom block is being displayed using configured text format.
     $this->backdropGet('node');
@@ -108,58 +105,5 @@ class BlockTestCase extends BackdropWebTestCase {
     // Confirm that the custom block is still being displayed using configured text format.
     $this->backdropGet('node');
     $this->assertRaw('<h1>Full HTML</h1>', 'Custom block successfully being displayed using Full HTML.');
-  }
-
-  function moveBlockToRegion($layout, $block, $region) {
-    // Confirm that the custom block was found at the proper region.
-    switch ($region) {
-      case 'header':
-        $xpath = $this->buildXPathQuery('//*[@id=:region-id]//*[contains(@class,:block-class)]/*', array(
-          ':region-id' => 'header',
-          ':block-class' => 'block-' . $block['module'] . '-' . $block['delta'],
-        ));
-        break;
-
-      case 'footer':
-        $xpath = $this->buildXPathQuery('//*[@id=:region-id]//*[contains(@class,:block-class)]/*', array(
-          ':region-id' => 'footer',
-          ':block-class' => 'block-' . $block['module'] . '-' . $block['delta'],
-        ));
-        break;
-
-      case 'content':
-        $xpath = $this->buildXPathQuery('//*[@id=:region-id]//*[contains(@class,:block-class)]/*', array(
-          ':region-id' => 'content',
-          ':block-class' => 'block-' . $block['module'] . '-' . $block['delta'],
-        ));
-        break;
-
-      case 'sidebar':
-        $xpath = $this->buildXPathQuery('//*[@id=:region-id]//*[contains(@class,:block-class)]/*', array(
-          ':region-id' => 'sidebar',
-          ':block-class' => 'block-' . $block['module'] . '-' . $block['delta'],
-        ));
-        break;
-    }
-
-    // Add the block to a specific region.
-    $edit = array(
-      'region' => $region,
-    );
-    $this->backdropPost('admin/structure/layouts/manage/' . $layout->name . '/add-block/editor/' . $region . '/' . $block['module'] . ':' . $block['delta'], $edit, t('Add block'));
-    $this->backdropPost('admin/structure/layouts/manage/' . $layout->name, array(), t('Save layout'));
-
-    // Get the block ID.
-    $block_uuid = end($layout->positions[$region]);
-
-    // Confirm that the block is being displayed.
-    $this->backdropGet('node');
-    $this->assertText(t($block['title']), 'Block successfully being displayed on the page.');
-
-    $this->assertFieldByXPath($xpath, NULL, format_string('Custom block found in %region_name region.', array('%region_name' => $region)));
-
-    // Remove the block from that region.
-    $token = backdrop_get_token('layout-' . $layout->name);
-    $this->backdropGet('admin/structure/layouts/manage/' . $layout->name . '/remove-block/editor/' . $block_uuid, array('query' => array('token' => $token)));
   }
 }
