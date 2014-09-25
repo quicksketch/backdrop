@@ -525,6 +525,18 @@ function system_menu() {
     'type' => MENU_CALLBACK,
     'file' => 'system.admin.inc',
   );
+  $items['system/404'] = array(
+    'title' => 'Page not found',
+    'page callback' => 'system_404',
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+  );
+  $items['system/403'] = array(
+    'title' => 'Access denied',
+    'page callback' => 'system_403',
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+  );
   $items['admin'] = array(
     'title' => 'Administration',
     'access arguments' => array('access administration pages'),
@@ -3807,6 +3819,20 @@ function system_config_info() {
     'group' => t('Configuration'),
   );
   return $prefixes;
+}
+
+/**
+ * Menu callback; Returns the standard "Page not found" error page.
+ */
+function system_404() {
+  return t('The requested page "@path" could not be found.', array('@path' => request_uri()));
+}
+
+/**
+ * Menu callback; Returns the standard "Page not found" error page.
+ */
+function system_403() {
+  return t('You are not authorized to access this page.');
 }
 
 /**

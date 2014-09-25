@@ -2758,19 +2758,11 @@ function backdrop_deliver_html_page($page_callback_result) {
         }
 
         $path = backdrop_get_normal_path($site_config->get('site_404'));
-        if ($path && $path != $_GET['q']) {
-          // Custom 404 handler. Set the active item in case there are tabs to
-          // display, or other dependencies on the path.
-          menu_set_active_item($path);
-          $return = menu_execute_active_handler($path, FALSE);
+        if (empty($path)) {
+          $path = 'system/404';
         }
-
-        if (empty($return) || $return == MENU_NOT_FOUND || $return == MENU_ACCESS_DENIED) {
-          // Standard 404 handler.
-          backdrop_set_title(t('Page not found'));
-          $return = t('The requested page "@path" could not be found.', array('@path' => request_uri()));
-        }
-
+        menu_set_active_item($path);
+        $return = menu_execute_active_handler($path, FALSE);
         print backdrop_render_page($return);
         break;
 
@@ -2785,19 +2777,13 @@ function backdrop_deliver_html_page($page_callback_result) {
         }
 
         $path = backdrop_get_normal_path($site_config->get('site_403'));
-        if ($path && $path != $_GET['q']) {
-          // Custom 403 handler. Set the active item in case there are tabs to
-          // display or other dependencies on the path.
-          menu_set_active_item($path);
-          $return = menu_execute_active_handler($path, FALSE);
+        if (empty($path)) {
+          $path = 'system/403';
         }
-
-        if (empty($return) || $return == MENU_NOT_FOUND || $return == MENU_ACCESS_DENIED) {
-          // Standard 403 handler.
-          backdrop_set_title(t('Access denied'));
-          $return = t('You are not authorized to access this page.');
-        }
-
+        // Custom 403 handler. Set the active item in case there are tabs to
+        // display or other dependencies on the path.
+        menu_set_active_item($path);
+        $return = menu_execute_active_handler($path, FALSE);
         print backdrop_render_page($return);
         break;
 

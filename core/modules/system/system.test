@@ -778,13 +778,8 @@ class AccessDeniedTestCase extends BackdropWebTestCase {
     $this->assertResponse(403);
     $this->assertText(t('User login'), 'Blocks are shown on the default 403 page');
 
-    // Log back in, set the custom 403 page to /user and remove the block
-    $this->backdropLogin($this->admin_user);
+    // Set the custom 403 page to /user and check that we can still log in.
     config_set('system.site', 'site_403', 'user');
-    $this->backdropPost('admin/structure/block', array('blocks[user_login][region]' => '-1'), t('Save blocks'));
-
-    // Check that we can log in from the 403 page.
-    $this->backdropLogout();
     $edit = array(
       'name' => $this->admin_user->name,
       'pass' => $this->admin_user->pass_raw,
