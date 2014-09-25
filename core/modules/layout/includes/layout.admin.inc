@@ -1370,8 +1370,9 @@ function layout_condition_edit_form_submit($form, &$form_state) {
   // Update the portion of the page for menu item access.
   if ($menu_item) {
     $form_state['ajax_rebuild_form'] = 'layout_menu_item_form';
-    $form_state['ajax_rebuild_args'] = array($form_state['menu_item']);
+    $form_state['ajax_rebuild_args'] = array($menu_item);
     $form_state['ajax_update'] = array('conditions');
+    $form_state['redirect'] = 'admin/structure/layouts/menu/' . $menu_item->name;
   }
   // Blocks return to the dialog/page for editing that block.
   elseif ($block) {
@@ -1382,8 +1383,9 @@ function layout_condition_edit_form_submit($form, &$form_state) {
   // Set the portion of the page to be updated for layouts.
   else {
     $form_state['ajax_rebuild_form'] = 'layout_settings_form';
-    $form_state['ajax_rebuild_args'] = array($form_state['layout']);
+    $form_state['ajax_rebuild_args'] = array($layout);
     $form_state['ajax_update'] = array('conditions');
+    $form_state['redirect'] = 'admin/structure/layouts/manage/' . $layout->name;
   }
 }
 
