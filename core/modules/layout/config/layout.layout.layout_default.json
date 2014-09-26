@@ -4,13 +4,13 @@
   "name": "layout_default",
   "title": "Default Layout",
   "description": null,
-  "module": "system",
+  "module": "layout",
   "weight": 0,
   "storage": 4,
   "layout": "twocol",
   "disabled": false,
   "settings": {
-    "title": "FOo",
+    "title": "",
     "title_display": "default",
     "title_block": null
   },

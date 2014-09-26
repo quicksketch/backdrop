@@ -4,7 +4,7 @@
   "name": "layout_admin_default",
   "title": "Default Administrative Layout",
   "description": null,
-  "module": "system",
+  "module": "layout",
   "weight": 1,
   "storage": 4,
   "layout": "onecol",

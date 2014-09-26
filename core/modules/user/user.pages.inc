@@ -18,6 +18,7 @@ function user_autocomplete($string = '') {
   }
 
   backdrop_json_output($matches);
+  backdrop_exit();
 }
 
 /**

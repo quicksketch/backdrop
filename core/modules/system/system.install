@@ -2063,44 +2063,169 @@ function system_update_1022() {
  * Convert block positioning and configuration to the default layout.
  */
 function system_update_1023() {
-  module_enable(array('layout'));
+  update_module_enable(array('layout'));
+
+  $admin_layout = array(
+    'path' => NULL,
+    'name' => 'layout_admin_default',
+    'title' => 'Default Administrative Layout',
+    'description' => NULL,
+    'module' => 'layout',
+    'weight' => 1,
+    'layout' => 'onecol',
+    'settings' => array(),
+    'positions' => array(
+      'content' => array(
+        'default',
+      ),
+      'top' => array(
+        '55f542fe-0763-453b-ba3e-62677ea559e5'
+      ),
+    ),
+    'content' => array(
+      '55f542fe-0763-453b-ba3e-62677ea559e5' => array(
+        'plugin' => 'system:breadcrumb',
+        'data' => array(
+          'module' => 'system',
+          'delta' => 'breadcrumb',
+        ),
+        'uuid' => '55f542fe-0763-453b-ba3e-62677ea559e5',
+      ),
+      'default' => array(
+        'plugin' => 'system:main',
+        'data' => array(
+          'module' => 'system',
+          'delta' => 'main',
+        ),
+        'uuid' => 'default',
+      ),
+    ),
+  );
+  $admin_config = config('layout.layout.layout_admin_default');
+  $admin_config->setData($admin_layout);
+  $admin_config->save();
+
+  $default_layout = array(
+    'path' => NULL,
+    'name' => 'layout_default',
+    'title' => 'Default Layout',
+    'description' => NULL,
+    'module' => 'layout',
+    'weight' => 0,
+    'layout' => 'onecol',
+    'settings' => array(),
+    'positions' => array(
+      'header' => array(
+        '84c43df4-1165-4faf-8700-c362a7153c0b',
+        '13b2f325-af26-40bb-8c61-97fe1d93f19f',
+      ),
+      'content' => array(
+        'default',
+      ),
+      'footer' => array(
+        'cd4d033d-3f67-4191-8655-85ee758877c0',
+      ),
+      'sidebar' => array(
+        'b7efc039-1518-4331-9808-8e5060a3caed',
+      ),
+      'top' => array(
+        '09f11b4e-877e-45ab-9000-a4c6254faa04'
+      ),
+    ),
+    'content' => array(
+      '84c43df4-1165-4faf-8700-c362a7153c0b' => array(
+      'plugin' => 'system:header',
+        'data' => array(
+          'module' => 'system',
+          'delta' => 'header',
+          'settings' => array(),
+          'uuid' => '84c43df4-1165-4faf-8700-c362a7153c0b',
+        ),
+      ),
+      '13b2f325-af26-40bb-8c61-97fe1d93f19f' => array(
+        'plugin' => 'system:main-menu',
+        'data' => array(
+          'module' => 'system',
+          'delta' => 'main-menu',
+          'uuid' => '13b2f325-af26-40bb-8c61-97fe1d93f19f',
+          'settings' => array(
+            'title_display' => 'none',
+          ),
+        ),
+      ),
+      '09f11b4e-877e-45ab-9000-a4c6254faa04' => array(
+        'plugin' => 'system:breadcrumb',
+        'data' => array(
+          'module' => 'system',
+          'delta' => 'breadcrumb',
+          'uuid' => '09f11b4e-877e-45ab-9000-a4c6254faa04',
+        ),
+      ),
+      'default' => array(
+        'plugin' => 'system:main',
+        'data' => array(
+          'module' => 'system',
+          'delta' => 'main',
+          'uuid' => 'default',
+        ),
+      ),
+      'b7efc039-1518-4331-9808-8e5060a3caed' => array(
+        'plugin' => 'user:login',
+        'data' => array(
+          'module' => 'user',
+          'delta' => 'login',
+          'uuid' => 'b7efc039-1518-4331-9808-8e5060a3caed',
+        ),
+      )
+    ),
+  );
 
   $current_theme = variable_get('theme_default', 'bartik');
 
   // Load the default layout to prepare copying blocks into it.
-  $layout = layout_load('layout_default');
   $layout_name = state_get('upgrade_layout_name', 'three_three_four');
-  $layout->layout = $layout_name;
-
-  // Remove the powered-by block in the footer from the default layout, as
-  // it may already be there on the old site.
-  if (isset($layout->positions['footer'])) {
-    $uuid = array_pop($layout->positions['footer']);
-    unset($layout->content[$uuid]);
-  }
+  $layout_regions = state_get('upgrade_layout_regions', array(
+    'header' => 'header',
+    'top' => 'top',
+    'content' => 'content',
+    'sidebar_first' => 'sidebar_first',
+    'sidebar_second' => 'sidebar_second',
+    'triptych_first' => 'triptych_first',
+    'triptych_middle' => 'triptych_middle',
+    'triptych_last' => 'triptych_last',
+    'footer_firstcolumn' => 'footer_firstcolumn',
+    'footer_secondcolumn' => 'footer_secondcolumn',
+    'footer_thirdcolumn' => 'footer_thirdcolumn',
+    'footer_fourthcolumn' => 'footer_fourthcolumn',
+    'footer' => 'footer',
+  ));
+  $default_layout['layout'] = $layout_name;
 
   // Prepare a node-specific layout to be used if necessary.
-  $node_layout = clone($layout);
-  $node_layout->title = t('Node layout');
-  $node_layout->name = 'node';
-  $node_layout->setPath('node/%');
-  $node_layout->is_new = TRUE;
+  $node_layout = $default_layout;
+  $node_layout['title'] = t('Node layout');
+  $node_layout['name'] = 'node';
+  $node_layout['path'] = 'node/%';
   $node_layout_required = FALSE;
 
-  $layout_info = layout_get_layout_info($layout_name);
-
   $result = db_query("SELECT * FROM {block} WHERE theme = :theme AND status = 1 AND NOT (module = 'system' AND delta = 'main') ORDER BY region, weight", array(':theme' => $current_theme));
-
   foreach ($result as $block_row) {
-    if (array_key_exists($block_row->region, $layout_info['regions'])) {
-      $region = $block_row->region;
+    if (array_key_exists($block_row->region, $layout_regions)) {
+      $region = $layout_regions[$block_row->region];
       $is_node_block = FALSE;
 
       // Create a new layout block object.
-      $block_key = $block_row->module . ':' . $block_row->delta;
-      $block = layout_create_handler('block', $block_key);
       $uuid = new Uuid();
-      $block->uuid = $uuid->generate();
+      $block_uuid = $uuid->generate();
+      $block_config = array(
+        'plugin' => $block_row->module . ':' . $block_row->delta,
+        'data' => array(
+          'module' => $block_row->module,
+          'delta' => $block_row->delta,
+          'uuid' => $block_uuid,
+        ),
+        'conditions' => array(),
+      );
 
       // Add any path restrictions, excluding PHP visibility rules.
       $pages = trim($block_row->pages);
@@ -2110,8 +2235,13 @@ function system_update_1023() {
           'paths' => $pages,
           'visibility_setting' => $visibility,
         );
-        $role_access = layout_create_handler('layout_access', 'path', array('settings' => $settings));
-        $block->conditions[] = $role_access;
+        $access_config = array(
+          'plugin' => 'path',
+          'data' => array(
+            'settings' => $settings,
+          ),
+        );
+        $block_config['conditions'][] = $access_config;
       }
 
       // Add any role restrictions.
@@ -2123,8 +2253,13 @@ function system_update_1023() {
         }
         if ($roles) {
           $settings = array('rids' => $roles);
-          $role_access = layout_create_handler('layout_access', 'user_role', array('settings' => $settings));
-          $block->conditions[] = $role_access;
+          $access_config = array(
+            'plugin' => 'user_role',
+            'data' => array(
+              'settings' => $settings,
+            ),
+          );
+          $block_config['conditions'][] = $access_config;
         }
       }
 
@@ -2139,30 +2274,42 @@ function system_update_1023() {
         }
         if ($types) {
           $settings = array('bundles' => $types);
-          $type_access = layout_create_handler('layout_access', 'entity:node:bundle', array('settings' => $settings));
-          $block->conditions[] = $type_access;
+          $access_config = array(
+            'plugin' => 'node:bundle',
+            'data' => array(
+              'settings' => $settings,
+            ),
+          );
+          $block_config['conditions'][] = $access_config;
         }
       }
 
       // Position the block in the default layout if not node-type specific.
       if (!$is_node_block) {
-        $layout->positions[$region][] = $block->uuid;
-        $layout->content[$block->uuid] = $block;
+        $default_layout['positions'][$region][] = $block_uuid;
+        $default_layout['content'][$block_uuid] = $block_config;
       }
 
       // Position the block in the node layout.
-      $node_layout->positions[$region][] = $block->uuid;
-      $node_layout->content[$block->uuid] = $block;
+      $node_layout['positions'][$region][] = $block_uuid;
+      $node_layout['content'][$block_uuid] = $block_config;
     }
   }
 
   // Save the layout with the migrated blocks in position.
-  $layout->save();
+  $layout_config = config('layout.layout.layout_default');
+  $layout_config->setData($default_layout);
+  $layout_config->save();
 
   // If any node-specific blocks were found, save the node layout as well.
   if ($node_layout_required) {
-    $node_layout->save();
+    $layout_config = config('layout.layout.node');
+    $layout_config->setData($node_layout);
+    $layout_config->save();
   }
+
+  // Set layout as the default route handler.
+  config_set('system.menu', 'menu_route_handler', 'layout_route_handler');
 }
 
 /**

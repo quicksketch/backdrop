@@ -484,7 +484,7 @@ function node_update_dependencies() {
   // Do not drop the block tables until after System module has enabled and
   // migrated blocks into layouts.
   $dependencies['node'][1003] = array(
-    'system' => 1022,
+    'system' => 1023,
   );
 
   return $dependencies;

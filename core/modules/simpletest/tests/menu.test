@@ -1426,11 +1426,10 @@ class MenuBreadcrumbTestCase extends MenuWebTestCase {
     // Verify that we can access recent log entries, there is a corresponding
     // page title, and that the breadcrumb is empty (because the user is not
     // able to access "Administer", so the trail cannot recurse into it).
-    $trail = array();
+    $trail = $home;
     $this->assertBreadcrumb('admin', $trail, t('Access denied'));
     $this->assertResponse(403);
 
-    $trail = $home;
     $this->assertBreadcrumb('admin/reports', $trail, t('Reports'));
     $this->assertNoResponse(403);
 
