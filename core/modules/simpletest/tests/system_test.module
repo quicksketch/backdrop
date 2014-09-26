@@ -78,22 +78,8 @@ function system_test_menu() {
     'type' => MENU_CALLBACK,
   );
 
-  $items['system-test/main-content-handling'] = array(
-    'title' => 'Test main content handling',
-    'page callback' => 'system_test_main_content_fallback',
-    'access callback' => TRUE,
-    'type' => MENU_CALLBACK,
-  );
-
   $items['system-test/main-content-fallback'] = array(
     'title' => 'Test main content fallback',
-    'page callback' => 'system_test_main_content_fallback',
-    'access callback' => TRUE,
-    'type' => MENU_CALLBACK,
-  );
-
-  $items['system-test/main-content-duplication'] = array(
-    'title' => 'Test main content duplication',
     'page callback' => 'system_test_main_content_fallback',
     'access callback' => TRUE,
     'type' => MENU_CALLBACK,
