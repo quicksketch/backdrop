@@ -244,7 +244,7 @@ function layout_menu() {
     // Replace placeholders with named placeholders for known contexts.
     foreach (explode('/', $menu_item->path) as $position => $bit) {
       $placeholder = $bit;
-      if ($bit[0] === '%') {
+      if (strpos($bit, '%') === 0) {
         $placeholder = '%layout_path';
       }
 
