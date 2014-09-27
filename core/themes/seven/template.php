@@ -1,6 +1,19 @@
 <?php
 
 /**
+ * Process layout variables before output.
+ */
+function seven_process_layout(&$variables) {
+  // Move the messages to the top of the page content. Although overriding
+  // individual templates could accomplish moving the messages, this effectively
+  // works across all layouts.
+  if ($variables['messages']) {
+    $variables['content']['content'] = $variables['messages'] . $variables['content']['content'];
+    $variables['messages'] = NULL;
+  }
+}
+
+/**
  * Display the list of available node types for node creation.
  */
 function seven_node_add_list($variables) {

@@ -276,6 +276,11 @@ function system_test_system_info_alter(&$info, $file, $type) {
   if ($file->name == 'requirements1_test' || $file->name == 'requirements2_test') {
     $info['hidden'] = FALSE;
   }
+
+  // Allow Layout module to be disabled for testing purposes.
+  if ($file->name == 'layout') {
+    $info['required'] = FALSE;
+  }
 }
 
 /**
