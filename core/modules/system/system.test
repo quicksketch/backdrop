@@ -1409,10 +1409,8 @@ class SystemMainContentFallback extends BackdropWebTestCase {
    */
   function testMainContentFallback() {
     $edit = array();
-    // Disable the block module.
-    $edit['modules[Core][layout][enable]'] = FALSE;
-    $this->backdropPost('admin/modules', $edit, t('Save configuration'));
-    module_list(TRUE);
+    // Disable the layout module.
+    module_disable(array('layout'));
     $this->assertFalse(module_exists('layout'), 'Layout module disabled.');
 
     // At this point, no region is filled and fallback should be triggered.
@@ -1429,11 +1427,7 @@ class SystemMainContentFallback extends BackdropWebTestCase {
     $this->assertField('mail', 'User interface still available.');
 
     // Enable the layout module again.
-    $this->backdropLogin($this->admin_user);
-    $edit = array();
-    $edit['modules[Core][layout][enable]'] = 'layout';
-    $this->backdropPost('admin/modules', $edit, t('Save configuration'));
-    module_list(TRUE);
+    module_enable(array('layout'));
     $this->assertTrue(module_exists('layout'), 'Layout module re-enabled.');
   }
 }
