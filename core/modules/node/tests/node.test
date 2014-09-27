@@ -1836,7 +1836,7 @@ class NodeBlockFunctionalTest extends BackdropWebTestCase {
     $edit = array(
       'title' => 'Article layout',
       'name' => 'article_layout',
-      'layout' => 'twocol',
+      'layout' => 'two_column',
       'path' => 'node/%',
     );
     $this->backdropPost('admin/structure/layouts/add', $edit, t('Create layout'));

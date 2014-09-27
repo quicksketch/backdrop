@@ -14,46 +14,49 @@
  * Provides a list of layouts that can be used within the Layout module.
  *
  * This hook returns an array keyed by a unique identifier for a layout name.
+ *
+ * The contents of this hook are merged with layout information provided by
+ * stand-alone layouts with their own .info files. Generally, the data returned
+ * here matches the keys used within layout .info files.
+ *
  * The contents of each item in the returned value may contain the following
  * keys:
- *   - title: The human-readable name of the layout.
+ *   - name: The human-readable name of the layout.
  *   - path: A local path within the providing module to files needed by this
  *     layout, such as associated CSS, the icon image, and template file.
- *   - icon: An image representing the appearance of this layout.
- *   - css: A CSS file used whenever this layout is presented.
  *   - regions: A list of regions this layout provides, keyed by a machine name
  *     with a human label value.
- *   - theme: A key to be used in hook_theme() for this layout. A template name
- *     will automatically be created in which all underscores of this key are
- *     converted to hyphens. For example a theme value of
- *     "mymodule_super_layout" would assume a template of
- *     "mymodule-super-layout.tpl.php".
+ *   - preview: Optional. An image representing the appearance of this layout.
+ *     If left empty, "preview.png" will be used.
+ *   - stylesheets: An array of CSS file used whenever this layout is presented.
+ *     If left empty, "layout.css" will be used for all media types.
+ *   - template: The name of the template file (without the extension) used for
+ *     this layout. All layouts should always be named with a "layout--" prefix,
+ *     so that the default variables may be provided in
+ *     template_preprocess_layout(). If left empty, "layout--[key]" will be
+ *     used, with underscores converted to hyphens in the layout key.
+ *   - file: The name of a PHP file to be included prior to any rendering of
+ *     this layout. This may be used to provide preprocess functions to prepare
+ *     variables for the use of the layout.
  */
 function hook_layout_info() {
-  $layouts['onecol'] = array(
-    'title' => t('Single column'),
-    'path' => 'layouts/onecol',
-    'icon' => 'onecol.png',
-    'css' => 'onecol.css',
-    'theme' => 'layout_onecol',
-    'regions' => array(
-      'header' => t('Header'),
-      'content' => t('Content'),
-      'footer' => t('Footer'),
-    ),
-  );
-  $layouts['twocol'] = array(
-    'title' => t('Two column'),
-    'path' => 'layouts/twocol',
-    'icon' => 'twocol.png',
-    'css' => 'twocol.css',
-    'theme' => 'layout_twocol',
+  $layouts['my_layout'] = array(
+    'title' => t('A custom layout'),
+    'path' => 'layouts/my_layout',
     'regions' => array(
       'header' => t('Header'),
       'content' => t('Content'),
       'sidebar' => t('Sidebar'),
       'footer' => t('Footer'),
     ),
+
+    // Optional information that populates using defaults.
+    // 'preview' => 'preview.png',
+    // 'stylesheets' => array('all' => array('layout.css')),
+    // 'template' => 'layout--my-layout',
+
+    // Specify a file containing preprocess functions if needed.
+    // 'file' => 'my_layout.php',
   );
   return $layouts;
 }

@@ -57,15 +57,15 @@ function theme_layout_info($variables) {
  */
 function theme_layout_option($variables) {
   $layout_info = $variables['layout_info'];
-  $icon_path = $layout_info['path'] . '/' . $layout_info['icon'];
+  $icon_path = $layout_info['path'] . '/' . $layout_info['preview'];
 
   $output = '';
   $output .= '<div class="layout-icon">';
   $output .= theme('image', array(
     'uri' => $icon_path,
-    'attributes' => array('title' => $layout_info['title']),
+    'attributes' => array('title' => $layout_info['name']),
   ));
-  $output .= '<div class="caption">' . check_plain($layout_info['title']) . '</div>';
+  $output .= '<div class="caption">' . check_plain($layout_info['name']) . '</div>';
   $output .= '</div>';
   return $output;
 }
@@ -137,27 +137,6 @@ function template_preprocess_layout(&$variables) {
   if (!$variables['admin']) {
     $variables['action_links'] = menu_local_actions();
     $variables['tabs'] =  menu_local_tabs();
-  }
-}
-
-/**
- * Process variables for the three-three-four layout.
- */
-function template_preprocess_layout__three_three_four(&$variables) {
-  if ($variables['content']['sidebar_first'] && $variables['content']['sidebar_second']) {
-    $variables['classes_array'][] = 'layout-two-sidebars';
-  }
-  elseif ($variables['content']['sidebar_first'] || $variables['content']['sidebar_second']) {
-    $variables['classes_array'][] = 'layout-one-sidebar';
-    if ($variables['content']['sidebar_first']) {
-      $variables['classes_array'][] = 'layout-sidebar-first';
-    }
-    else {
-      $variables['classes_array'][] = 'layout-sidebar-second';
-    }
-  }
-  else {
-    $variables['classes_array'][] = 'layout-no-sidebars';
   }
 }
 

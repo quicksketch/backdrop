@@ -438,7 +438,6 @@ function layout_theme() {
   $items = array(
     'layout' => array(
       'variables' => array('content' => NULL, 'settings' => NULL, 'layout' => NULL, 'layout_info' => NULL, 'renderer' => NULL, 'attributes_array' => array(), 'admin' => FALSE),
-      'template' => 'layouts/onecol/layout',
     ) + $base,
     'layout_reorder_layouts' => array(
       'render element' => 'element',
@@ -467,22 +466,18 @@ function layout_theme() {
   );
 
   // Register all layouts.
-  $layouts = _layout_get_all_info('layout');
+  $layouts = layout_get_layout_info();
   foreach ($layouts as $layout) {
-    foreach (array('theme', 'admin theme') as $callback) {
-      if (!empty($layout[$callback])) {
-        $items[$layout[$callback]] = array(
-          'variables' => array('content' => NULL, 'settings' => NULL, 'layout' => NULL, 'layout_info' => NULL, 'renderer' => NULL, 'attributes_array' => array(), 'admin' => FALSE),
-          'path' => $layout['path'],
-          'base hook' => 'layout',
-        );
-        if (isset($layout['file'])) {
-          $items[$layout[$callback]]['file'] = $layout['file'];
-        }
-        // If no theme function exists, assume template.
-        if (!function_exists('theme_' . $layout['theme'])) {
-          $items[$layout[$callback]]['template'] = str_replace('_', '-', $layout[$callback]);
-        }
+    if (!empty($layout['template'])) {
+      $theme_key = str_replace('-', '_', $layout['template']);
+      $items[$theme_key] = array(
+        'variables' => array('content' => NULL, 'settings' => NULL, 'layout' => NULL, 'layout_info' => NULL, 'renderer' => NULL, 'attributes_array' => array(), 'admin' => FALSE),
+        'template' => $layout['template'],
+        'path' => $layout['path'],
+        'base hook' => 'layout',
+      );
+      if (isset($layout['file'])) {
+        $items[$theme_key]['file'] = $layout['file'];
       }
     }
   }
@@ -809,7 +804,7 @@ function _layout_include_files() {
 /**
  * Load a layout-related information from modules.
  */
-function _layout_get_all_info($data_type) {
+function _layout_get_all_info($data_type, $init = array()) {
   $all_info = &backdrop_static(__FUNCTION__);
   if (!isset($all_info[$data_type])) {
     _layout_include_files();
@@ -817,7 +812,7 @@ function _layout_get_all_info($data_type) {
       $all_info[$data_type] = $cached_info->data;
     }
     else {
-      $all_info[$data_type] = array();
+      $all_info[$data_type] = $init;
       foreach (module_implements($data_type . '_info') as $module) {
         $function = $module . '_' . $data_type . '_info';
         $data = $function();
@@ -840,16 +835,54 @@ function _layout_get_all_info($data_type) {
 /**
  * Load the layout information for a single layout name.
  *
- * @param string $plugin_name
- *   The name of the layout plugin, e.g. "onecol" or "three_three_four".
+ * @param string $layout_name
+ *   The name of the layout plugin, e.g. "one_column" or
+ *   "three_three_four_column". If no layout name is specified, all layout info
+ *   will be returned.
  * @return array|boolean
- *   The layout information, as returned by hook_layout_info().
+ *   The layout information, as returned by either a stand-alone layout .info
+ *   file, or through a module's hook_layout_info().
  *
  * @see hook_layout_info()
  */
-function layout_get_layout_info($plugin_name) {
-  $info = _layout_get_all_info('layout');
-  return isset($info[$plugin_name]) ? $info[$plugin_name] : FALSE;
+function layout_get_layout_info($layout_name = NULL) {
+  $info = &backdrop_static(__FUNCTION__);
+
+  if (!isset($info)) {
+    if ($cached_info = cache()->get('layout_info')) {
+      $info = $cached_info->data;
+    }
+    else {
+      $files = backdrop_system_listing('/^' . BACKDROP_PHP_FUNCTION_PATTERN . '\.info$/', 'layouts', 'name', 0);
+      foreach ($files as $name => $file) {
+        $init[$name] = backdrop_parse_info_file($file->uri);
+        $init[$name]['path'] = dirname($file->uri);
+      }
+      $info = _layout_get_all_info('layout', $init);
+    }
+    // Populate defaults.
+    foreach ($info as $name => $layout_info) {
+      $info[$name] += array(
+        'preview' => 'preview.png',
+        'stylesheets' => array(
+          'all' => array('layout.css'),
+        ),
+        'template' => 'layout--' . str_replace('_', '-', $name),
+      );
+    }
+  }
+
+  if ($layout_name) {
+    if (isset($info[$layout_name])) {
+      return $info[$layout_name];
+    }
+    else {
+      return FALSE;
+    }
+  }
+  else {
+    return $info;
+  }
 }
 
 /**

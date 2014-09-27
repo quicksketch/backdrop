@@ -3,7 +3,7 @@
  * @file
  * Template for a complex 3-3-4 column layout.
  *
- * This template mimicks the display of the legacy "Bartik" layout, which
+ * This template mimics the display of the legacy "Bartik" layout, which
  * includes responsive and collapsible columns.
  *
  * Variables:
@@ -25,7 +25,7 @@
  *   - $content['footer']
  */
 ?>
-<div class="layout-three-three-four <?php print $classes; ?>"<?php print $attributes; ?>>
+<div class="layout-three-three-four-column <?php print $classes; ?>"<?php print $attributes; ?>>
   <?php if ($content['header']): ?>
     <header id="header" role="banner" aria-label="<?php print t('Site header'); ?>"><div class="section clearfix">
       <?php print $content['header']; ?>

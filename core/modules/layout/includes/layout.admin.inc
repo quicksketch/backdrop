@@ -213,7 +213,7 @@ function layout_settings_form($form, &$form_state, Layout $layout) {
     '#wrapper_attributes' => array('class' => array('clearfix', 'layout-options')),
   );
   // Get the list of layout options.
-  $all_layout_info = _layout_get_all_info('layout');
+  $all_layout_info = layout_get_layout_info();
   foreach ($all_layout_info as $layout_name => $layout_info) {
     $form['layout']['#options'][$layout_name] = theme('layout_option', array('layout_info' => $layout_info));
   }
@@ -555,13 +555,15 @@ function layout_settings_form_save_submit($form, &$form_state) {
     foreach ($default_layout->positions as $region => $region_block_list) {
       if (array_key_exists($region, $layout_info['regions'])) {
         foreach ($region_block_list as $uuid) {
-          $block = $default_layout->content[$uuid];
-          $new_block = $block->getClone();
-          // Only add the block from the default if required contexts are
-          // present for each block.
-          if ($layout->hasContexts($new_block->getRequiredContexts())) {
-            $layout->positions[$region][] = $new_block->uuid;
-            $layout->content[$new_block->uuid] = $new_block;
+          if (isset($default_layout->content[$uuid])) {
+            $block = $default_layout->content[$uuid];
+            $new_block = $block->getClone();
+            // Only add the block from the default if required contexts are
+            // present for each block.
+            if ($layout->hasContexts($new_block->getRequiredContexts())) {
+              $layout->positions[$region][] = $new_block->uuid;
+              $layout->content[$new_block->uuid] = $new_block;
+            }
           }
         }
       }
@@ -1960,7 +1962,7 @@ function layout_ajax_form_save_dialog($form, $form_state) {
     }
 
     // If there is a second action that needs to be executed, open the next page.
-    if (!empty($form_state['redirect'])) {
+    elseif (!empty($form_state['redirect'])) {
       $dialog_ajax = layout_ajax_form_open_dialog($form, $form_state);
       $commands = array_merge($commands, $dialog_ajax['#commands']);
     }

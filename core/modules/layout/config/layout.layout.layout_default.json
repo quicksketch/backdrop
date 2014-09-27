@@ -7,7 +7,7 @@
   "module": "layout",
   "weight": 0,
   "storage": 4,
-  "layout": "twocol",
+  "layout": "two_column",
   "disabled": false,
   "settings": {
     "title": "",

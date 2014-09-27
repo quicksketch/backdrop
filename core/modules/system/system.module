@@ -2080,6 +2080,7 @@ function system_block_info() {
     'required contexts' => array(
       'overrides_path' => 'overrides_path',
     ),
+    'render first' => TRUE,
   );
   $blocks['header'] = array(
     'info' => t('Header block'),
@@ -2088,6 +2089,7 @@ function system_block_info() {
   $blocks['breadcrumb'] = array(
     'info' => t('Breadcrumb'),
     'description' => t('The current page breadcrumb trail.'),
+    'render last' => TRUE,
   );
   $blocks['powered-by'] = array(
     'info' => t('Powered by Backdrop'),

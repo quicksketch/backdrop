@@ -1408,7 +1408,6 @@ class SystemMainContentFallback extends BackdropWebTestCase {
    * Test availability of main content.
    */
   function testMainContentFallback() {
-    $edit = array();
     // Disable the layout module.
     module_disable(array('layout'));
     $this->assertFalse(module_exists('layout'), 'Layout module disabled.');

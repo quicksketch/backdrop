@@ -2072,7 +2072,7 @@ function system_update_1023() {
     'description' => NULL,
     'module' => 'layout',
     'weight' => 1,
-    'layout' => 'onecol',
+    'layout' => 'one_column',
     'settings' => array(),
     'positions' => array(
       'content' => array(
@@ -2105,6 +2105,8 @@ function system_update_1023() {
   $admin_config->setData($admin_layout);
   $admin_config->save();
 
+  $layout_name = state_get('upgrade_layout_name', 'three_three_four_column');
+
   $default_layout = array(
     'path' => NULL,
     'name' => 'layout_default',
@@ -2112,7 +2114,7 @@ function system_update_1023() {
     'description' => NULL,
     'module' => 'layout',
     'weight' => 0,
-    'layout' => 'onecol',
+    'layout' => $layout_name,
     'settings' => array(),
     'positions' => array(
       'header' => array(
@@ -2183,7 +2185,6 @@ function system_update_1023() {
   $current_theme = variable_get('theme_default', 'bartik');
 
   // Load the default layout to prepare copying blocks into it.
-  $layout_name = state_get('upgrade_layout_name', 'three_three_four');
   $layout_regions = state_get('upgrade_layout_regions', array(
     'header' => 'header',
     'top' => 'top',

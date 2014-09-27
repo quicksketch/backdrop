@@ -5,65 +5,6 @@
  */
 
 /**
- * Implements hook_layout_info().
- */
-function layout_layout_info() {
-  $layouts['onecol'] = array(
-    'title' => t('Single column'),
-    'path' => 'layouts/onecol',
-    'icon' => 'onecol.png',
-    // Note that the onecol layout provides the default layout.tpl.php file.
-    'theme' => 'layout',
-    'regions' => array(
-      'header' => t('Header'),
-      'top' => t('Top'),
-      'content' => t('Content'),
-      'footer' => t('Footer'),
-    ),
-    'default region' => 'content',
-  );
-  $layouts['twocol'] = array(
-    'title' => t('Two column'),
-    'path' => 'layouts/twocol',
-    'icon' => 'twocol.png',
-    'css' => 'twocol.css',
-    'theme' => 'layout__twocol',
-    'regions' => array(
-      'header' => t('Header'),
-      'top' => t('Top'),
-      'content' => t('Content'),
-      'sidebar' => t('Sidebar'),
-      'footer' => t('Footer'),
-    ),
-    'default region' => 'content',
-  );
-  $layouts['three_three_four'] = array(
-    'title' => t('Three/three/four stacked'),
-    'path' => 'layouts/three_three_four',
-    'icon' => 'three-three-four.png',
-    'css' => 'three-three-four.css',
-    'theme' => 'layout__three_three_four',
-    'regions' => array(
-      'header' => t('Header'),
-      'top' => t('Top'),
-      'content' => t('Content'),
-      'sidebar_first' => t('Sidebar first'),
-      'sidebar_second' => t('Sidebar second'),
-      'triptych_first' => t('Tryptych first'),
-      'triptych_middle' => t('Tryptych second'),
-      'triptych_last' => t('Tryptych last'),
-      'footer_firstcolumn' => t('Footer first'),
-      'footer_secondcolumn' => t('Footer second'),
-      'footer_thirdcolumn' => t('Footer third'),
-      'footer_fourthcolumn' => t('Footer fourth'),
-      'footer' => t('Footer bottom'),
-    ),
-    'default region' => 'content',
-  );
-  return $layouts;
-}
-
-/**
  * Implements hook_layout_context_info().
  */
 function layout_layout_context_info() {

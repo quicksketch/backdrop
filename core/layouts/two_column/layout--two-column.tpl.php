@@ -17,7 +17,7 @@
  *   - $content['footer']
  */
 ?>
-<div class="layout-twocol <?php print $classes; ?>"<?php print $attributes; ?>>
+<div class="layout-two-column <?php print $classes; ?>"<?php print $attributes; ?>>
   <div id="skip-link">
     <a href="#main-content" class="element-invisible element-focusable"><?php print t('Skip to main content'); ?></a>
   </div>

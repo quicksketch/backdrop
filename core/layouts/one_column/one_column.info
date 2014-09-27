@@ -1,0 +1,17 @@
+name = 1 column
+version = BACKDROP_VERSION
+backdrop = 1.x
+
+; Note that the one_column layout provides the default layout.tpl.php.
+; Most layouts will use the automatic template name "layout--" followed by the
+; name of the layout, with underscores changed to hyphens.
+template = layout
+
+; Specify regions for this layout.
+regions[header] = Header
+regions[top] = Top
+regions[content] = Content
+regions[footer] = Footer
+
+; Content is the default region by default, but specify it for clarity.
+default region = content;

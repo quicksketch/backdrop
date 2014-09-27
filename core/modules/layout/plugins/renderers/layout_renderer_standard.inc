@@ -324,14 +324,8 @@ class LayoutRendererStandard {
 
     $this->renderRegions();
 
-    if ($this->admin && !empty($this->layout_info['admin theme'])) {
-      $theme = $this->layout_info['admin theme'];
-    }
-    else {
-      $theme = $this->layout_info['theme'];
-    }
-
     module_load_include('inc', 'layout', 'includes/layout.theme');
+    $theme = str_replace('-', '_', $this->layout_info['template']);
     $this->rendered['layout'] = theme($theme, array('content' => $this->rendered['regions'], 'settings' => $this->layout->settings, 'layout' => $this->layout, 'layout_info' => $this->layout_info, 'renderer' => $this, 'admin' => $this->admin));
     return $this->prefix . $this->rendered['layout'] . $this->suffix;
   }
@@ -343,17 +337,12 @@ class LayoutRendererStandard {
    * their CSS added in the right order: inner content before outer content.
    */
   function addMeta() {
-    if (!empty($this->layout_info['css'])) {
-      if (file_exists(path_to_theme() . '/' . $this->layout_info['css'])) {
-        $this->addCss(path_to_theme() . '/' . $this->layout_info['css']);
+    if (!empty($this->layout_info['stylesheets'])) {
+      foreach ($this->layout_info['stylesheets'] as $media => $file_names) {
+        foreach ($file_names as $file_name) {
+          $this->addCss($this->layout_info['path'] . '/' . $file_name, array('media' => $media));
+        }
       }
-      else {
-        $this->addCss($this->layout_info['path'] . '/' . $this->layout_info['css']);
-      }
-    }
-
-    if ($this->admin && isset($this->layout_info['admin css'])) {
-      $this->addCss($this->layout_info['path'] . '/' . $this->layout_info['admin css']);
     }
   }
 
@@ -369,10 +358,10 @@ class LayoutRendererStandard {
    *
    * @see backdrop_add_css
    */
-  function addCss($filename) {
+  function addCss($filename, $options = array()) {
     switch ($this->meta_location) {
       case 'standard':
-        backdrop_add_css($filename);
+        backdrop_add_css($filename, $options);
         break;
       case 'inline':
         $url = base_path() . $filename;
