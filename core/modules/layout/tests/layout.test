@@ -1,0 +1,20 @@
+<?php
+/**
+ * @file
+ * Tests for the Layout module.
+ */
+require_once BACKDROP_ROOT . '/core/modules/simpletest/tests/upgrade/upgrade.test';
+
+/**
+ * Tests the interface for adding, removing, and moving blocks.
+ */
+class LayoutInterfaceTest extends BackdropWebTestCase {
+
+}
+
+/**
+ * Tests the upgrade path from block-based regions to layouts.
+ */
+class LayoutUpgradePathTest extends UpgradePathTestCase {
+
+}
