@@ -549,7 +549,7 @@ function layout_settings_form_save_submit($form, &$form_state) {
 
   // If this is a new layout, populate blocks from default layout.
   if (!empty($layout->is_new)) {
-    $default_layout_name = path_is_admin($layout->getPath()) ? 'layout_admin_default' : 'layout_default';
+    $default_layout_name = path_is_admin($layout->getPath()) ? 'admin_default' : 'default';
     $default_layout = layout_load($default_layout_name);
     $layout_info = layout_get_layout_info($layout->layout);
     foreach ($default_layout->positions as $region => $region_block_list) {

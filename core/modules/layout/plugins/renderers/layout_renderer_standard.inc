@@ -325,7 +325,12 @@ class LayoutRendererStandard {
     $this->renderRegions();
 
     module_load_include('inc', 'layout', 'includes/layout.theme');
-    $theme = str_replace('-', '_', $this->layout_info['template']);
+    if (empty($this->layout_info['template'])) {
+      $theme = 'layout__' . $this->layout->layout;
+    }
+    else {
+      $theme = str_replace('-', '_', $this->layout_info['template']);
+    }
     $this->rendered['layout'] = theme($theme, array('content' => $this->rendered['regions'], 'settings' => $this->layout->settings, 'layout' => $this->layout, 'layout_info' => $this->layout_info, 'renderer' => $this, 'admin' => $this->admin));
     return $this->prefix . $this->rendered['layout'] . $this->suffix;
   }
@@ -524,7 +529,7 @@ class LayoutRendererStandard {
   /**
    * Ensure that the page content block is included in the default region.
    *
-   * This method is used specifically when the "layout_default" layout is used,
+   * This method is used specifically when the "default" layout is used,
    * to make sure that the current page content is rendered in the default
    * region of the fallback layout; thus ensuring the UI of the site remains
    * usable.

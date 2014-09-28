@@ -1,15 +1,11 @@
 <?php
 /**
  * @file
- * Preprocess functions for the 3/3/4 Column layout.
+ * PHP functions for the 3/3/4 column layout.
  */
 
 /**
- * Preprocess the 3/3/4 Column layout variables.
- */
-
-/**
- * Process variables for the three-three-four layout.
+ * Process variables for the 3/3/4 column layout.
  */
 function template_preprocess_layout__three_three_four_column(&$variables) {
   if ($variables['content']['sidebar_first'] && $variables['content']['sidebar_second']) {

@@ -566,7 +566,7 @@ class SearchBlockTestCase extends BackdropWebTestCase {
    */
   function testBlock() {
     // Enable the search block.
-    $layout = layout_load('layout_default');
+    $layout = layout_load('default');
     $layout->addBlock('search', 'form', 'content');
     $layout->save();
 
@@ -680,7 +680,7 @@ class SearchCommentTestCase extends BackdropWebTestCase {
     $this->backdropLogin($this->admin_user);
 
     // Enable the search block.
-    $layout = layout_load('layout_default');
+    $layout = layout_load('default');
     $layout->addBlock('search', 'form', 'content');
     $layout->save();
   }
@@ -982,7 +982,7 @@ class SearchCommentCountToggleTestCase extends BackdropWebTestCase {
     search_update_totals();
 
     // Enable the search block.
-    $layout = layout_load('layout_default');
+    $layout = layout_load('default');
     $layout->addBlock('search', 'form', 'content');
     $layout->save();
   }
@@ -1323,7 +1323,7 @@ class SearchConfigSettingsForm extends BackdropWebTestCase {
     search_update_totals();
 
     // Enable the search block.
-    $layout = layout_load('layout_default');
+    $layout = layout_load('default');
     $layout->addBlock('search', 'form', 'content');
     $layout->save();
   }

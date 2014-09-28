@@ -712,7 +712,7 @@ class NodeBlockTestCase extends BackdropWebTestCase {
    * Tests that the "Syndicate" block is shown when enabled.
    */
   function testSyndicateBlock() {
-    $layout = layout_load('layout_default');
+    $layout = layout_load('default');
     $layout->addBlock('node', 'syndicate', 'footer');
     $layout->save();
 
@@ -1751,7 +1751,7 @@ class NodeBlockFunctionalTest extends BackdropWebTestCase {
     ));
 
     // Set the block to a region to confirm block is available.
-    $layout = layout_load('layout_default');
+    $layout = layout_load('default');
     $block = $layout->addBlock('node', 'recent', 'sidebar');
 
     // Set block title and variables.

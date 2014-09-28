@@ -1,7 +1,7 @@
 {
-  "_config_name": "layout.layout.layout_admin_default",
+  "_config_name": "layout.layout.admin_default",
   "path": null,
-  "name": "layout_admin_default",
+  "name": "admin_default",
   "title": "Default Administrative Layout",
   "description": null,
   "module": "layout",

@@ -39,7 +39,7 @@ class TranslationTestCase extends BackdropWebTestCase {
 
     // Enable the language switcher block.
     $language_type = LANGUAGE_TYPE_INTERFACE;
-    $layout = layout_load('layout_default');
+    $layout = layout_load('default');
     $layout->addBlock('locale', $language_type, 'sidebar');
     $layout->save();
 

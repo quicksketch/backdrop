@@ -2067,7 +2067,7 @@ function system_update_1023() {
 
   $admin_layout = array(
     'path' => NULL,
-    'name' => 'layout_admin_default',
+    'name' => 'admin_default',
     'title' => 'Default Administrative Layout',
     'description' => NULL,
     'module' => 'layout',
@@ -2101,7 +2101,7 @@ function system_update_1023() {
       ),
     ),
   );
-  $admin_config = config('layout.layout.layout_admin_default');
+  $admin_config = config('layout.layout.admin_default');
   $admin_config->setData($admin_layout);
   $admin_config->save();
 
@@ -2109,7 +2109,7 @@ function system_update_1023() {
 
   $default_layout = array(
     'path' => NULL,
-    'name' => 'layout_default',
+    'name' => 'default',
     'title' => 'Default Layout',
     'description' => NULL,
     'module' => 'layout',
@@ -2298,7 +2298,7 @@ function system_update_1023() {
   }
 
   // Save the layout with the migrated blocks in position.
-  $layout_config = config('layout.layout.layout_default');
+  $layout_config = config('layout.layout.default');
   $layout_config->setData($default_layout);
   $layout_config->save();
 

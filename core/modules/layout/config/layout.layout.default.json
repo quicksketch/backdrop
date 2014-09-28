@@ -1,7 +1,7 @@
 {
-  "_config_name": "layout.layout.layout_default",
+  "_config_name": "layout.layout.default",
   "path": "",
-  "name": "layout_default",
+  "name": "default",
   "title": "Default Layout",
   "description": null,
   "module": "layout",

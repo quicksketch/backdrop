@@ -395,10 +395,10 @@ function layout_route_handler($router_item) {
   // If no specific layout is found at the given page, use the default layout.
   if (!$selected_layout) {
     if (path_is_admin($_GET['q'])) {
-      $selected_layout = layout_load('layout_admin_default');
+      $selected_layout = layout_load('admin_default');
     }
     else {
-      $selected_layout = layout_load('layout_default');
+      $selected_layout = layout_load('default');
     }
 
     // Set the data in each context based on the provided menu handler.
@@ -438,6 +438,7 @@ function layout_theme() {
   $items = array(
     'layout' => array(
       'variables' => array('content' => NULL, 'settings' => NULL, 'layout' => NULL, 'layout_info' => NULL, 'renderer' => NULL, 'attributes_array' => array(), 'admin' => FALSE),
+      'template' => 'templates/layout',
     ) + $base,
     'layout_reorder_layouts' => array(
       'render element' => 'element',
@@ -867,8 +868,13 @@ function layout_get_layout_info($layout_name = NULL) {
         'stylesheets' => array(
           'all' => array('layout.css'),
         ),
-        'template' => 'layout--' . str_replace('_', '-', $name),
       );
+      if (!isset($info[$name]['template'])) {
+        $template_path = BACKDROP_ROOT . '/' . $layout_info['path'] . '/layout--' . str_replace('_', '-', $name) . '.tpl.php';
+        if (is_file($template_path)) {
+          $info[$name]['template'] = 'layout--' . str_replace('_', '-', $name);
+        }
+      }
     }
   }
 

@@ -1650,7 +1650,7 @@ class CommentBlockFunctionalTest extends CommentHelperCase {
     $this->backdropLogin($this->admin_user);
 
     // Add the block to the sidebar region in the default layout.
-    $layout_name = 'layout_default';
+    $layout_name = 'default';
     $region = 'sidebar';
     $block = array(
       'module' => 'comment',

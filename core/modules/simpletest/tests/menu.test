@@ -977,7 +977,7 @@ class MenuBreadcrumbTestCase extends MenuWebTestCase {
     // This test confirms that menu links work on both the front-end and the
     // back-end. The default layout already has the main menu block, but the
     // admin layout needs to have it added for these tests.
-    $layout = layout_load('layout_admin_default');
+    $layout = layout_load('admin_default');
     $layout->addBlock('system', 'main-menu', 'header');
     $layout->save();
   }
@@ -1453,12 +1453,12 @@ class MenuTrailTestCase extends MenuWebTestCase {
     $this->backdropLogin($this->admin_user);
 
     // Add blocks for management to the default layout.
-    $layout = layout_load('layout_default');
+    $layout = layout_load('default');
     $layout->addBlock('system', 'management', 'content');
     $layout->save();
 
     // Add blocks for management and main menu to the admin layout.
-    $layout = layout_load('layout_admin_default');
+    $layout = layout_load('admin_default');
     $layout->addBlock('system', 'management', 'content');
     $layout->addBlock('system', 'main-menu', 'content');
     $layout->save();

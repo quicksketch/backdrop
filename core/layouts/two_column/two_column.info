@@ -10,4 +10,4 @@ regions[sidebar] = Sidebar
 regions[footer] = Footer bottom
 
 ; Content is the default region by default, but specify it for clarity.
-default region = content;
+default region = content

@@ -2761,8 +2761,8 @@ function system_header_block($settings) {
   $settings += array(
     'menu' => 'user-menu',
     'logo' => TRUE,
-    'site_slogan' => NULL,
-    'site_name' => NULL,
+    'site_slogan' => TRUE,
+    'site_name' => TRUE,
   );
 
   $menu = $settings['menu'] ? menu_navigation_links($settings['menu']) : NULL;

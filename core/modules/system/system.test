@@ -1339,7 +1339,7 @@ class SystemBlockTestCase extends BackdropWebTestCase {
     $this->assertRaw('block-system-powered-by', 'Block successfully being displayed on the page.');
 
     // Configure the header block in various combinations.
-    $layout = layout_load('layout_default');
+    $layout = layout_load('default');
     // Assume that the header block is the first block in the default layout.
     $header_uuid = reset($layout->positions['header']);
     $header_block = $layout->content[$header_uuid];

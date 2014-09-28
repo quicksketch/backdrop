@@ -1,9 +1,7 @@
 <?php
 /**
  * @file
- * Template for a single column panel layout.
- *
- * This template provides a very simple "one column" panel display layout.
+ * Template for a single column layout.
  *
  * Variables:
  * - $attributes: A string of attributes to be added to the layout wrapper.

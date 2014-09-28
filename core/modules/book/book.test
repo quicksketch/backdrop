@@ -300,7 +300,7 @@ class BookTestCase extends BackdropWebTestCase {
     $this->backdropLogin($this->admin_user);
 
     // Add the block to the sidebar region in the default layout.
-    $layout_name = 'layout_default';
+    $layout_name = 'default';
     $region = 'sidebar';
     $block = array(
       'module' => 'book',
@@ -339,7 +339,7 @@ class BookTestCase extends BackdropWebTestCase {
      $block_title = $this->randomName(16);
 
      // Add the block to the sidebar region in the default layout.
-     $layout_name = 'layout_default';
+     $layout_name = 'default';
      $region = 'sidebar';
      $block = array(
        'module' => 'book',

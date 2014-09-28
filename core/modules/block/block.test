@@ -52,7 +52,7 @@ class BlockTestCase extends BackdropWebTestCase {
     $this->assertEqual(check_markup($custom_block['body[value]'], $format), $data['content'], 'block_block_view() provides correct block content.');
 
     // Check whether the block can be moved to all available regions.
-    $layout = layout_load('layout_default');
+    $layout = layout_load('default');
     $layout->addBlock('block', $bid, 'sidebar');
     $layout->save();
     $this->backdropGet('<front>');
@@ -85,7 +85,7 @@ class BlockTestCase extends BackdropWebTestCase {
 
     // Set the created custom block to a specific region.
     $bid = 1;
-    $layout = layout_load('layout_default');
+    $layout = layout_load('default');
     $layout->addBlock('block', $bid, 'content');
     $layout->save();
 

@@ -27,7 +27,7 @@ class MenuTestCase extends BackdropWebTestCase {
     $this->items = array();
 
     // Add Main menu block into sidebar.
-    $layout = layout_load('layout_default');
+    $layout = layout_load('default');
     $layout->addBlock('system', 'main-menu', 'sidebar');
     $layout->save();
 
@@ -160,7 +160,7 @@ class MenuTestCase extends BackdropWebTestCase {
 
     // Enable the custom menu block.
     $menu_name = 'menu-' . $menu_name;
-    $layout = layout_load('layout_default');
+    $layout = layout_load('default');
     $layout->addBlock('menu', $menu_name, 'sidebar');
     $layout->save();
 

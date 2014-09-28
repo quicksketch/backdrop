@@ -1355,7 +1355,7 @@ class LocaleLanguageSwitchingFunctionalTest extends BackdropWebTestCase {
   function testLanguageBlock() {
     // Enable the language switching block.
     $language_type = LANGUAGE_TYPE_INTERFACE;
-    $layout = layout_load('layout_default');
+    $layout = layout_load('default');
     $layout->addBlock('locale', $language_type, 'sidebar');
     $layout->save();
 
@@ -2260,7 +2260,7 @@ class LocaleUILanguageNegotiationTest extends BackdropWebTestCase {
     $this->backdropGet('admin/config/regional/language/detection');
 
     // Enable the language switcher block.
-    $layout = layout_load('layout_default');
+    $layout = layout_load('default');
     $layout->addBlock('locale', 'language_interface', 'sidebar');
     $layout->save();
 
