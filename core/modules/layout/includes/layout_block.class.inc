@@ -43,7 +43,7 @@ class LayoutBlock extends LayoutHandler {
   /**
    * An array of LayoutContext instances used by this block.
    */
-  private $contexts = array();
+  var $contexts = array();
 
   /**
    * Create a new LayoutBlock object.
@@ -162,6 +162,13 @@ class LayoutBlock extends LayoutHandler {
    * Build the settings form for editing this block.
    */
   function form(&$form, &$form_state) {
+    $layout = $form_state['layout'];
+    $contexts = $layout->getContexts();
+    $current_context_settings = $this->settings['contexts'];
+    $block_info = layout_get_block_info($this->module, $this->delta);
+
+    $form['contexts'] = layout_contexts_form_element($contexts, $current_context_settings, $block_info);
+
     $form['title_display']['#tree'] = FALSE;
     $form['title_display']['title_display'] = array(
       '#type' => 'select',
@@ -201,6 +208,12 @@ class LayoutBlock extends LayoutHandler {
     $this->settings['title_display'] = $form_state['values']['title_display'];
     $this->settings['title'] = $form_state['values']['title'];
     $this->settings['style'] = $form_state['values']['style'];
+    if (isset($form_state['values']['contexts'])) {
+      $this->settings['contexts'] = $form_state['values']['contexts'];
+    }
+    elseif (isset($this->settings['contexts'])) {
+      unset($this->settings['contexts']);
+    }
   }
 
   /**
@@ -258,7 +271,7 @@ class LayoutBlock extends LayoutHandler {
   function setContexts(array $all_contexts) {
     $block_info = layout_get_block_info($this->module, $this->delta);
     $all_contexts_set = TRUE;
-    if (!empty($block_info['required contexts']) && $this->contexts) {
+    if (!empty($block_info['required contexts'])) {
       $all_contexts_set = layout_set_handler_contexts($this->contexts, $all_contexts, $block_info['required contexts'], $this->settings['contexts']);
     }
     if (!$all_contexts_set) {

@@ -63,9 +63,9 @@ function theme_layout_option($variables) {
   $output .= '<div class="layout-icon">';
   $output .= theme('image', array(
     'uri' => $icon_path,
-    'attributes' => array('title' => $layout_info['name']),
+    'attributes' => array('title' => $layout_info['title']),
   ));
-  $output .= '<div class="caption">' . check_plain($layout_info['name']) . '</div>';
+  $output .= '<div class="caption">' . check_plain($layout_info['title']) . '</div>';
   $output .= '</div>';
   return $output;
 }
@@ -186,6 +186,7 @@ function template_process_layout(&$variables) {
 function template_preprocess_layout_block(&$variables) {
   $content = $variables['content'];
   $block = $variables['block'];
+  $style = $block->style;
 
   $variables['classes_array'] = array();
   $variables['title_prefix'] = '';
@@ -232,10 +233,8 @@ function template_preprocess_layout_block(&$variables) {
   $variables['classes_array'][] = backdrop_html_class('block-' . $block->module . '-' . $block->delta);
 
   // Add custom classes if sent in.
-  if (!empty($content->content)) {
-    if (!empty($content->css_class)) {
-      $variables['classes_array'] = array_merge(explode(' ', $content->css_class));
-    }
+  if (!empty($style->settings['classes'])) {
+    $variables['classes_array'] = array_merge($variables['classes_array'], array_filter(explode(' ', $style->settings['classes'])));
   }
 
   // Set up some placeholders for constructing template file names.
@@ -255,8 +254,23 @@ function template_preprocess_layout_block(&$variables) {
 function template_preprocess_layout_block_dynamic(&$variables) {
   // Re-use all the preprocessing provided by the default block template.
   template_preprocess_layout_block($variables);
+
+  $block = $variables['block'];
+  $style = $block->style;
+
+  // Classes for the wrapper set in template_preprocess_layout_block().
+  $variables['wrapper_tag'] = $style->settings['wrapper_tag'];
   $variables['attributes_array'] = array();
-  $variables['title_attributes_array'] = array();
-  $variables['content_attributes_array'] = array();
-  $variables['title_attributes_array']['class'][] = 'block-title';
+
+  // Title tag and classes.
+  $variables['title_tag'] = $style->settings['title_tag'];
+  $variables['title_attributes_array'] = array(
+    'class' => array_filter(explode(' ', $style->settings['title_classes'])),
+  );
+
+  // Content tag and classes.
+  $variables['content_tag'] = $style->settings['content_tag'];
+  $variables['content_attributes_array'] = array(
+    'class' => array_filter(explode(' ', $style->settings['content_classes']))
+  );
 }

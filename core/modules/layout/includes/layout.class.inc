@@ -385,7 +385,70 @@ class Layout {
       $key = array_search($block_uuid, $positions);
       if ($key !== FALSE) {
         unset($this->positions[$region][$key]);
+        unset($this->content[$block_uuid]);
       }
+    }
+  }
+
+  /**
+   * Get a block's region position from a layout.
+   *
+   * @param string $block_uuid
+   *   The UUID of the block whose position is being retrieved.
+   * @param string $type
+   *   Either "region" or "position". Defaults to "region".
+   * @return string|int|FALSE
+   *   Returns either the region name or the position of the block within that
+   *   region. If the block is not found at all, returns FALSE.
+   */
+  function getBlockPosition($block_uuid, $type = 'region') {
+    foreach ($this->positions as $region => $blocks) {
+      foreach (array_values($blocks) as $position => $uuid) {
+        if ($block_uuid === $uuid) {
+          return $type === 'region' ? $region : $position;
+        }
+      }
+    }
+    return FALSE;
+  }
+
+  /**
+   * Move an existing block from its current region to a new one.
+   *
+   * @param string $block_uuid
+   *   The UUID of the block whose position is being retrieved.
+   * @param string $region_name
+   *   The name of the region to which the block will be moved.
+   */
+  function setBlockPosition($block_uuid, $region_name, $position = NULL) {
+    // Set to the last position if position is greater than available places.
+    if (empty($this->positions[$region_name]) || $position > count($this->positions[$region_name])) {
+      $position = NULL;
+    }
+
+    // Find the current region.
+    if ($current_region = $this->getBlockPosition($block_uuid)) {
+      $current_position = array_search($block_uuid, $this->positions[$current_region]);
+      // Remove the block from the current region.
+      if ($current_position !== FALSE) {
+        unset($this->positions[$current_region][$current_position]);
+        $this->positions[$current_region] = array_values($this->positions[$current_region]);
+      }
+    }
+
+    // Add the block to the new region in the correct position.
+    if (isset($region_position)) {
+      $new_positions = array();
+      foreach (array_values($this->positions[$region_name]) as $region_position => $existing_uuid) {
+        if ($region_position === $position) {
+          $new_positions[] = $block_uuid;
+        }
+        $new_positions[] = $existing_uuid;
+      }
+      $this->positions[$region_name] = $new_positions;
+    }
+    else {
+      $this->positions[$region_name][] = $block_uuid;
     }
   }
 
@@ -408,18 +471,23 @@ class Layout {
    */
   function setPath($path) {
     if (empty($this->menu_item) || $this->menu_item->path !== $path) {
-      // Use an existing menu item if existing.
+      // Use an existing menu item if one exists at this path.
       if ($existing_item = layout_menu_item_load_by_path($path)) {
         $this->menu_item = $existing_item;
       }
       // If this layout doesn't have a menu item, make one. If the path is
       // provided by another module, no menu item is necessary.
       elseif (layout_provides_path($path) === NULL) {
-        $menu_item_settings = array(
-          'path' => $path,
-          'name' => $this->name,
-        );
-        $this->menu_item = new LayoutMenuItem($menu_item_settings);
+        if (empty($this->menu_item)) {
+          $menu_item_settings = array(
+            'path' => $path,
+            'name' => $this->name,
+          );
+          $this->menu_item = new LayoutMenuItem($menu_item_settings);
+        }
+        else {
+          $this->menu_item->path = $path;
+        }
       }
       else {
         if ($this->menu_item) {
@@ -428,7 +496,11 @@ class Layout {
         $this->menu_item = NULL;
       }
     }
-    $this->path = $path;
+    // On any path change, reset contexts.
+    if ($this->path !== $path) {
+      $this->path = $path;
+      $this->resetContexts();
+    }
   }
 
   /**
@@ -463,15 +535,20 @@ class Layout {
 
     // Add on the current user context, which is always available.
     if (!isset($this->contexts['current_user'])) {
-      $this->contexts['current_user'] = layout_create_context('user');
+      $this->contexts['current_user'] = layout_create_context('user', array(
+        'name' => 'current_user',
+        'label' => t('Current user'),
+        'locked' => TRUE,
+      ));
       $this->contexts['current_user']->setData($GLOBALS['user']);
-      $this->contexts['current_user']->plugin = 'user';
     }
 
     // Add on the overrides path context, which is always available.
     if (empty($this->menu_item) && !isset($this->contexts['overrides_path'])) {
-      $this->contexts['overrides_path'] = layout_create_context('overrides_path');
-      $this->contexts['overrides_path']->plugin = 'overrides_path';
+      $this->contexts['overrides_path'] = layout_create_context('overrides_path', array(
+        'name' => 'overrides_path',
+        'locked' => TRUE,
+      ));
     }
 
     return $this->contexts;
@@ -485,6 +562,9 @@ class Layout {
    */
   function resetContexts() {
     $this->contexts = NULL;
+    if ($this->menu_item) {
+      $this->menu_item->resetContexts();
+    }
   }
 
   /**

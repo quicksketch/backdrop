@@ -67,36 +67,11 @@ class LayoutAccess extends LayoutHandler {
     else {
       $item = $form_state['layout'];
     }
-    $info = layout_get_access_info($this->plugin);
+    $access_info = layout_get_access_info($this->plugin);
+    $contexts = $item->getContexts();
+    $current_context_settings = $this->settings['contexts'];
 
-    $form['contexts'] = array(
-      '#tree' => TRUE,
-      '#weight' => -20,
-    );
-    if (isset($info['required contexts'])) {
-      foreach ($info['required contexts'] as $context_key => $context_type) {
-        if (isset($info['required contexts labels'][$context_key])) {
-          $label = $info['required contexts labels'][$context_key];
-        }
-        else {
-          $context_info = layout_get_context_info($context_type);
-          $label = $context_info['title'];
-        }
-        $options = array();
-        foreach ($item->getContexts() as $layout_context_key => $context) {
-          if ($context->plugin === $context_type) {
-            $options[$layout_context_key] = $context->label();
-          }
-        }
-        $form['contexts'][$context_key] = array(
-          '#type' => 'select',
-          '#title' => $label,
-          '#default_value' => isset($this->settings['contexts'][$context_key]) ? $this->settings['contexts'][$context_key] : NULL,
-          '#options' => $options,
-          '#access' => count($options) > 1,
-        );
-      }
-    }
+    $form['contexts'] = $form['contexts'] = layout_contexts_form_element($contexts, $current_context_settings, $access_info);
   }
 
 

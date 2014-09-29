@@ -86,6 +86,17 @@ class LayoutMenuItem {
   var $conditions = array();
 
   /**
+   * An array of context configurations.
+   *
+   * Each item in this array is an array keyed by path position with the
+   * following values:
+   *   - plugin: The name of the context plugin for this argument.
+   *   - name: The automatically generated name for this context.
+   *   - position: The position in the path for this context.
+   */
+  var $arguments = array();
+
+  /**
    * Whether this layout is locked (being currently edited).
    *
    * @var boolean
@@ -146,6 +157,7 @@ class LayoutMenuItem {
       'path' => $this->path,
       'menu' => $this->menu,
       'conditions' => array(),
+      'arguments' => $this->arguments,
     );
 
     // Convert all conditions.
@@ -225,15 +237,37 @@ class LayoutMenuItem {
     if (is_null($this->contexts)) {
       // Required contexts are generated on-demand.
       $contexts = layout_context_required_by_path($this->path);
+      $path_parts = explode('/', $this->path);
+
+      // Add in configured arguments.
+      foreach ($this->arguments as $position => $argument_config) {
+        if (isset($path_parts[$position]) && $path_parts[$position] === '%') {
+          $context_config = $argument_config + array('required' => TRUE);
+          $contexts[$position] = layout_create_context($argument_config['plugin'], $context_config);
+        }
+      }
 
       // Add on the current user context, which is always available.
-      $contexts['current_user'] = layout_create_context('user');
+      $contexts['current_user'] = layout_create_context('user', array(
+        'name' => 'current_user',
+        'label' => t('Current user'),
+        'locked' => TRUE,
+      ));
       $contexts['current_user']->setData($GLOBALS['user']);
-      $contexts['current_user']->plugin = 'user';
 
       $this->contexts = $contexts;
     }
     return $this->contexts;
+  }
+
+  /**
+   * Reset the internally stored contexts.
+   *
+   * This is used before storing a layout, or when fresh contexts are important,
+   * such as when actively changing the layout's path.
+   */
+  function resetContexts() {
+    $this->contexts = NULL;
   }
 
   /**

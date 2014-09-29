@@ -7,7 +7,7 @@ regions[header] = Header
 regions[top] = Top
 regions[content] = Content
 regions[sidebar] = Sidebar
-regions[footer] = Footer bottom
+regions[footer] = Footer
 
 ; Content is the default region by default, but specify it for clarity.
 default region = content

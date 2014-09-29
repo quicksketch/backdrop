@@ -22,7 +22,12 @@ class LayoutBlockLegacy extends LayoutBlock {
         'module' => $this->module,
         'delta' => $this->delta,
       );
-      $this->content = module_invoke($this->module, 'block_view', $this->delta, $this->settings['block_settings']);
+      // Simply contexts down to their raw data.
+      $context_data = array();
+      foreach ($this->contexts as $context_name => $context) {
+        $context_data[$context_name] = $context->data;
+      }
+      $this->content = module_invoke($this->module, 'block_view', $this->delta, $this->settings['block_settings'], $context_data);
       backdrop_alter(array('block_view', 'block_view_' . $this->module . '_' . $this->delta), $this->content, $legacy_block, $this->settings['block_settings']);
     }
     return $this->content;

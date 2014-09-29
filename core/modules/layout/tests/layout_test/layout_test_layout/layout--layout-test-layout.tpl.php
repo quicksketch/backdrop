@@ -1,9 +1,7 @@
 <?php
 /**
  * @file
- * Template for a 2 column layout.
- *
- * This template provides a two column layout with a roughly 60/40 split.
+ * Template for a test layout, very similar to the normal 2 column layout.
  *
  * Variables:
  * - $attributes: A string of attributes to be added to the layout wrapper.
@@ -16,7 +14,7 @@
  *   - $content['footer']
  */
 ?>
-<div class="layout-two-column <?php print $classes; ?>"<?php print $attributes; ?>>
+<div class="layout-test-layout <?php print $classes; ?>"<?php print $attributes; ?>>
   <div id="skip-link">
     <a href="#main-content" class="element-invisible element-focusable"><?php print t('Skip to main content'); ?></a>
   </div>

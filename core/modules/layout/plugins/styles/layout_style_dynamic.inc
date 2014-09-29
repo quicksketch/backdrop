@@ -11,8 +11,8 @@ class LayoutStyleDynamic extends LayoutStyle {
     parent::__construct($plugin_name, $data);
     $this->settings += array(
       'wrapper_tag' => 'div',
-      'heading_tag' => 'h2',
-      'heading_classes' => 'layout-block',
+      'title_tag' => 'h2',
+      'title_classes' => 'block-title',
       'content_tag' => 'div',
       'content_classes' => '',
     );
@@ -43,7 +43,7 @@ class LayoutStyleDynamic extends LayoutStyle {
       $form['classes']['#states'] = array(
         'invisible' => array('[name="style_settings[wrapper_tag]"]' => array('value' => '')),
       );
-      $form['heading'] = array(
+      $form['title_tag'] = array(
         '#title' => t('Heading level'),
         '#type' => 'select',
         '#options' => array(
@@ -56,14 +56,14 @@ class LayoutStyleDynamic extends LayoutStyle {
           'div' => 'DIV',
           'p' => 'P',
         ),
-        '#default_value' => $this->settings['heading_tag'],
+        '#default_value' => $this->settings['title_tag'],
         '#weight' => 2,
       );
-      $form['heading_classes'] = array(
+      $form['title_classes'] = array(
         '#title' => t('Heading classes'),
         '#type' => 'textfield',
-        '#default_value' => $this->settings['classes'],
-        '#description' => t('Additional classes to be added to the block heading.'),
+        '#default_value' => $this->settings['title_classes'],
+        '#description' => t('Additional classes to be added to the block title.'),
         '#weight' => 3,
       );
       $form['content_tag'] = array(

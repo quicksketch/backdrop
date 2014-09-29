@@ -7,13 +7,6 @@
 
 class LayoutRendererEditor extends LayoutRendererStandard {
   /**
-   * Set to true if edit links (for blocks and regions) should not be displayed.
-   * This can be used for special edit modes such as layout change and layout
-   * builder that do not actually have real content.
-   */
-  var $no_edit_links = FALSE;
-
-  /**
    * {@inheritdoc}
    */
   function __construct(Layout $layout, array $renderer_plugin) {
@@ -112,9 +105,6 @@ class LayoutRendererEditor extends LayoutRendererStandard {
    * Render the links to display when editing a region.
    */
   protected function getRegionLinks($region_id) {
-    if (!empty($this->no_edit_links)) {
-      return '';
-    }
     $links = array();
     $links['add'] = array(
       'title' => t('Add block'),
@@ -138,10 +128,6 @@ class LayoutRendererEditor extends LayoutRendererStandard {
    * Render the links to display when editing a block.
    */
   protected function getBlockLinks($block) {
-    if (!empty($this->no_edit_links)) {
-      return '';
-    }
-
     $links = array();
     $links['configure'] = array(
       'title' => t('Configure'),

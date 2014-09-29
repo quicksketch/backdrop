@@ -211,6 +211,7 @@ function layout_settings_form($form, &$form_state, Layout $layout) {
     '#default_value' => $layout->layout,
     '#options' => array(),
     '#wrapper_attributes' => array('class' => array('clearfix', 'layout-options')),
+    '#required' => TRUE,
   );
   // Get the list of layout options.
   $all_layout_info = layout_get_layout_info();
@@ -271,12 +272,12 @@ function layout_settings_form($form, &$form_state, Layout $layout) {
   );
 
   foreach ($contexts as $context_key => $layout_context) {
-    if ($layout_context->locked) {
+    if ($layout_context->position && $layout_context->locked) {
       $form['context_wrapper']['context']['required'][$context_key]['plugin'] = array(
-        '#markup' => $layout_context->label(),
+        '#markup' => check_plain($all_context_info[$layout_context->plugin]['title']),
       );
     }
-    elseif ($layout_context->required) {
+    elseif ($layout_context->position && $layout_context->required) {
       $form['context_wrapper']['context']['required'][$context_key]['plugin'] = array(
         '#type' => 'select',
         '#options' => $context_options,
@@ -487,29 +488,43 @@ function layout_settings_form_update_layout($form, &$form_state) {
   if ($layout->menu_item && isset($form_state['values']['context'])) {
     $plugin_counts = array();
     $arguments = array();
-    foreach ($form_state['values']['context']['required'] as $position => $argument_config) {
-      $plugin = $argument_config['plugin'];
+
+    foreach ($layout->getContexts() as $position => $layout_context) {
+      if (isset($form_state['values']['context']['required'][$position])) {
+        $argument_config = $form_state['values']['context']['required'][$position];
+        $plugin = $argument_config['plugin'];
+      }
+      else {
+        $plugin = $layout_context->plugin;
+      }
+
+      // Keep track of all utilized plugins, both required and locked.
       $plugin_counts[$plugin] = isset($plugin_counts[$plugin]) ? $plugin_counts[$plugin] + 1 : 1;
-      // Give an automatically generated name such as "node1" or "string2".
-      $name = $plugin . $plugin_counts[$plugin];
-      $uuid = new Uuid();
-      $uuid = $uuid->generate();
-      // Check if a machine name already exists for this context.
+
+      // Locked contexts are forced to be at this path, so they do not need to
+      // be saved in the menu item's argument configuration.
+      if ($layout_context->locked) {
+        continue;
+      }
+
+      // Give an automatically generated name such as "node" or "string2".
+      $name = $plugin . (($plugin_counts[$plugin] === 1) ? '' : $plugin_counts[$plugin]);
+
+      // Persist machine names if they already exists for this argument.
       if (isset($layout->menu_item->arguments[$position])) {
-        $existing_context = $layout->menu_item->arguments[$position];
-        if ($existing_context['plugin'] === $plugin) {
-          $name = $existing_context['name'];
-          $uuid = $existing_context['uuid'];
+        $existing_argument = $layout->menu_item->arguments[$position];
+        if ($existing_argument['plugin'] === $plugin) {
+          $name = $existing_argument['name'];
         }
       }
+
       $arguments[$position] = array(
         'plugin' => $plugin,
         'name' => $name,
         'position' => $position,
-        'uuid' => $uuid,
       );
-      $layout->menu_item->arguments = $arguments;
     }
+    $layout->menu_item->arguments = $arguments;
   }
 
   if (!empty($layout->is_new)) {
@@ -594,8 +609,6 @@ function layout_settings_form_save_submit($form, &$form_state) {
  * @see panels_edit_display_submit()
  */
 function layout_content_form($form, &$form_state, Layout $layout, $renderer_name = NULL) {
-  global $user;
-
   if (!isset($form_state['layout'])) {
     $form_state['layout'] = $layout;
   }
@@ -819,12 +832,15 @@ function layout_block_configure_form($form, &$form_state, Layout $layout, Layout
   if (!isset($form_state['renderer'])) {
     $form_state['renderer'] = layout_create_renderer($renderer_name, $layout);
   }
+  if (!isset($region_name)) {
+    $region_name = $layout->getBlockPosition($block->uuid);
+  }
 
   if (empty($block->uuid)) {
-    $form['#title'] = t('Add block "@title"', array('@title' => $block->getAdminTitle()));
+    $form['#title'] = t('Add block "!title"', array('!title' => $block->getAdminTitle()));
   }
   else {
-    $form['#title'] = t('Configure block "@title"', array('@title' => $block->getAdminTitle()));
+    $form['#title'] = t('Configure block "!title"', array('!title' => $block->getAdminTitle()));
   }
 
   $layout_info = layout_get_layout_info($layout->layout);
@@ -1076,9 +1092,11 @@ function layout_block_configure_form_submit($form, &$form_state) {
   // Insert new blocks into the layout. Updates to $block are already done by
   // reference, so no additional action is needed for updating.
   else {
-    if ($form_state['values']['region']) {
+    if (!isset($layout->content[$block->uuid])) {
       $layout->content[$block->uuid] = $block;
-      $layout->positions[$form_state['values']['region']][] = $block->uuid;
+    }
+    if ($form_state['values']['region']) {
+      $layout->setBlockPosition($block->uuid, $form_state['values']['region']);
     }
     // Clean up the in_progress value now that we're fully done.
     $layout->in_progress = NULL;
@@ -1095,7 +1113,7 @@ function layout_block_configure_ajax_update($form, $form_state) {
   $layout = $form_state['layout'];
   $block = $form_state['block'];
   $renderer = $form_state['renderer'];
-  $added_to_region = isset($layout->in_progress['region_name']) ? $layout->in_progress['region_name'] : $form_state['values']['region'];
+  $added_to_region = $block->is_new ? (isset($layout->in_progress['region_name']) ? $layout->in_progress['region_name'] : $form_state['values']['region']) : FALSE;
 
   // Display error messages in the form if any.
   if (form_get_errors()) {
@@ -1170,7 +1188,7 @@ function layout_condition_add_form($form, &$form_state, Layout $layout = NULL, L
     $help = t('Add a new condition to restrict access to all layouts at this path.');
   }
   elseif (isset($block)) {
-    $form['#title'] = t('Add condition for "@title" block', array('@title' => $block->getAdminTitle()));
+    $form['#title'] = t('Add condition for "!title" block', array('!title' => $block->getAdminTitle()));
     $form['#redirect'] = 'admin/structure/layouts/manage/' . $layout->name;
     $help = t('Add a new condition to limit the situations in which this block will be shown.');
   }
@@ -1894,6 +1912,51 @@ function layout_menu_item_form_reset($form, &$form_state) {
   $menu_item = $form_state['menu_item'];
   layout_clear_layout_tempstore($menu_item->name, 'menu_item');
   backdrop_set_message(t('Menu item changes discarded.'));
+}
+
+/**
+ * Partial form to generate a select list for selecting context.
+ *
+ * @param array $available_contexts
+ *   An array of contexts from a layout, as retrieved by Layout::getContexts().
+ * @param array $info
+ *   An array of block or condition info, as provided by
+ *   layout_get_access_info() or layout_get_block_info(). The list of required
+ *   contexts is pulled from here (if any).
+ * @param array $current_context_settings
+ *   An array of current context settings, used for populating the defaults.
+ */
+function layout_contexts_form_element(array $available_contexts, array $current_context_settings, array $info) {
+  $element = array(
+    '#tree' => TRUE,
+    '#weight' => -20,
+  );
+  if (isset($info['required contexts'])) {
+    foreach ($info['required contexts'] as $context_key => $context_type) {
+      if (isset($info['required contexts labels'][$context_key])) {
+        $label = $info['required contexts labels'][$context_key];
+      }
+      else {
+        $context_info = layout_get_context_info($context_type);
+        $label = $context_info['title'];
+      }
+      $options = array();
+      foreach ($available_contexts as $layout_context_key => $context) {
+        if ($context->plugin === $context_type) {
+          $options[$layout_context_key] = $context->label();
+        }
+      }
+      if (count($options) > 1) {
+        $element[$context_key] = array(
+          '#type' => 'select',
+          '#title' => check_plain($label),
+          '#default_value' => isset($current_context_settings[$context_key]) ? $current_context_settings[$context_key] : NULL,
+          '#options' => $options,
+        );
+      }
+    }
+  }
+  return $element;
 }
 
 /**

@@ -12,7 +12,7 @@ class EntityLayoutContext extends LayoutContext {
   protected $entity_type;
 
   function __construct($plugin_name, $config = array()) {
-    parent::__construct($plugin_name, $config = array());
+    parent::__construct($plugin_name, $config);
 
     $this->entity_type = $plugin_name;
   }
@@ -31,16 +31,11 @@ class EntityLayoutContext extends LayoutContext {
         return t('Unknown @type: @id', array('@type' => $info['label'], '@id' =>$this->settings['id']));
       }
     }
-    elseif ($this->locked) {
-      return t('@type from path', array('@type' => $info['label']));
+    if ($this->entity_type === 'user' && isset($this->name) && $this->name === 'current_user') {
+      return t('Current user');
     }
     else {
-      if ($this->entity_type === 'user') {
-        return t('Current user');
-      }
-      else {
-        return check_plain($info['label']);
-      }
+      return parent::label();
     }
   }
 }

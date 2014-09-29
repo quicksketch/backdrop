@@ -4,7 +4,7 @@ description = Tests the interface for adding, removing, and moving blocks.
 group = Layout
 file = tests/layout.test
 
-[LayoutUpgradeTest]
+[LayoutUpgradePathTest]
 name = Layout Upgrade Test
 description = Tests the upgrade path from block-based regions to layouts.
 group = Layout

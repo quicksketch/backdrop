@@ -19,12 +19,25 @@ abstract class LayoutContext {
   /**
    * Indicator as to whether this context is required and cannot be removed.
    *
+   * Required contexts typically are those provided by a menu path wildcard.
+   * While these contexts are required to exist, they can be changed to a
+   * different type of context. e.g. A layout at path "foo/%" could have a
+   * required context at position 1 with either a "node" or "string" plugin. The
+   * required characteristic means that this context must exist, but its type
+   * may be user-defined.
+   *
    * @var bool
    */
   var $required = FALSE;
 
   /**
    * Indicator as to whether this context may not be changed to a different one.
+   *
+   * Locked contexts are those that are provided by a menu path and tied to a
+   * particular context through hook_layout_context_info(). e.g. A layout at
+   * path "node/%" will have a locked context of type "node" in position 1.
+   * Locked contexts must always exist and may not be changed to a different
+   * type through the UI.
    *
    * @var bool
    */
@@ -35,8 +48,24 @@ abstract class LayoutContext {
    *
    * If this context is bound to an argument in a path, this will match that
    * position in the path.
+   *
+   * @var int
    */
   var $position;
+
+  /**
+   * A machine-name for this context.
+   *
+   * Usually this is auto-generated, but may be customizable in the future.
+   */
+  var $name;
+
+  /**
+   * The human-readable label for this context if available.
+   *
+   * @var string
+   */
+  var $label;
 
   /**
    * The data within this context.
@@ -69,6 +98,18 @@ abstract class LayoutContext {
    */
   function __construct($plugin_name, $config = array()) {
     $this->plugin = $plugin_name;
+    $properties = array(
+      'required',
+      'locked',
+      'position',
+      'name',
+      'label',
+    );
+    foreach ($properties as $property) {
+      if (isset($config[$property])) {
+        $this->$property = $config[$property];
+      }
+    }
   }
 
   /**
@@ -80,8 +121,16 @@ abstract class LayoutContext {
    * Assemble a human-readable label of this object.
    */
   function label() {
+    if ($this->label) {
+      return $this->label;
+    }
     $info = layout_get_context_info($this->plugin);
-    return $info['title'];
+    if (isset($this->position)) {
+      return t('@label from path (position @position)', array('@label' => $info['title'], '@position' => $this->position + 1));
+    }
+    else {
+      return check_plain($info['title']);
+    }
   }
 
   /**

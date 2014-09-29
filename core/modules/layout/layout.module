@@ -343,7 +343,7 @@ function layout_page_menu_item(array $menu, array $access_arguments, array $page
  * Menu title callback; Return the title for editing a layout.
  */
 function layout_page_title(Layout &$layout) {
-  return t('Edit @layout', array('@layout' => $layout->title));
+  return t('Edit %layout at @path', array('%layout' => $layout->title, '@path' => $layout->getPath()));
 }
 
 /**
@@ -381,9 +381,9 @@ function layout_route_handler($router_item) {
 
     // Contexts must be set before the layout's access may be checked.
     $contexts = $layout->getContexts();
-    foreach ($contexts as $position => $context) {
-      if (is_numeric($position)) {
-        $context->setData($router_item['map'][$position]);
+    foreach ($contexts as $context) {
+      if (isset($context->position) && isset($router_item['map'][$context->position])) {
+        $context->setData($router_item['map'][$context->position]);
       }
     }
 
@@ -403,9 +403,9 @@ function layout_route_handler($router_item) {
 
     // Set the data in each context based on the provided menu handler.
     $contexts = $selected_layout->getContexts();
-    foreach ($contexts as $position => $context) {
-      if (is_numeric($position)) {
-        $context->setData($router_item['map'][$position]);
+    foreach ($contexts as $context) {
+      if (isset($context->position) && isset($router_item['map'][$context->position])) {
+        $context->setData($router_item['map'][$context->position]);
       }
     }
   }
@@ -824,6 +824,9 @@ function _layout_get_all_info($data_type, $init = array()) {
           if (isset($info['path'])) {
             $info['path'] = $module_path . '/' . $info['path'];
           }
+          else {
+            $info['path'] = $module_path;
+          }
           $all_info[$data_type][$key] = $info;
         }
       }
@@ -858,6 +861,8 @@ function layout_get_layout_info($layout_name = NULL) {
       foreach ($files as $name => $file) {
         $init[$name] = backdrop_parse_info_file($file->uri);
         $init[$name]['path'] = dirname($file->uri);
+        $init[$name]['title'] = $init[$name]['name'];
+        $init[$name]['name'] = $name;
       }
       $info = _layout_get_all_info('layout', $init);
     }
@@ -1086,10 +1091,8 @@ function layout_set_layout_tempstore($item, $type = 'layout') {
   }
 
   // Layout contexts should not be stored in the tempstore, they're generated on
-  // the fly when needed.
-  if ($type === 'layout') {
-    $item->resetContexts();
-  }
+  // the fly when needed after loading.
+  $item->resetContexts();
   $item->locked = array(
     'uid' => $GLOBALS['user']->uid,
     'updated' => REQUEST_TIME,
@@ -1257,14 +1260,14 @@ function layout_set_handler_contexts(array &$contexts, array $all_contexts, arra
       $layout_context_key = $context_settings[$required_context_key];
       if (isset($all_contexts[$layout_context_key]) && $all_contexts[$layout_context_key]->plugin === $context_type) {
         $contexts[$required_context_key] = $all_contexts[$layout_context_key];
-        break;
+        continue;
       }
     }
     // Otherwise use the first context that matches the right type.
     foreach ($all_contexts as $layout_context) {
       if ($context_type == $layout_context->plugin) {
         $contexts[$required_context_key] = $layout_context;
-        break 2;
+        continue 2;
       }
     }
     // If we reach here, no matching required context was found, empty all

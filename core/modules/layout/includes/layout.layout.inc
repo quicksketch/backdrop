@@ -165,7 +165,7 @@ function layout_layout_style_info() {
     'region theme' => NULL,
     'block theme' => 'layout_block_dynamic',
     'class' => 'LayoutStyleDynamic',
-    'template' => 'templates/layout-block',
+    'template' => 'templates/layout-block-dynamic',
     'file' => 'includes/layout.theme.inc',
   );
   return $info;

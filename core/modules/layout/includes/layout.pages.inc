@@ -48,9 +48,9 @@ function _layout_page_access() {
 
   // Populate the contexts from the menu system.
   $contexts = $menu_item->getContexts();
-  foreach ($contexts as $position => $context) {
-    if (is_numeric($position) && isset($args[$position])) {
-      $context->setData($args[$position]);
+  foreach ($contexts as $context) {
+    if (isset($context->position) && isset($args[$context->position])) {
+      $context->setData($args[$context->position]);
     }
   }
 
