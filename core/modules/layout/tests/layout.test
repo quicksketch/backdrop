@@ -278,7 +278,6 @@ class LayoutInterfaceTest extends BackdropWebTestCase {
       ':block' => 'layout-editor-block',
     ));
     $block_uuid = (string) $last_block[0]['data-block-id'];
-    debug($block_uuid);
     $block_edit_url = 'admin/structure/layouts/manage/' . $layout_name . '/configure-block/editor/' . $block_uuid;
 
     $this->backdropPost(NULL, array(), t('Save layout'));

@@ -270,9 +270,9 @@ function layout_menu() {
 /**
  * Menu loader callback; Convert %layout_path placeholders to loaded objects.
  */
-function layout_path_load($arg_value, $layout_name, $path_parts, $arg_position) {
-  $layout = layout_load($layout_name);
-  $contexts = $layout->getContexts();
+function layout_path_load($arg_value, $menu_item_name, $path_parts, $arg_position) {
+  $menu_item = layout_menu_item_load($menu_item_name);
+  $contexts = $menu_item->getContexts();
   $context_info = layout_get_context_info($contexts[$arg_position]->plugin);
   if (isset($context_info['load callback']) && function_exists($context_info['load callback'])) {
     return $context_info['load callback']($arg_value);
@@ -343,7 +343,9 @@ function layout_page_menu_item(array $menu, array $access_arguments, array $page
  * Menu title callback; Return the title for editing a layout.
  */
 function layout_page_title(Layout &$layout) {
-  return t('Edit %layout at @path', array('%layout' => $layout->title, '@path' => $layout->getPath()));
+  // Page titles are run through check_plain() before output, so no escaping
+  // here is intentional. See backdrop_get_title().
+  return t('Edit "!layout" at !path', array('!layout' => $layout->title, '!path' => $layout->getPath()));
 }
 
 /**

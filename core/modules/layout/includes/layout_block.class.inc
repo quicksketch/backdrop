@@ -164,7 +164,7 @@ class LayoutBlock extends LayoutHandler {
   function form(&$form, &$form_state) {
     $layout = $form_state['layout'];
     $contexts = $layout->getContexts();
-    $current_context_settings = $this->settings['contexts'];
+    $current_context_settings = isset($this->settings['contexts']) ? $this->settings['contexts'] : array();
     $block_info = layout_get_block_info($this->module, $this->delta);
 
     $form['contexts'] = layout_contexts_form_element($contexts, $current_context_settings, $block_info);
