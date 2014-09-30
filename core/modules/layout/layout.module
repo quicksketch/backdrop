@@ -677,7 +677,12 @@ function layout_load_multiple($layout_names, $skip_menu_items = FALSE) {
   // Return the requested layouts.
   $layouts = array();
   foreach ($layout_names as $layout_name) {
-    $layouts[$layout_name] = $loaded_layouts[$layout_name];
+    if (isset($loaded_layouts[$layout_name])) {
+      $layouts[$layout_name] = $loaded_layouts[$layout_name];
+    }
+    else {
+      $layouts[$layout_name] = FALSE;
+    }
   }
 
   return $layouts;
@@ -942,30 +947,25 @@ function _layout_get_all_info($data_type, $init = array()) {
   $all_info = &backdrop_static(__FUNCTION__);
   if (!isset($all_info[$data_type])) {
     _layout_include_files();
-    if ($cached_info = cache()->get($data_type . '_info')) {
-      $all_info[$data_type] = $cached_info->data;
-    }
-    else {
-      $all_info[$data_type] = $init;
-      foreach (module_implements($data_type . '_info') as $module) {
-        $function = $module . '_' . $data_type . '_info';
-        $data = $function();
-        $module_path = backdrop_get_path('module', $module);
-        foreach ($data as $key => $info) {
-          $info['module'] = $module;
-          $info['name'] = $key;
-          if (isset($info['path'])) {
-            $info['path'] = $module_path . '/' . $info['path'];
-          }
-          else {
-            $info['path'] = $module_path;
-          }
-          $all_info[$data_type][$key] = $info;
+    $all_info[$data_type] = $init;
+    foreach (module_implements($data_type . '_info') as $module) {
+      $function = $module . '_' . $data_type . '_info';
+      $data = $function();
+      $module_path = backdrop_get_path('module', $module);
+      foreach ($data as $key => $info) {
+        $info['module'] = $module;
+        $info['name'] = $key;
+        if (isset($info['path'])) {
+          $info['path'] = $module_path . '/' . $info['path'];
         }
+        else {
+          $info['path'] = $module_path;
+        }
+        $all_info[$data_type][$key] = $info;
       }
-      cache()->set($data_type . '_info', $all_info[$data_type]);
     }
   }
+
   return $all_info[$data_type];
 }
 
