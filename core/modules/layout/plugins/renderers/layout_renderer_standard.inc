@@ -180,12 +180,14 @@ class LayoutRendererStandard {
 
     // Prepare the list of blocks to be rendered
     foreach ($blocks as $uuid => $block) {
-      // First, check that all required contexts at least exist.
-      $has_contexts = $this->layout->hasContexts($block->getRequiredContexts());
-
       // Assign contexts to each block.
-      if ($has_contexts) {
-        $block->setContexts($this->layout->getContexts());
+      $has_contexts = TRUE;
+      $required_contexts = $block->getRequiredContexts();
+      if ($required_contexts) {
+        $has_contexts = $this->layout->hasContexts($required_contexts);
+        if ($has_contexts) {
+          $block->setContexts($this->layout->getContexts());
+        }
       }
 
       // Then check access on the block.
@@ -262,13 +264,17 @@ class LayoutRendererStandard {
       // No region settings exist, init all with the defaults.
       foreach ($this->layout_info['regions'] as $region_id => $title) {
         // Ensure this region has at least an empty block array.
-        $blocks = !empty($region_block_list[$region_id]) ? $region_block_list[$region_id] : array();
+        $blocks = array();
+        if (isset($region_block_list[$region_id])) {
+          $blocks = $region_block_list[$region_id];
+        }
 
         $regions[$region_id] = $default;
         $regions[$region_id]['uuids'] = $blocks;
       }
     }
     else {
+      // @todo: Region style settings are not fully implemented yet.
       // Some settings exist; iterate through each region and set individually.
       foreach ($this->layout_info['regions'] as $region_id => $title) {
         // Ensure this region has at least an empty blocks array.
@@ -394,10 +400,11 @@ class LayoutRendererStandard {
       if ($block->module === 'system' && $block->delta === 'main') {
         $system_content = $this->renderBlock($block);
         $response_code = (int) $system_content;
-        // If a 404 or 403 skip rendering of all other blocks.
+        // If a 404 or 403 skip all rendering and return nothing, as the error
+        // page will generate its own replacement content.
         if ($response_code === MENU_NOT_FOUND || $response_code === MENU_ACCESS_DENIED) {
           $this->menu_response = $response_code;
-          return $this->rendered['blocks'];
+          return array();
         }
       }
     }

@@ -472,7 +472,7 @@ class Layout {
   function setPath($path) {
     if (empty($this->menu_item) || $this->menu_item->path !== $path) {
       // Use an existing menu item if one exists at this path.
-      if ($existing_item = layout_menu_item_load_by_path($path)) {
+      if ($existing_item = layout_menu_item_load_multiple_by_path($path)) {
         $this->menu_item = $existing_item;
       }
       // If this layout doesn't have a menu item, make one. If the path is

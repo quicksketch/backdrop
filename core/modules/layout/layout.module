@@ -231,7 +231,7 @@ function layout_menu() {
   ) + $base;
 
   // Add menu entries for each custom layout path.
-  foreach (layout_get_all_layout_menu_items() as $menu_item) {
+  foreach (layout_menu_item_load_all() as $menu_item) {
     if (!empty($menu_item->disabled)) {
       continue;
     }
@@ -376,11 +376,9 @@ function layout_route_handler($router_item) {
   }
 
   // Find if this page has a specified layout.
-  $layouts = layout_get_path_layout_names($router_item['path']);
+  $layouts = layout_load_multiple_by_path($router_item['path'], TRUE);
   $selected_layout = NULL;
-  foreach ($layouts as $layout_name) {
-    $layout = layout_load($layout_name);
-
+  foreach ($layouts as $layout) {
     // Contexts must be set before the layout's access may be checked.
     $contexts = $layout->getContexts();
     foreach ($contexts as $context) {
@@ -391,24 +389,6 @@ function layout_route_handler($router_item) {
 
     if (!$layout->disabled && $layout->checkAccess()) {
       $selected_layout = $layout;
-    }
-  }
-
-  // If no specific layout is found at the given page, use the default layout.
-  if (!$selected_layout) {
-    if (path_is_admin($_GET['q'])) {
-      $selected_layout = layout_load('admin_default');
-    }
-    else {
-      $selected_layout = layout_load('default');
-    }
-
-    // Set the data in each context based on the provided menu handler.
-    $contexts = $selected_layout->getContexts();
-    foreach ($contexts as $context) {
-      if (isset($context->position) && isset($router_item['map'][$context->position])) {
-        $context->setData($router_item['map'][$context->position]);
-      }
     }
   }
 
@@ -563,6 +543,7 @@ function layout_autoload_info() {
     'Layout' => 'includes/layout.class.inc',
     'LayoutBlock' => 'includes/layout_block.class.inc',
     'LayoutBlockLegacy' => 'includes/layout_block_legacy.class.inc',
+    'LayoutBlockBroken' => 'includes/layout_block.class.inc',
     'LayoutMenuItem' => 'includes/layout_menu_item.class.inc',
 
     // Exceptions.
@@ -617,121 +598,138 @@ function layout_contextual_links_view_alter(&$element, $items) {
 }
 
 /**
- * Return an array of all layouts as fully loaded Layout objects.
+ * Load an individual layout.
+ * @param string $layout_name
+ *   The layout machine name to load.
+ * @param bool $skip_menu_items
+ *   Flag to skip the attempted loading of menu items for the loaded layouts.
+ *   This should be set to TRUE if loading layouts that definitely do not have
+ *   menu items associated with them, for example the default layouts or a
+ *   layout that overrides an existing menu path.
+ *
+ * @return Layout|boolean
  */
-function layout_get_all_layouts() {
-  $layouts = &backdrop_static(__FUNCTION__);
-  if (!isset($layouts)) {
-    $layouts = array();
-    $menu_items = layout_get_all_layout_menu_items();
+function layout_load($layout_name, $skip_menu_items = NULL) {
+  // Skip menu item loading for default layouts, as we know they do not have
+  // an associated menu item.
+  if (is_null($skip_menu_items)) {
+    $skip_menu_items = in_array($layout_name, array('default', 'admin_default'));
+  }
+
+  $layouts = layout_load_multiple(array($layout_name), $skip_menu_items);
+  return $layouts[$layout_name];
+}
+
+
+/**
+ * Load multiple layouts based on a particular criteria.
+ *
+ * @param array $layout_names
+ *   The names of the layouts to be loaded.
+ * @param bool $skip_menu_items
+ *   Flag to skip the attempted loading of menu items for the loaded layouts.
+ *   This should be set to TRUE if loading layouts that definitely do not have
+ *   menu items associated with them, for example the default layouts or a
+ *   layout that overrides an existing menu path.
+ *
+ * @return array
+ *   An array of Layout object instances.
+ */
+function layout_load_multiple($layout_names, $skip_menu_items = FALSE) {
+  $loaded_layouts = &backdrop_static(__FUNCTION__, array());
+
+  $layouts_to_load = array();
+  foreach ($layout_names as $layout_name) {
+    if (!isset($loaded_layouts[$layout_name])) {
+      $layouts_to_load[] = $layout_name;
+    }
+  }
+
+  if ($layouts_to_load) {
+    $menu_items = layout_menu_item_load_multiple($layout_names);
 
     // Cache the raw config files once read.
-    if ($cache = cache()->get('layout:layouts:config')) {
-      $configs = $cache->data;
-    }
-    else {
-      $configs = array();
-      $config_names = config_get_names_with_prefix('layout.layout.');
-      foreach ($config_names as $config_file) {
-        $config = config($config_file);
-        $data = $config->get();
-        $data += array(
-          'weight' => 0,
-        );
-        $configs[$data['name']] = $data;
-      }
-      // Sort the configs by path and weight.
-      uasort($configs, function($a, $b) {
-        if ($a['path'] == $b['path']) {
-          if ($a['weight'] == $b['weight']) {
-            return 0;
-          }
-          return ($a['weight'] < $b['weight']) ? -1 : 1;
-        }
-        else {
-          // Put default layouts at the bottom.
-          if (empty($b['path'])) {
-            return -1;
-          }
-          elseif (empty($a['path'])) {
-            return 1;
-          }
-          return strcmp($a['path'], $b['path']);
-        }
-      });
-      cache()->set('layout:layouts:config', $configs);
-    }
+    $configs = layout_get_all_configs('layout');
 
-    foreach ($configs as $layout_name => $layout_data) {
-      // Create the layout from the configuration.
-      $layouts[$layout_name] = new Layout($layout_data);
+    // Create the layout instances and associate the menu items with each.
+    foreach ($layouts_to_load as $layout_name) {
+      if (isset($configs[$layout_name])) {
+        $layout_data = $configs[$layout_name];
+        $loaded_layouts[$layout_name] = new Layout($layout_data);
 
-      // Associate the applicable menu item.
-      if (isset($menu_items[$layout_data['path']])) {
-        $layouts[$layout_name]->menu_item = $menu_items[$layout_data['path']];
-      }
-      else {
-        $layouts[$layout_name]->menu_item = NULL;
+        // Associate the applicable menu item.
+        if (isset($layout_data['path']) && !$skip_menu_items) {
+          // Most of the time, layouts will be loaded as a group, including the
+          // layout that owns the menu item.
+          if (isset($menu_items[$layout_data['path']])) {
+            $loaded_layouts[$layout_name]->menu_item = $menu_items[$layout_data['path']];
+          }
+          // In the situation that a layout is loaded separately of its menu
+          // item owner, load the menu item by path.
+          elseif ($menu_item = layout_menu_item_load_multiple_by_path($layout_data['path'])) {
+            $loaded_layouts[$layout_name]->menu_item = $menu_item;
+          }
+        }
       }
     }
+  }
+
+  // Return the requested layouts.
+  $layouts = array();
+  foreach ($layout_names as $layout_name) {
+    $layouts[$layout_name] = $loaded_layouts[$layout_name];
   }
 
   return $layouts;
 }
 
-/**
- * Return an array of all menu items as fully loaded LayoutMenuItem objects.
- */
-function layout_get_all_layout_menu_items() {
-  $menu_items = &backdrop_static(__FUNCTION__);
-  if (!isset($menu_items)) {
-
-    // Cache the raw config files once read.
-    if ($cache = cache()->get('layout:menu_items:config')) {
-      $configs = $cache->data;
-    }
-    else {
-      $configs = array();
-      $config_names = config_get_names_with_prefix('layout.menu_item.');
-      foreach ($config_names as $config_file) {
-        $config = config($config_file);
-        $data = $config->get();
-        $configs[$data['name']] = $data;
-      }
-      cache()->set('layout:menu_items:config', $configs);
-    }
-
-    $menu_items = array();
-    foreach ($configs as $data) {
-      $menu_items[$data['path']] = new LayoutMenuItem($data);
-    }
-  }
-  return $menu_items;
-}
 
 /**
- * Get a list of layouts that share a particular path.
- */
-function layout_get_path_layout_names($path) {
-  $path_map = array();
-  // @todo: This desperately needs optimization or at least its own cache.
-  $layouts = layout_get_all_layouts();
-  foreach ($layouts as $name => $layout) {
-    $path_map[$layout->getPath()][] = $name;
-  }
-
-  return isset($path_map[$path]) ? $path_map[$path] : array();
-}
-
-/**
- * Load an individual layout.
+ * Load all layouts at a given path.
  *
- * @return Layout|boolean
+ * @param string $path
+ *   The menu routing path, with all wildcards represented by "%" symbols.
+ *
+ * @return array
+ *   An array of load Layout object instances.
  */
-function layout_load($layout_name) {
-  $layouts = layout_get_all_layouts();
-  return isset($layouts[$layout_name]) ? $layouts[$layout_name] : FALSE;
+function layout_load_multiple_by_path($path, $skip_menu_items = NULL) {
+  if ($cache = cache('layout_path')->get($path)) {
+    $layouts = $cache->data;
+  }
+  else {
+    $layout_names = layout_get_path_layout_names($path);
+    if (empty($layout_names)) {
+      // Skip loading menu items for the default layouts.
+      if (is_null($skip_menu_items)) {
+        $skip_menu_items = TRUE;
+      }
+      if (path_is_admin($_GET['q'])) {
+        $layout_names[] = 'admin_default';
+      }
+      else {
+        $layout_names[] = 'default';
+      }
+    }
+
+    $layouts = layout_load_multiple($layout_names, $skip_menu_items);
+    cache('layout_path')->set($path, $layouts);
+  }
+  return $layouts;
 }
+
+/**
+ * Return an array of all layouts as fully loaded Layout objects.
+ *
+ * Note that this operation can be very expensive and its use is discouraged.
+ * Use layout_load_multiple() to load specific layouts.
+ */
+function layout_load_all() {
+  $configs = layout_get_all_configs('layout');
+  $layout_names = array_keys($configs);
+  return layout_load_multiple($layout_names);
+}
+
 
 /**
  * Load an individual Layout menu item.
@@ -739,17 +737,143 @@ function layout_load($layout_name) {
  * @return LayoutMenuItem|boolean
  */
 function layout_menu_item_load($menu_item_name) {
-  $menu_items = layout_get_all_layout_menu_items();
-  $path = config_get('layout.menu_item.' . $menu_item_name, 'path');
-  return ($path && isset($menu_items[$path])) ? $menu_items[$path] : FALSE;
+  $menu_items = layout_menu_item_load_multiple(array($menu_item_name));
+  return $menu_items[$menu_item_name];
+}
+
+/**
+ * Load menu items by name.
+ *
+ * @param array $menu_item_names
+ *   An array of menu item names, if left empty, all Layout menu items will
+ *   be returned.
+ *
+ * @return array
+ *   An array of loaded LayoutMenuItem instances, keyed by the layout menu item
+ *   path.
+ */
+function layout_menu_item_load_multiple($menu_item_names = NULL) {
+  $loaded_menu_items = &backdrop_static(__FUNCTION__, array());
+
+  $menu_items_to_load = array();
+  foreach ($menu_item_names as $menu_item_name) {
+    if (!isset($loaded_menu_items[$menu_item_name])) {
+      $menu_items_to_load[] = $menu_item_name;
+    }
+  }
+
+  if ($menu_items_to_load) {
+    $configs = layout_get_all_configs('menu_item');
+    foreach ($menu_items_to_load as $menu_item_name) {
+      if (isset($configs[$menu_item_name])) {
+        $loaded_menu_items[$menu_item_name] = new LayoutMenuItem($configs[$menu_item_name]);
+      }
+    }
+  }
+
+  // Return the requested menu items.
+  $menu_items = array();
+  foreach ($menu_item_names as $menu_item_name) {
+    if (isset($loaded_menu_items[$menu_item_name])) {
+      $path = $loaded_menu_items[$menu_item_name]->path;
+      $menu_items[$path] = $loaded_menu_items[$menu_item_name];
+    }
+  }
+
+  return $menu_items;
 }
 
 /**
  * Load an individual Layout menu item based on its path.
  */
-function layout_menu_item_load_by_path($path) {
-  $menu_items = layout_get_all_layout_menu_items($path);
-  return isset($menu_items[$path]) ? $menu_items[$path] : FALSE;
+function layout_menu_item_load_multiple_by_path($path) {
+  $configs = layout_get_all_configs('menu_item');
+  foreach ($configs as $menu_item_name => $config) {
+    if ($config['path'] === $path) {
+      return layout_menu_item_load($menu_item_name);
+    }
+  }
+  return FALSE;
+}
+
+/**
+ * Return an array of all menu items as fully loaded LayoutMenuItem objects.
+ *
+ * Note this operation may be expensive. It should only be called in areas where
+ * the results will be cached, e.g. on menu rebuild.
+ */
+function layout_menu_item_load_all() {
+  $configs = layout_get_all_configs('menu_item');
+  $menu_item_names = array_keys($configs);
+  return layout_menu_item_load_multiple($menu_item_names);
+}
+
+/**
+ * Read all configuration files from disk of a particular layout type.
+ *
+ * This method provides basic caching around Layout's config files.
+ *
+ * @param $type
+ *   Either "layout" or "menu_item".
+ * @return array
+ *   An array of all configs for the specified type.
+ */
+function layout_get_all_configs($type) {
+  // Cache the raw config files once read.
+  if ($cache = cache()->get('layout:' . $type . ':config')) {
+    $configs = $cache->data;
+  }
+  else {
+    $configs = array();
+    $config_names = config_get_names_with_prefix('layout.' . $type . '.');
+    foreach ($config_names as $config_file) {
+      $config = config($config_file);
+      $data = $config->get();
+      $data += array(
+        'weight' => 0,
+      );
+      $configs[$data['name']] = $data;
+    }
+
+    // Sort the configs by path and weight.
+    uasort($configs, function($a, $b) {
+      if ($a['path'] == $b['path']) {
+        if ($a['weight'] == $b['weight']) {
+          return 0;
+        }
+        return ($a['weight'] < $b['weight']) ? -1 : 1;
+      }
+      else {
+        // Put default layouts at the bottom.
+        if (empty($b['path'])) {
+          return -1;
+        }
+        elseif (empty($a['path'])) {
+          return 1;
+        }
+        return strcmp($a['path'], $b['path']);
+      }
+    });
+    cache()->set('layout:' . $type . ':config', $configs);
+  }
+
+  return $configs;
+}
+
+/**
+ * Get a list of layouts that share a particular path.
+ */
+function layout_get_path_layout_names($path) {
+  $path_map = &backdrop_static(__FUNCTION__, array());
+
+  $configs = layout_get_all_configs('layout');
+  foreach ($configs as $layout_name => $config) {
+    if (isset($config['path'])) {
+      $path_map[$config['path']][] = $layout_name;
+    }
+  }
+
+  return isset($path_map[$path]) ? $path_map[$path] : array();
 }
 
 /**
@@ -780,11 +904,18 @@ function layout_provides_path($path) {
  * Reset all caches provided by Layout module.
  */
 function layout_reset_caches() {
-  cache()->delete('layout:layouts:config');
-  cache()->delete('layout:menu_items:config');
+  cache()->delete('layout:layout:config');
+  cache()->delete('layout:menu_item:config');
+  cache('layout_path')->flush();
 
-  backdrop_static_reset('layout_get_all_layouts');
-  backdrop_static_reset('layout_get_all_layout_menu_items');
+  backdrop_static_reset('layout_load_multiple');
+  backdrop_static_reset('layout_menu_item_load_multiple');
+  backdrop_static_reset('layout_get_path_layout_names');
+  backdrop_static_reset('layout_get_layout_info');
+  backdrop_static_reset('layout_get_block_info');
+  backdrop_static_reset('layout_get_layout_tempstore');
+  backdrop_static_reset('_layout_include_files');
+  backdrop_static_reset('_layout_get_all_info');
 }
 
 /**
@@ -941,22 +1072,35 @@ function layout_get_style_info($plugin_name) {
 function layout_get_block_info($block_module = NULL, $block_delta = NULL) {
   $block_info = &backdrop_static(__FUNCTION__, array());
 
-  // @todo: Add caching here.
-  if (empty($block_info)) {
-    foreach (module_implements('block_info') as $module) {
-      $module_blocks = module_invoke($module, 'block_info');
-      foreach ($module_blocks as $delta => $block) {
-        $block_info[$module . ':' . $delta] = $block;
-      }
+  if (isset($block_module)) {
+    $modules = array($block_module);
+  }
+  elseif (!isset($block_info['all'])) {
+    $modules = module_implements('block_info');
+    $block_info['all'] = TRUE;
+  }
+  else {
+    $modules = array();
+  }
+
+  // Load each module's block info that is required.
+  foreach ($modules as $module) {
+    if (!isset($block_info['modules'][$module])) {
+      $block_info['modules'][$module] = module_invoke($module, 'block_info');
     }
   }
 
+  // Return partial or full results based on the requested properties.
   if (isset($block_module) && isset($block_delta)) {
-    $block_key = $block_module . ':' . $block_delta;
-    return isset($block_info[$block_key]) ? $block_info[$block_key] : FALSE;
+    if (isset($block_info['modules'][$block_module][$block_delta])) {
+      return $block_info['modules'][$block_module][$block_delta];
+    }
+    else {
+      return FALSE;
+    }
   }
 
-  return $block_info;
+  return $block_info['modules'];
 }
 
 /**
@@ -965,10 +1109,11 @@ function layout_get_block_info($block_module = NULL, $block_delta = NULL) {
 function layout_get_handler_name($plugin_type, $plugin_name) {
   // Block "plugins" for Layouts are wrappers around the generic block system.
   if ($plugin_type === 'block') {
-    $info = layout_get_block_info();
-    if (isset($info[$plugin_name])) {
-      if (isset($info[$plugin_name]['class'])) {
-        $class_name = $info[$plugin_name]['class'];
+    list($module, $delta) = explode(':', $plugin_name);
+    $info = layout_get_block_info($module, $delta);
+    if ($info) {
+      if (isset($info['class'])) {
+        $class_name = $info['class'];
       }
       else {
         $class_name = 'LayoutBlockLegacy';

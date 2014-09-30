@@ -5,6 +5,16 @@
  */
 
 /**
+ * Implements hook_schema().
+ */
+function layout_schema() {
+  $schema['cache_layout_path'] = backdrop_get_schema_unprocessed('system', 'cache');
+  $schema['cache_layout_path']['description'] = 'Cache table to store which layouts are active at a given path.';
+
+  return $schema;
+}
+
+/**
  * Implements hook_enable().
  */
 function layout_enable() {

@@ -510,6 +510,8 @@ function menu_execute_active_handler($path = NULL, $deliver = TRUE, $route_handl
   if ($page_callback_result == MENU_SITE_ONLINE) {
     if ($router_item = menu_get_item($path)) {
       if ($router_item['access']) {
+        // In most cases, Layout module will provide the route handler if
+        // it is enabled. See layout_route_handler().
         if (empty($route_handler)) {
           $route_handler = config_get('system.menu', 'menu_route_handler');
         }

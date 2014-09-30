@@ -11,7 +11,7 @@
  * Output a list of pages that are managed.
  */
 function layout_list_page() {
-  $layouts = layout_get_all_layouts();
+  $layouts = layout_load_all();
 
   // Group layouts by path.
   $path_groups = array();
@@ -793,29 +793,34 @@ function layout_block_add_page(Layout $layout, $renderer_name, $region_name, $bl
       'class' => array('layout-block-list'),
     ),
   );
-  foreach ($blocks as $key => $block_info) {
-    // Skip blocks that don't have context requirements met.
-    $required_contexts = isset($block_info['required contexts']) ? $block_info['required contexts'] : array();
-    if (!$layout->hasContexts($required_contexts)) {
-      continue;
-    }
 
-    $output[$key] = array(
-      '#type' => 'item',
-      '#markup' => l(
-        $block_info['info'],
-        'admin/structure/layouts/manage/' . $layout->name . '/add-block/' . $renderer_name . '/' . $region_name . '/' . $key,
-        array(
-          'attributes' => array(
-            'class' => array('use-ajax'),
-            'data-dialog' => TRUE,
-            'data-dialog-options' => json_encode(array('dialogClass' => 'layout-dialog')),
+  foreach ($blocks as $module => $module_blocks) {
+    foreach ($module_blocks as $delta => $block_info) {
+      $key = $module . ':' . $delta;
+
+      // Skip blocks that don't have context requirements met.
+      $required_contexts = isset($block_info['required contexts']) ? $block_info['required contexts'] : array();
+      if (!$layout->hasContexts($required_contexts)) {
+        continue;
+      }
+
+      $output[$key] = array(
+        '#type' => 'item',
+        '#markup' => l(
+          $block_info['info'],
+          'admin/structure/layouts/manage/' . $layout->name . '/add-block/' . $renderer_name . '/' . $region_name . '/' . $key,
+          array(
+            'attributes' => array(
+              'class' => array('use-ajax'),
+              'data-dialog' => TRUE,
+              'data-dialog-options' => json_encode(array('dialogClass' => 'layout-dialog')),
+            )
           )
-        )
-      ),
-      '#description' => isset($block_info['description']) ? $block_info['description'] : NULL,
-      '#wrapper_attributes' => array('class' => array('layout-block-add-row'))
-    );
+        ),
+        '#description' => isset($block_info['description']) ? $block_info['description'] : NULL,
+        '#wrapper_attributes' => array('class' => array('layout-block-add-row'))
+      );
+    }
   }
 
   return $output;
@@ -1434,10 +1439,9 @@ function layout_enable_layout($status, Layout $layout) {
 function layout_reorder_form($form, &$form_state) {
   if (!isset($form_state['layouts'])) {
     $layout_list = isset($_GET['layouts']) ? $_GET['layouts'] : array();
-    $all_layouts = layout_get_all_layouts();
     $layouts = array();
-    foreach ($layout_list as $layout_name) {
-      $layouts[$layout_name] = $all_layouts[$layout_name];
+    if (is_array($layout_list)) {
+      $layouts = layout_load_multiple($layout_list);
     }
     $form_state['layouts'] = $layouts;
   }

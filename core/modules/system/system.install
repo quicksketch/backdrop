@@ -2065,6 +2065,13 @@ function system_update_1022() {
 function system_update_1023() {
   update_module_enable(array('layout'));
 
+  // Manually install schema, as update_module_enable() does not do this for us.
+  if (!db_table_exists('cache_layout_path')) {
+    $cache_table = backdrop_get_schema_unprocessed('system', 'cache');
+    $cache_table['description'] = 'Cache table to store which layouts are active at a given path.';
+    db_create_table('cache_layout_path', $cache_table);
+  }
+
   $admin_layout = array(
     'path' => NULL,
     'name' => 'admin_default',

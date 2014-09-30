@@ -13,10 +13,9 @@ function layout_page_callback() {
   $menu_item = layout_menu_item_load($menu_item_name);
 
   // Determine the correct layout to use at this path.
-  $layouts = layout_get_path_layout_names($menu_item->path);
+  $layouts = layout_load_multiple_by_path($menu_item->path);
   $match_found = FALSE;
-  foreach ($layouts as $layout_name) {
-    $layout = layout_load($layout_name);
+  foreach ($layouts as $layout) {
     // Note that because all layouts share the same menu_item, and that has
     // already been loaded and had its contexts set, the layout also has those
     // contexts available when checking access.
