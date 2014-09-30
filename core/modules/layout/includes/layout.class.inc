@@ -236,7 +236,7 @@ class Layout {
 
     // If this layout overrides an existing module path, reassign or delete
     // the layout menu item.
-    if (menu_get_item($this->path) && layout_provides_path($this->path) === FALSE) {
+    if ((layout_provides_path($this->path) === FALSE) && menu_get_item($this->path)) {
       if ($this->menu_item) {
         $this->menu_item->delete();
       }

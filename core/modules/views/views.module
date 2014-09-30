@@ -864,6 +864,10 @@ function views_field_delete_instance($instance) {
  * Invalidate the views cache, forcing a rebuild on the next grab of table data.
  */
 function views_invalidate_cache() {
+  // Clear static caches.
+  backdrop_static_reset('views_get_all_views');
+  backdrop_static_reset('views_get_view');
+
   // Clear the views cache.
   cache('views')->flush();
 

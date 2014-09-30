@@ -119,6 +119,7 @@ class ViewsUIWizardBasicTestCase extends ViewsUIWizardHelper {
     $this->assertText($view3['description']);
     $this->assertLinkByHref(url($view3['page[path]']));
 
+    views_invalidate_cache();
     $layout = layout_load('default');
     $layout->addBlock('views', $view3['name'] . '-block', 'sidebar');
     $layout->save();
@@ -499,6 +500,7 @@ class ViewsUIWizardItemsPerPageTestCase extends ViewsUIWizardHelper {
     // Put the block into the first sidebar region, visit a page that displays
     // the block, and check that the nodes we expect appear in the correct
     // order.
+    views_invalidate_cache();
     $layout = layout_load('default');
     $layout->addBlock('views', $view['name'] . '-block', 'sidebar');
     $layout->save();
@@ -744,6 +746,7 @@ class ViewsUIWizardOverrideDisplaysTestCase extends ViewsUIWizardHelper {
     // Put the block into the sidebar region, and make sure it will not
     // display on the view's page display (since we will be searching for the
     // presence/absence of the view's title in both the page and the block).
+    views_invalidate_cache();
     $layout = layout_load('default');
     $block = $layout->addBlock('views', $view['name'] . '-block', 'sidebar');
     $block->conditions[] = layout_create_access('path', array(
@@ -801,6 +804,7 @@ class ViewsUIWizardOverrideDisplaysTestCase extends ViewsUIWizardHelper {
     // Put the block into the first sidebar region, and make sure it will not
     // display on the view's page display (since we will be searching for the
     // presence/absence of the view's title in both the page and the block).
+    views_invalidate_cache();
     $layout = layout_load('default');
     $block = $layout->addBlock('views', $view['name'] . '-block', 'sidebar');
     $block->conditions[] = layout_create_access('path', array(

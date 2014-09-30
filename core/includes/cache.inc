@@ -43,6 +43,9 @@ function cache($bin = 'cache') {
  * Expires data from the page cache.
  */
 function cache_clear_all() {
+  if (module_exists('layout')) {
+    cache('layout_path')->flush();
+  }
   cache('page')->expire();
 }
 

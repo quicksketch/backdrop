@@ -345,7 +345,11 @@ function layout_page_menu_item(array $menu, array $access_arguments, array $page
 function layout_page_title(Layout &$layout) {
   // Page titles are run through check_plain() before output, so no escaping
   // here is intentional. See backdrop_get_title().
-  return t('Edit "!layout" at !path', array('!layout' => $layout->title, '!path' => $layout->getPath()));
+  $path = $layout->getPath();
+  if ($path) {
+    return t('Edit "!layout" at !path', array('!layout' => $layout->title, '!path' => $path));
+  }
+  return t('Edit "!layout"', array('!layout' => $layout->title));
 }
 
 /**
@@ -743,7 +747,14 @@ function layout_load_all() {
  */
 function layout_menu_item_load($menu_item_name) {
   $menu_items = layout_menu_item_load_multiple(array($menu_item_name));
-  return $menu_items[$menu_item_name];
+
+  // Returned menu items are by path, so return the first item if it exists.
+  if ($path = key($menu_items)) {
+    return $menu_items[$path];
+  }
+  else {
+    return FALSE;
+  }
 }
 
 /**
@@ -903,6 +914,13 @@ function layout_provides_path($path) {
     }
   }
   return $return;
+}
+
+/**
+ * Implements hook_flush_caches().
+ */
+function layout_flush_caches() {
+  return array('layout_path');
 }
 
 /**
