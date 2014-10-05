@@ -3,7 +3,7 @@
  * @file
  * Template for outputting the main content block.
  *
- * This template overrides layout-block.tpl.php to remove all wrappers.
+ * This template overrides block.tpl.php to remove all wrappers.
  */
 ?>
 <?php print render($content); ?>

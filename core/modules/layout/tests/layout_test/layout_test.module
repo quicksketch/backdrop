@@ -40,6 +40,13 @@ function layout_test_block_info() {
       'my_user' => 'user',
     ),
   );
+  $blocks['test_node_title'] = array(
+    'info' => t('Node title test'),
+    'description' => t('A testing block for layouts that shows the node title.'),
+    'required contexts' => array(
+      'node' => 'node',
+    ),
+  );
   return $blocks;
 }
 
@@ -58,6 +65,11 @@ function layout_test_block_view($delta = '', $settings = array(), $contexts = ar
     case 'bar':
       $block['subject'] = 'Bar subject';
       $block['content'] = format_string('The user name is @name and the node title is @title', array('@name' => $contexts['my_user']->name, '@title' => $contexts['my_node']->title));
+      break;
+
+    case 'test_node_title':
+      $block['subject'] = 'Node title';
+      $block['content'] = format_string('The node title is @title', array('@title' => $contexts['node']->title));
       break;
   }
   return $block;

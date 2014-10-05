@@ -169,7 +169,7 @@ class LayoutRendererStandard {
    * regularly make additions to the set of blocks that will be rendered.
    *
    * @param array $blocks
-   *  An associative array of block data (LayoutBlock objects), keyed by UUID.
+   *  An associative array of block data (Block objects), keyed by UUID.
    * @return array
    *  An associative array of blocks to be rendered, keyed on UUID and sorted
    *  into proper rendering order.
@@ -188,6 +188,9 @@ class LayoutRendererStandard {
         if ($has_contexts) {
           $block->setContexts($this->layout->getContexts());
         }
+      }
+      elseif ($block->conditions) {
+        $block->setContexts($this->layout->getContexts());
       }
 
       // Then check access on the block.
@@ -429,7 +432,7 @@ class LayoutRendererStandard {
    * an individual block can be bubbled up to take over the title for the entire
    * display.
    *
-   * @param LayoutBlock $block
+   * @param Block $block
    *   The block to be rendered.
    */
   function renderBlock($block) {
@@ -451,7 +454,7 @@ class LayoutRendererStandard {
       }
       // Add the contextual links.
       if (!($block->module === 'system' && $block->delta === 'main')) {
-        $content['#contextual_links']['layout'] = array('admin/structure/layouts/manage/' . $this->layout->name . '/configure-block/editor', array($block->uuid));
+        $content['#contextual_links']['layout'] = array('admin/structure/layouts/manage/' . $this->layout->name . '/modal', array($block->uuid));
       }
 
       $title = '';
@@ -470,7 +473,7 @@ class LayoutRendererStandard {
       }
       else {
         // Fallback.
-        $output = theme('layout_block', array('content' => $content, 'layout' => $this->layout, 'block' => $block));
+        $output = theme('block', array('content' => $content, 'layout' => $this->layout, 'block' => $block));
       }
     }
     return $output;

@@ -102,7 +102,7 @@ function hook_layout_style_info() {
     // The theme key indicating what theme function/template will be used.
     'region theme' => 'mymodule_layout_region',
     // The theme key for rendering an individual block.
-    'block theme' => 'mymodule_layout_block',
+    'block theme' => 'mymodule_block',
     // Provide a class name if this style has settings. The class should extend
     // the LayoutStyle class.
     'class' => 'MyModuleLayoutStyle',

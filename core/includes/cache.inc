@@ -40,9 +40,14 @@ function cache($bin = 'cache') {
 }
 
 /**
- * Expires data from the page cache.
+ * Expires data from the layout and page caches.
  */
 function cache_clear_all() {
+  // @todo: remove before release.
+  if (func_get_args()) {
+    throw new Exception(t('cache_clear_all() no longer takes arguments, use cache() instead.'));
+  }
+
   if (module_exists('layout')) {
     cache('layout_path')->flush();
   }

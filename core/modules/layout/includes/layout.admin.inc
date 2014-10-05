@@ -444,6 +444,12 @@ function layout_settings_form_path_ajax($form, &$form_state) {
  * Submit handler for layout_settings_form() that lets the user add a condition.
  */
 function layout_settings_form_condition_add($form, &$form_state) {
+  // Remove destination flags when adding conditions, otherwise the user will
+  // be taken to the destination instead of adding a condition. This only
+  // affects non-JS behavior.
+  if (isset($_GET['destination'])) {
+    unset($_GET['destination']);
+  }
   $form_state['redirect'] = 'admin/structure/layouts/manage/' . $form_state['layout']->name . '/condition/add';
 }
 
@@ -480,7 +486,7 @@ function layout_settings_form_update_layout($form, &$form_state) {
   // Update main properties.
   $layout->title = $form_state['values']['title'];
   $layout->name = $form_state['values']['name'];
-  $layout->layout = $form_state['values']['layout'];
+  $layout->setLayout($form_state['values']['layout']);
   $layout->setPath($form_state['values']['path']);
 
   // Update contexts.
@@ -827,9 +833,22 @@ function layout_block_add_page(Layout $layout, $renderer_name, $region_name, $bl
 }
 
 /**
+ * Menu callback; Redirect to the layout configuration form.
+ *
+ * This menu callback is utilized by contextual links.
+ */
+function layout_block_configure_redirect($layout, $block_uuid) {
+  $destination = backdrop_get_destination();
+  if (isset($_GET['destination'])) {
+    unset($_GET['destination']);
+  }
+  backdrop_goto('admin/structure/layouts/manage/' . $layout->name, array('query' => $destination));
+}
+
+/**
  * Form callback; Add or edit a block within a layout.
  */
-function layout_block_configure_form($form, &$form_state, Layout $layout, LayoutBlock $block, $renderer_name, $region_name = NULL) {
+function layout_block_configure_form($form, &$form_state, Layout $layout, Block $block, $renderer_name, $region_name = NULL) {
   form_load_include($form_state, 'inc', 'layout', 'includes/layout.admin');
 
   $form_state['layout'] = $layout;
@@ -1148,7 +1167,7 @@ function layout_block_configure_ajax_update($form, $form_state) {
 /**
  * Menu callback; Remove a block from a layout.
  */
-function layout_block_remove_page(Layout $layout, LayoutBlock $block, $renderer_name) {
+function layout_block_remove_page(Layout $layout, Block $block, $renderer_name) {
   if (backdrop_get_token('layout-' . $layout->name) !== $_GET['token']) {
     return MENU_ACCESS_DENIED;
   }
@@ -1177,10 +1196,10 @@ function layout_block_remove_page(Layout $layout, LayoutBlock $block, $renderer_
  *
  * @param Layout $layout
  *   The layout to which a condition is being added.
- * @param LayoutBlock|null $block
+ * @param Block|null $block
  *   If applying a condition to a particular block, the block instance.
  */
-function layout_condition_add_form($form, &$form_state, Layout $layout = NULL, LayoutBlock $block = NULL, LayoutMenuItem $menu_item = NULL) {
+function layout_condition_add_form($form, &$form_state, Layout $layout = NULL, Block $block = NULL, LayoutMenuItem $menu_item = NULL) {
   form_load_include($form_state, 'inc', 'layout', 'includes/layout.admin');
 
   $form_state['layout'] = $layout;
@@ -1267,7 +1286,7 @@ function layout_condition_add_form_submit($form, &$form_state) {
 /**
  * Title callback; Provide the page title for configuring a layout condition.
  */
-function layout_condition_edit_title(Layout $layout = NULL, LayoutBlock $block = NULL, LayoutMenuItem $menu_item = NULL, $handler_id) {
+function layout_condition_edit_title(Layout $layout = NULL, Block $block = NULL, LayoutMenuItem $menu_item = NULL, $handler_id) {
   if (isset($menu_item->conditions[$handler_id])) {
     $plugin_name = $menu_item->conditions[$handler_id]->plugin;
   }
@@ -1300,7 +1319,7 @@ function layout_condition_edit_title(Layout $layout = NULL, LayoutBlock $block =
  * This can be used to add a condition to either a layout or a block. If adding
  * to a layout, the $block parameter will be empty.
  */
-function layout_condition_edit_form($form, &$form_state, Layout $layout = NULL, LayoutBlock $block = NULL, LayoutMenuItem $menu_item = NULL, $handler_id) {
+function layout_condition_edit_form($form, &$form_state, Layout $layout = NULL, Block $block = NULL, LayoutMenuItem $menu_item = NULL, $handler_id) {
   form_load_include($form_state, 'inc', 'layout', 'includes/layout.admin');
 
   if (is_numeric($handler_id)) {
@@ -1328,7 +1347,7 @@ function layout_condition_edit_form($form, &$form_state, Layout $layout = NULL, 
 
   $form['actions'] = array(
     '#type' => 'actions',
-    '#weight' => 100,
+    '#weight' => 1000,
   );
   $form['actions']['cancel'] = array(
     '#type' => 'submit',
@@ -1410,7 +1429,7 @@ function layout_condition_edit_form_submit($form, &$form_state) {
     $form_state['ajax_rebuild_form'] = 'layout_settings_form';
     $form_state['ajax_rebuild_args'] = array($layout);
     $form_state['ajax_update'] = array('conditions');
-    $form_state['redirect'] = 'admin/structure/layouts/manage/' . $layout->name;
+    $form_state['redirect'] = 'admin/structure/layouts/manage/' . $layout->name . '/settings';
   }
 }
 
@@ -1567,6 +1586,12 @@ function layout_clone_form($form, &$form_state, $layout) {
   $layout->is_new = TRUE;
   $layout->module = NULL;
   $layout->storage = LAYOUT_STORAGE_NORMAL;
+
+  // Position the new layout one level above the current layout, assuming that
+  // users will start with a generic layout, such as a global "node" layout,
+  // then later create a more specific layout, such as "article nodes", which
+  // should come before the more generic version.
+  $layout->weight--;
 
   $settings_form = layout_settings_form($form, $form_state, $layout);
   $form['title'] = $settings_form['title'];
@@ -1732,7 +1757,7 @@ function layout_menu_item_form($form, &$form_state, $menu_item) {
     '#type' => 'radios',
     '#options' => array('none' => t('No menu entry'), 'normal' => t('Normal menu item'), 'tab' => t('Menu tab')),
     '#default_value' => $menu_settings['parent']['type'],
-    '#description' => t('When providing a menu item as a default tab, the parent menu item of that tab must be specified. Sometimes the parent will already exist, but other times you will need to have one created. The path of a parent item will always be the same path with the last part left off. i.e, if the path to this view is <em>foo/bar/baz</em>, the parent path would be <em>foo/bar</em>.'),
+    '#description' => t('When providing a menu item as a default tab, the parent menu item of that tab must be specified. Sometimes the parent will already exist, but other times you will need to have one created. The path of a parent item will always be the same path with the last part left off. i.e, if the path to this layout is <em>foo/bar/baz</em>, the parent path would be <em>foo/bar</em>.'),
   );
   $form['menu']['parent']['title'] = array(
     '#title' => t('Parent item title'),

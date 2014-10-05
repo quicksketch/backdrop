@@ -115,9 +115,17 @@ function layout_menu() {
     'load arguments' => array(4),
     'page callback' => 'backdrop_get_form',
     'page arguments' => array('layout_block_configure_form', 4, 7, 6),
-    // To work with contextual links, we have to specify the context and also
-    // set the type to be a MENU_LOCAL_TASK, even though this page never shows
-    // up as a tab anywhere.
+  ) + $base;
+
+  // This shortcut path does not use layout_tempstore, for efficiency when
+  // checking access to this path from contextual links. To work as a contextual
+  // link, we have to specify the context and also set the type to be a
+  // MENU_LOCAL_TASK, even though this page never shows up as a tab anywhere.
+  $items['admin/structure/layouts/manage/%layout/configure-redirect/%'] = array(
+    'title' => 'Configure block',
+    'load arguments' => array(4),
+    'page callback' => 'layout_block_configure_redirect',
+    'page arguments' => array(4, 6),
     'context' => MENU_CONTEXT_INLINE,
     'type' => MENU_DEFAULT_LOCAL_TASK,
   ) + $base;
@@ -393,6 +401,7 @@ function layout_route_handler($router_item) {
 
     if (!$layout->disabled && $layout->checkAccess()) {
       $selected_layout = $layout;
+      break;
     }
   }
 
@@ -444,11 +453,6 @@ function layout_theme() {
     ) + $base,
     'layout_settings_context_table' => array(
       'render element' => 'element',
-    ) + $base,
-    'layout_block__system__main' => array(
-      'template' => 'templates/layout-block--system--main',
-      'variables' => array('content' => NULL, 'layout' => NULL, 'block' => NULL, 'style' => NULL, 'settings' => array(), 'attributes_array' => array()),
-      'base hook' => 'layout_block',
     ) + $base,
   );
 
@@ -545,9 +549,9 @@ function layout_autoload_info() {
     'LayoutHandler' => 'includes/layout_handler.class.inc',
     'LayoutHandlerBroken' => 'includes/layout_handler.class.inc',
     'Layout' => 'includes/layout.class.inc',
-    'LayoutBlock' => 'includes/layout_block.class.inc',
-    'LayoutBlockLegacy' => 'includes/layout_block_legacy.class.inc',
-    'LayoutBlockBroken' => 'includes/layout_block.class.inc',
+    'Block' => 'includes/block.class.inc',
+    'BlockBroken' => 'includes/block.class.inc',
+    'BlockLegacy' => 'includes/block_legacy.class.inc',
     'LayoutMenuItem' => 'includes/layout_menu_item.class.inc',
 
     // Exceptions.
@@ -590,13 +594,11 @@ function layout_contextual_links_view_alter(&$element, $items) {
   // user on the overall layout edit screen with a modal opened, instead of the
   // path to the block edit page itself.
   $links = &$element['#links'];
-  if (isset($links['layout-'])) {
-    if ($position = strpos($links['layout-']['href'], '/configure-block')) {
-      $last_slash = strrpos($links['layout-']['href'], '/');
-      $new_path = substr($links['layout-']['href'], 0, $position);
-      $uuid = substr($links['layout-']['href'], $last_slash + 1);
-      $links['layout-']['href'] = $new_path;
-      $links['layout-']['fragment'] = 'configure-block:' . $uuid;
+  if (isset($links['layout-configure-redirect-'])) {
+    if ($position = strpos($links['layout-configure-redirect-']['href'], '/configure-redirect')) {
+      $last_slash = strrpos($links['layout-configure-redirect-']['href'], '/');
+      $uuid = substr($links['layout-configure-redirect-']['href'], $last_slash + 1);
+      $links['layout-configure-redirect-']['fragment'] = 'configure-block:' . $uuid;
     }
   }
 }
@@ -705,6 +707,11 @@ function layout_load_multiple($layout_names, $skip_menu_items = FALSE) {
 function layout_load_multiple_by_path($path, $skip_menu_items = NULL) {
   if ($cache = cache('layout_path')->get($path)) {
     $layouts = $cache->data;
+
+    // Populate these cached layouts into layout_load_multiple() to optimize
+    // any future calls to it.
+    $static_cache = &backdrop_static('layout_load_multiple', array());
+    $static_cache = array_merge($layouts, $static_cache);
   }
   else {
     $layout_names = layout_get_path_layout_names($path);
@@ -1134,11 +1141,11 @@ function layout_get_handler_name($plugin_type, $plugin_name) {
         $class_name = $info['class'];
       }
       else {
-        $class_name = 'LayoutBlockLegacy';
+        $class_name = 'BlockLegacy';
       }
     }
     else {
-      $class_name = 'LayoutBlockBroken';
+      $class_name = 'BlockBroken';
     }
   }
   else {

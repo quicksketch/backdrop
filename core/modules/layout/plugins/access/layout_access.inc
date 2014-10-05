@@ -69,9 +69,8 @@ class LayoutAccess extends LayoutHandler {
     }
     $access_info = layout_get_access_info($this->plugin);
     $contexts = $item->getContexts();
-    $current_context_settings = $this->settings['contexts'];
-
-    $form['contexts'] = $form['contexts'] = layout_contexts_form_element($contexts, $current_context_settings, $access_info);
+    $current_context_settings = isset($this->settings['contexts']) ? $this->settings['contexts'] : array();
+    $form['contexts'] = layout_contexts_form_element($contexts, $current_context_settings, $access_info);
   }
 
 
@@ -88,7 +87,7 @@ class LayoutAccess extends LayoutHandler {
   function formSubmit($form, &$form_state) {
     $excluded = backdrop_map_assoc(array('cancel', 'submit', 'form_build_id', 'form_token', 'form_id', 'op'));
     $settings = array_diff_key($form_state['values'], $excluded);
-    $this->settings = $settings;
+    $this->settings = array_merge($this->settings, $settings);
   }
 
   /**

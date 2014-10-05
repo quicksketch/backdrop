@@ -14,8 +14,8 @@ class EntityBundleLayoutAccess extends LayoutAccess {
     );
 
     // Set entity type.
-    $entity_type = explode(':', $this->plugin);
-    $this->entity_type = $entity_type[0];
+    $info = layout_get_access_info($plugin_name);
+    $this->entity_type = $info['entity_type'];
   }
 
   /**
@@ -73,12 +73,6 @@ class EntityBundleLayoutAccess extends LayoutAccess {
 
     $entity = $this->contexts[$this->entity_type]->data;
     $bundle = $entity->bundle();
-
-    // There should always be a context at this point, but this is safer.
-    if (empty($entity) || !$bundle) {
-      return FALSE;
-    }
-
     if (!in_array($bundle, $this->settings['bundles'])) {
       return FALSE;
     }

@@ -65,6 +65,10 @@ class Layout {
   /**
    * The name of the layout template used by this configuration.
    *
+   * Although this property may be retrieved and set directly, if changing a
+   * layout from one value to another, it is best to use Layout::setLayout(),
+   * which will handle the moving of blocks from one region to another.
+   *
    * @var string
    */
   var $layout;
@@ -345,7 +349,7 @@ class Layout {
    * @param int $position
    *   The position of the block within the region. If not specified, the block
    *   will be the last block within the specified region.
-   * @return LayoutBlock
+   * @return Block
    *   The newly added block instance.
    */
   function addBlock($block_module, $block_delta, $region_name, $position = NULL) {
@@ -515,6 +519,70 @@ class Layout {
     else {
       return $this->path;
     }
+  }
+
+  /**
+   * Set the layout template, accommodating moving blocks if necessary.
+   *
+   * @param $layout_name
+   *   The new layout name.
+   * @param $region_mapping
+   *   An array of region names, each keyed by the old region name and the value
+   *   of the new region name. If empty, all known regions will be copied from
+   *   one to the other. To discard the contents of a region, set the value
+   *   to FALSE.
+   */
+  function setLayout($layout_name, $region_mapping = array()) {
+    // If not changing anything, return as a no-op.
+    if ($layout_name === $this->layout && empty($region_mapping)) {
+      return;
+    }
+    // If no layout has yet been set, then we have no copying to do.
+    if (!isset($this->layout)) {
+      $this->layout = $layout_name;
+      return;
+    }
+
+    $old_layout_info = layout_get_layout_info($this->layout);
+    $new_layout_info = layout_get_layout_info($layout_name);
+    $new_positions = array();
+
+    // Do the mapping in the order provided (if any).
+    if ($region_mapping) {
+      $regions = array_keys($region_mapping);
+      $regions = array_unique(array_merge($regions, array_keys($old_layout_info['regions'])));
+    }
+    else {
+      $regions = array_keys($old_layout_info['regions']);
+    }
+    foreach ($regions as $old_region_name) {
+      if (isset($region_mapping[$old_region_name])) {
+        $new_region_name = $region_mapping[$old_region_name];
+      }
+      elseif (array_key_exists($old_region_name, $new_layout_info['regions'])) {
+        $new_region_name = $old_region_name;
+      }
+      else {
+        $new_region_name = FALSE;
+      }
+      if ($new_region_name && !array_key_exists($new_region_name, $new_positions)) {
+        $new_positions[$new_region_name] = array();
+      }
+
+      if (isset($this->positions[$old_region_name])) {
+        foreach ($this->positions[$old_region_name] as $uuid) {
+          if ($new_region_name) {
+            $new_positions[$new_region_name][] = $uuid;
+          }
+          else {
+            unset($this->content[$uuid]);
+          }
+        }
+      }
+    }
+
+    $this->layout = $layout_name;
+    $this->positions = $new_positions;
   }
 
   /**

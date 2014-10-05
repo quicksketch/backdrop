@@ -77,11 +77,13 @@ function layout_layout_access_info() {
       continue;
     }
 
+    // Create a key such as "node_type" or "comment_node_type".
+    $key = $entity_type . '_' . $entity_info['entity keys']['bundle'];
     $bundle_label = array_key_exists('bundle label', $entity_info) ? $entity_info['bundle label'] : 'Type';
-    $info[$entity_type . ':bundle'] = array(
+    $info[$key] = array(
       'title' => t('@entity: @bundle', array('@entity' => $entity_info['label'], '@bundle' => $bundle_label)),
       'description' => t('Control access by @entity_type @bundle_label.', array('@entity_type' => $entity_type, '@bundle_label' => backdrop_strtolower($bundle_label))),
-      'keyword' => $entity_type,
+      'entity_type' => $entity_type,
       'class' => 'EntityBundleLayoutAccess',
       'required contexts' => array(
         $entity_type => $entity_type,
@@ -154,18 +156,18 @@ function layout_layout_style_info() {
     'title' => t('Default'),
     'description' => t('The default block rendering style with predictable tags provided by the site template.'),
     'region theme' => NULL,
-    'block theme' => 'layout_block',
+    'block theme' => 'block',
     'class' => 'LayoutStyle',
-    'template' => 'templates/layout-block',
+    'template' => 'templates/block',
     'file' => 'includes/layout.theme.inc',
   );
   $info['dynamic'] = array(
     'title' => t('Dynamic'),
     'description' => t('Customizable rendering style in which every HTML tag can be configured.'),
     'region theme' => NULL,
-    'block theme' => 'layout_block_dynamic',
+    'block theme' => 'block_dynamic',
     'class' => 'LayoutStyleDynamic',
-    'template' => 'templates/layout-block-dynamic',
+    'template' => 'templates/block-dynamic',
     'file' => 'includes/layout.theme.inc',
   );
   return $info;

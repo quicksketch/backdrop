@@ -183,7 +183,7 @@ function template_process_layout(&$variables) {
 /**
  * Clean up the layout block variables for the template.
  */
-function template_preprocess_layout_block(&$variables) {
+function template_preprocess_block(&$variables) {
   $content = $variables['content'];
   $block = $variables['block'];
   $style = $block->style;
@@ -238,7 +238,7 @@ function template_preprocess_layout_block(&$variables) {
   }
 
   // Set up some placeholders for constructing template file names.
-  $base = 'layout_block';
+  $base = 'block';
   $delimiter = '__';
 
   // Add template file suggestion for content type and sub-type.
@@ -251,14 +251,14 @@ function template_preprocess_layout_block(&$variables) {
 /**
  * Clean up the panel pane variables for the template.
  */
-function template_preprocess_layout_block_dynamic(&$variables) {
+function template_preprocess_block_dynamic(&$variables) {
   // Re-use all the preprocessing provided by the default block template.
-  template_preprocess_layout_block($variables);
+  template_preprocess_block($variables);
 
   $block = $variables['block'];
   $style = $block->style;
 
-  // Classes for the wrapper set in template_preprocess_layout_block().
+  // Classes for the wrapper set in template_preprocess_block().
   $variables['wrapper_tag'] = $style->settings['wrapper_tag'];
   $variables['attributes_array'] = array();
 

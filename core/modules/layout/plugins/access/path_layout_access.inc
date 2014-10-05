@@ -46,7 +46,9 @@ class PathLayoutAccess extends LayoutAccess {
     // When $this->settings['visibility_setting'] has a value of 0, the block is
     // displayed on all pages except those listed. When set to 1, it
     // is displayed only on those pages listed.
-    $page_match = !($this->settings['visibility_setting'] xor $page_match);
+    if (!$this->settings['visibility_setting']) {
+      $page_match = !$page_match;
+    }
 
     return $page_match;
   }

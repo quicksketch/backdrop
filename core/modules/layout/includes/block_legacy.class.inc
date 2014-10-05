@@ -3,7 +3,7 @@
  * @file
  * Class that wraps around legacy hook_block_view/config/save() hooks.
  */
-class LayoutBlockLegacy extends LayoutBlock {
+class BlockLegacy extends Block {
   /**
    * The content for this block as provided by hook_block_view().
    *

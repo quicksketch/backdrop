@@ -2214,6 +2214,7 @@ function system_update_1023() {
   $node_layout['title'] = t('Node layout');
   $node_layout['name'] = 'node';
   $node_layout['path'] = 'node/%';
+  unset($node_layout['module']);
   $node_layout_required = FALSE;
 
   $result = db_query("SELECT * FROM {block} WHERE theme = :theme AND status = 1 AND NOT (module = 'system' AND delta = 'main') ORDER BY region, weight", array(':theme' => $current_theme));
@@ -2231,8 +2232,8 @@ function system_update_1023() {
           'module' => $block_row->module,
           'delta' => $block_row->delta,
           'uuid' => $block_uuid,
+          'conditions' => array(),
         ),
-        'conditions' => array(),
       );
 
       // Add any path restrictions, excluding PHP visibility rules.
@@ -2249,7 +2250,8 @@ function system_update_1023() {
             'settings' => $settings,
           ),
         );
-        $block_config['conditions'][] = $access_config;
+        $block_config['data']['conditions'][] = $access_config;
+        debug($block_config);
       }
 
       // Add any role restrictions.
@@ -2267,7 +2269,7 @@ function system_update_1023() {
               'settings' => $settings,
             ),
           );
-          $block_config['conditions'][] = $access_config;
+          $block_config['data']['conditions'][] = $access_config;
         }
       }
 
@@ -2288,7 +2290,7 @@ function system_update_1023() {
               'settings' => $settings,
             ),
           );
-          $block_config['conditions'][] = $access_config;
+          $block_config['data']['conditions'][] = $access_config;
         }
       }
 

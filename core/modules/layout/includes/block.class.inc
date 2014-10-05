@@ -3,7 +3,7 @@
  * @file
  * A class that wraps around a block to store settings information.
  */
-class LayoutBlock extends LayoutHandler {
+class Block extends LayoutHandler {
 
   /**
    * The module that provides this block.
@@ -46,7 +46,7 @@ class LayoutBlock extends LayoutHandler {
   var $contexts = array();
 
   /**
-   * Create a new LayoutBlock object.
+   * Create a new Block object.
    *
    * @param string $module
    *   The module that provides this block.
@@ -211,8 +211,9 @@ class LayoutBlock extends LayoutHandler {
     if (isset($form_state['values']['contexts'])) {
       $this->settings['contexts'] = $form_state['values']['contexts'];
     }
-    elseif (isset($this->settings['contexts'])) {
-      unset($this->settings['contexts']);
+    // Remove contexts if none are visible in the form.
+    else {
+      $this->settings['contexts'] = array();
     }
   }
 
@@ -307,7 +308,7 @@ class LayoutBlock extends LayoutHandler {
 /**
  * A class used for blocks when their providing module or delta does not exist.
  */
-class LayoutBlockBroken extends LayoutBlock {
+class BlockBroken extends Block {
   function getTitle() {
     return '';
   }

@@ -2,48 +2,48 @@
  * @file
  * CSS for the three-three-four layout.
  */
-.layout-two-column #page  {
+.layout-test-layout #page  {
   height: 100%;
 }
-.layout-two-column #page-wrapper {
+.layout-test-layout #page-wrapper {
   min-height: 100%;
 }
-.layout-two-column #header div.section,
-.layout-two-column #main,
-.layout-two-column #footer {
+.layout-test-layout #header div.section,
+.layout-test-layout #main,
+.layout-test-layout #footer {
   width: 100%;
   margin-left: auto;
   margin-right: auto;
 }
-.layout-two-column #content .section,
-.layout-two-column .sidebar .section {
+.layout-test-layout #content .section,
+.layout-test-layout .sidebar .section {
   padding: 0 15px;
 }
 
 @media all and (min-width: 851px) {
-  .layout-two-column #content,
-  .layout-two-column #sidebar {
+  .layout-test-layout #content,
+  .layout-test-layout #sidebar {
     display: inline;
     float: left; /* LTR */
     position: relative;
   }
-  [dir="rtl"] .layout-two-column #content,
-  [dir="rtl"] .layout-two-column #sidebar {
+  [dir="rtl"] .layout-test-layout #content,
+  [dir="rtl"] .layout-test-layout #sidebar {
     float: right;
   }
-  .layout-two-column #content {
+  .layout-test-layout #content {
     margin-right: 30%;
     width: 70%;
   }
-  [dir="rtl"] .layout-two-column #content {
+  [dir="rtl"] .layout-test-layout #content {
     margin-left: 30%;
     margin-right: 0;
   }
-  .layout-two-column #sidebar {
+  .layout-test-layout #sidebar {
     width: 30%;
     margin-left: -30%; /* LTR */
   }
-  [dir="rtl"] .layout-two-column #sidebar {
+  [dir="rtl"] .layout-test-layout #sidebar {
     margin-right: -30%;
   }
 }

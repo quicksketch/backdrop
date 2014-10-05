@@ -97,6 +97,11 @@ function system_theme() {
     'system_powered_by' => array(
       'variables' => array(),
     ),
+    'block__system__main' => array(
+      'template' => 'templates/block--system--main',
+      //'variables' => array('content' => NULL, 'layout' => NULL, 'block' => NULL, 'style' => NULL, 'settings' => array(), 'attributes_array' => array()),
+      'base hook' => 'block',
+    ),
   ));
 }
 

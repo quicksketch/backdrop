@@ -6058,8 +6058,10 @@ function backdrop_pre_render_dropbutton($element) {
 /**
  * Renders the page, including the HTML, HEAD, and BODY tags.
  *
- * @param $page
+ * @param string|array $page
  *   A string or renderable array representing the content of a page.
+ * @return string
+ *   The rendered full HTML page.
  */
 function backdrop_render_page($page) {
   return theme('page', array('page' => render($page)));

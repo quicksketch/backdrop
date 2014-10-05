@@ -32,7 +32,6 @@ class UserRoleLayoutAccess extends LayoutAccess {
   function checkAccess() {
     $account = $this->contexts['user']->data;
     $rids = array_keys($account->roles);
-    $rids[] = $account->uid ? BACKDROP_AUTHENTICATED_RID : BACKDROP_ANONYMOUS_RID;
     return count(array_intersect($this->settings['rids'], $rids)) > 0;
   }
 

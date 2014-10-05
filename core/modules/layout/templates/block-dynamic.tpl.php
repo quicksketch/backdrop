@@ -8,7 +8,7 @@
  * customize every aspect of the block markup through the user interface. If
  * you need to customize the output of a block in the theme layer, it may be
  * easier to configure the block to use the default style, and override the
- * simpler layout-block.tpl.php file instead.
+ * simpler block.tpl.php file instead.
  *
  * Variables available:
  * - $wrapper_tag: The HTML tag to be used around the entire block.
