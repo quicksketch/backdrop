@@ -4,12 +4,17 @@
  * Process layout variables before output.
  */
 function seven_process_layout(&$variables) {
-  // Move the messages to the top of the page content. Although overriding
-  // individual templates could accomplish moving the messages, this effectively
-  // works across all layouts.
-  if ($variables['messages']) {
-    $variables['content']['content'] = $variables['messages'] . $variables['content']['content'];
-    $variables['messages'] = NULL;
+  // Move the page title and tabs into the "header" area, to fit with Seven's
+  // markup requirements.
+  if ($variables['title']) {
+    $title = '<h1 class="title" id="page-title">' . $variables['title'] . '</h1>';
+    $variables['content']['header'] .= $title;
+    $variables['title'] = NULL;
+  }
+  if ($variables['tabs']) {
+    $tabs = '<div class="tabs">' . $variables['tabs'] . '</div>';
+    $variables['content']['header'] .= $tabs;
+    $variables['tabs'] = NULL;
   }
 }
 

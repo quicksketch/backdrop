@@ -2,12 +2,6 @@
  * @file
  * CSS for the three-three-four layout.
  */
-.layout-three-three-four-column #page  {
-  height: 100%;
-}
-.layout-three-three-four-column #page-wrapper {
-  min-height: 100%;
-}
 .layout-three-three-four-column #header div.section,
 .layout-three-three-four-column #featured div.section,
 .layout-three-three-four-column #messages div.section,

@@ -45,16 +45,15 @@
       </h1>
     <?php endif; ?>
     <?php print render($title_suffix); ?>
+
     <?php if ($tabs): ?>
       <div class="tabs">
         <?php print $tabs; ?>
       </div>
     <?php endif; ?>
 
-    <div id="page">
-      <?php print $action_links; ?>
-      <?php print $content['content']; ?>
-    </div>
+    <?php print $action_links; ?>
+    <?php print $content['content']; ?>
   </div></main> <!-- /.section, /#content -->
 
   <?php if ($content['footer']): ?>

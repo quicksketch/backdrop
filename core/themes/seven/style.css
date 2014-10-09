@@ -278,29 +278,18 @@ ul.secondary li.active a.active {
  * Page layout.
  */
 .layout {
-  background-color: #e0e0d8;
+  /* Add a margin to all layouts. */
+  margin: 0 20px;
+}
+#header {
+  /* Then add a negative margin the header the same amount. */
   padding: 20px 20px 0;
+  margin: 0 -20px 20px;
+  background-color: #e0e0d8;
 }
-#page {
-  background: #fff;
-  color: #333;
-  margin-left: -20px;
-  margin-right: -20px;
-  padding: 20px 13px 40px 13px;
-  position: relative;
-  clear: both;
-}
-@media screen and (min-width:450px) {
-  #page {
-    padding-left: 20px;
-    padding-right: 20px;
-  }
-}
-@media screen and (min-width:720px) {
-  #page {
-    padding-left: 40px;
-    padding-right: 40px;
-  }
+.layout-one-column #content .section {
+  /* Make the one column layout margin match other layouts. */
+  margin: 0 15px;
 }
 
 /* Administration page listings. */
@@ -837,8 +826,10 @@ div.admin-panel h3 {
   padding: 20px;
   background: #F8F9F4;
 }
-#layout-edit-main .layout,
-#layout-edit-main #page {
+#layout-edit-main .layout {
+  margin: 0;
+}
+#layout-edit-main #header {
   padding: 0;
   margin: 0;
   background: none;

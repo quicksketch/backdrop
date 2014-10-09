@@ -2,12 +2,6 @@
  * @file
  * CSS for the three-three-four layout.
  */
-.layout-test-layout #page  {
-  height: 100%;
-}
-.layout-test-layout #page-wrapper {
-  min-height: 100%;
-}
 .layout-test-layout #header div.section,
 .layout-test-layout #main,
 .layout-test-layout #footer {
