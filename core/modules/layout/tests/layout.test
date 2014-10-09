@@ -78,7 +78,6 @@ class LayoutInterfaceTest extends BackdropWebTestCase {
     // Record the UUID for the newly added block.
     $last_block = $this->xpath('(//*[@id=:region]//*[@data-block-id])[last()]', array(
       ':region' => 'sidebar',
-      ':block' => 'layout-editor-block',
     ));
     $block_uuid = (string) $last_block[0]['data-block-id'];
     $block_edit_url = 'admin/structure/layouts/manage/' . $layout_name . '/configure-block/editor/' . $block_uuid;
@@ -353,7 +352,6 @@ class LayoutInterfaceTest extends BackdropWebTestCase {
     // Record the UUID for the newly added block.
     $last_block = $this->xpath('(//*[@id="layout-content-form"]//*[@id=:region]//*[@data-block-id])[last()]', array(
       ':region' => 'content',
-      ':block' => 'layout-editor-block',
     ));
     $block_uuid = (string) $last_block[0]['data-block-id'];
     $block_edit_url = 'admin/structure/layouts/manage/' . $layout_name . '/configure-block/editor/' . $block_uuid;
@@ -434,7 +432,6 @@ class LayoutInterfaceTest extends BackdropWebTestCase {
     // Record the UUID for the newly added block.
     $last_block = $this->xpath('(//*[@id=:region]//*[@data-block-id])[last()]', array(
       ':region' => 'sidebar',
-      ':block' => 'layout-editor-block',
     ));
     $block_uuid = (string) $last_block[0]['data-block-id'];
 
@@ -447,7 +444,7 @@ class LayoutInterfaceTest extends BackdropWebTestCase {
 
     // Visit the sample node page and check that the block is visible.
     $this->backdropGet('node/1');
-    $block_element = $this->xpath('//*[@id="layout-edit-main"]//*[@id=:region]//*[contains(@class,:block)]', array(
+    $block_element = $this->xpath('//*[@id=:region]//*[contains(@class,:block)]', array(
       ':region' => 'sidebar',
       ':block' => 'block-layout-test-test-node-title',
     ));
@@ -537,7 +534,6 @@ class LayoutInterfaceTest extends BackdropWebTestCase {
     // Record the UUID for the newly added block.
     $last_block = $this->xpath('(//*[@id="layout-edit-main"]//*[@id=:region]//*[@data-block-id])[last()]', array(
       ':region' => 'sidebar',
-      ':block' => 'layout-editor-block',
     ));
     $new_content_block_uuid = (string) $last_block[0]['data-block-id'];
 
@@ -552,16 +548,14 @@ class LayoutInterfaceTest extends BackdropWebTestCase {
     $this->assertText(t('The "@block" block may only be added once to this layout.', array('@block' => t('Main page content'))));
 
     // Delete the previous content block.
-    $old_content_block = $this->xpath('//*[@id=:region]//*[@data-block-id]', array(
+    $old_content_block = $this->xpath('//*[@id="layout-edit-main"]//*[@id=:region]//*[@data-block-id]', array(
       ':region' => 'content',
-      ':block' => 'layout-editor-block',
     ));
     $old_content_block_uuid = (string) $old_content_block[0]['data-block-id'];
     $remove_link = $this->xpath('//*[@id="layout-edit-main"]//*[@data-block-id=:uuid]//a[contains(@class,"remove-block")]', array(
       ':uuid' => $old_content_block_uuid,
     ));
     $remove_url_parts = backdrop_parse_url($remove_link[0]['href']);
-    debug($remove_url_parts);
     $this->backdropGet($remove_url_parts['path'], $remove_url_parts);
 
     $this->backdropPost(NULL, array(), t('Save layout'));
@@ -571,12 +565,11 @@ class LayoutInterfaceTest extends BackdropWebTestCase {
     // the main content block does *not* have any wrappers, so we check directly
     // for the content we expect at /node, which is a list of article tags.
     $this->backdropGet($layout_path);
-    $front_end_content = $this->xpath('//*[@id=:region]/div[@class="section"]/*[@id=:page-content]', array(
+    $front_end_content = $this->xpath('//*[@id=:region]/div[@class="section"]/div[@id=:page-content]', array(
       ':region' => 'sidebar',
-      ':block' => 'layout-editor-block',
       ':page-content' => 'layout-test-page-content',
     ));
-    $this->assertTrue(count($front_end_content) > 1, 'Main content shown in sidebar after moving main content block.');
+    $this->assertEqual(count($front_end_content), 1, 'Main content shown in sidebar after moving main content block.');
 
     // Now remove the second main content block, which should be allowed even
     // though it is potentially a bad idea.
@@ -595,17 +588,16 @@ class LayoutInterfaceTest extends BackdropWebTestCase {
     $front_end_content = $this->xpath('//*[@id=:id]', array(
       ':id' => 'layout-test-page-content',
     ));
-    $this->assertTrue(count($front_end_content) > 1, 'Main content is no longer shown at all.');
+    $this->assertEqual(count($front_end_content), 0, 'Main content is no longer shown at all.');
 
     // Edit the default layout and ensure that the main content block cannot be
     // removed.
-    $this->backdropGet('admin/structure/layouts/manage/' . $layout_name);
-    $default_content_block = $this->xpath('//*[@id=:region]//*[@data-block-id]//a[contains(@class,"remove-block")]', array(
+    $this->backdropGet('admin/structure/layouts/manage/default');
+    $default_content_block = $this->xpath('//*[@id="layout-edit-main"]//*[@id=:region]//*[@data-block-id]', array(
       ':region' => 'content',
-      ':block' => 'layout-editor-block',
     ));
-    $default_content_block_uuid = (string) $default_content_block[0]['data-block-uuid'];
-    $remove_link = $this->xpath('//*[@data-block-id=:uuid]', array(
+    $default_content_block_uuid = (string) $default_content_block[0]['data-block-id'];
+    $remove_link = $this->xpath('//*[@data-block-id=:uuid]//a[contains(@class,"remove-block")]', array(
       ':uuid' => $default_content_block_uuid,
     ));
     $remove_url_parts = backdrop_parse_url($remove_link[0]['href']);
@@ -812,7 +804,7 @@ class LayoutInterfaceTest extends BackdropWebTestCase {
     $result = config_get('layout.menu_item.' . $layout_name, 'name');
     $this->assertEqual($result, $layout_name, 'Config created for new layout menu item.');
 
-    $layout_title = $this->randomString();
+    $layout_title = $this->randomName();
     $edit = array(
       'menu[type]' => 'normal',
       'menu[title]' => $layout_title,

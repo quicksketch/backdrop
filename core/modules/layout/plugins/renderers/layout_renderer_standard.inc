@@ -174,28 +174,32 @@ class LayoutRendererStandard {
    *  An associative array of blocks to be rendered, keyed on UUID and sorted
    *  into proper rendering order.
    */
-  function prepareBlocks($blocks) {
+  function prepareBlocks(array $blocks) {
     // Use local variables as writing to them is very slightly faster
     $first = $normal = $last = array();
 
     // Prepare the list of blocks to be rendered
     foreach ($blocks as $uuid => $block) {
-      // Assign contexts to each block.
-      $has_contexts = TRUE;
-      $required_contexts = $block->getRequiredContexts();
-      if ($required_contexts) {
-        $has_contexts = $this->layout->hasContexts($required_contexts);
-        if ($has_contexts) {
+
+      // Check access on each block.
+      if (empty($this->admin)) {
+        // Assign contexts to each block.
+        $has_contexts = TRUE;
+        $required_contexts = $block->getRequiredContexts();
+        if ($required_contexts) {
+          $has_contexts = $this->layout->hasContexts($required_contexts);
+          if ($has_contexts) {
+            $block->setContexts($this->layout->getContexts());
+          }
+        }
+        elseif ($block->conditions) {
           $block->setContexts($this->layout->getContexts());
         }
-      }
-      elseif ($block->conditions) {
-        $block->setContexts($this->layout->getContexts());
-      }
 
-      // Then check access on the block.
-      if (empty($this->admin) && (!$has_contexts || !$block->checkAccess())) {
-        continue;
+        // Then check access on the block.
+        if (!$has_contexts || !$block->checkAccess()) {
+          continue;
+        }
       }
 
       $block_info = layout_get_block_info($block->module, $block->delta);
@@ -254,7 +258,7 @@ class LayoutRendererStandard {
    * @return array
    *   An array of regions prepared for rendering.
    */
-  function prepareRegions($region_block_list, $settings) {
+  function prepareRegions(array $region_block_list, array $settings) {
     // Initialize defaults to be used for regions without their own explicit
     // settings. Use display settings if they exist, else hardcoded defaults.
     $default = array(

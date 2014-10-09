@@ -82,6 +82,18 @@ class LayoutRendererEditor extends LayoutRendererStandard {
     return $output;
   }
 
+
+  /**
+   * {@inheritdoc}
+   */
+  function renderBlocks() {
+    $this->rendered['blocks'] = array();
+    foreach ($this->prepared['blocks'] as $uuid => $block) {
+      $this->rendered['blocks'][$uuid] = $this->renderBlock($block);
+    }
+    return $this->rendered['blocks'];
+  }
+
   /**
    * Short-cut to generate a URL path to a particular action.
    *
