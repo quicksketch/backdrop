@@ -51,6 +51,19 @@ function layout_test_block_info() {
 }
 
 /**
+ * Implements hook_menu().
+ */
+function layout_test_menu() {
+  $items['layout-test-path'] = array(
+    'title' => 'Layout test title',
+    'page callback' => 'layout_test_path',
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+  );
+  return $items;
+}
+
+/**
  * Implements hook_block_view().
  */
 function layout_test_block_view($delta = '', $settings = array(), $contexts = array()) {
@@ -92,4 +105,11 @@ function layout_test_block_configure($delta = '', $settings = array()) {
     );
   }
   return $form;
+}
+
+/**
+ * Menu callback; Display a test page.
+ */
+function layout_test_path() {
+  return '<div id="layout-test-page-content">This is the layout test page.</div>';
 }

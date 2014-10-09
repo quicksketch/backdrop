@@ -287,6 +287,7 @@ ul.secondary li.active a.active {
   margin: 0 -20px 20px;
   background-color: #e0e0d8;
 }
+.layout-one-column #messages,
 .layout-one-column #content .section {
   /* Make the one column layout margin match other layouts. */
   margin: 0 15px;

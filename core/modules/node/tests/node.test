@@ -1845,7 +1845,7 @@ class NodeBlockFunctionalTest extends BackdropWebTestCase {
     $this->backdropPost('admin/structure/layouts/manage/article_layout/settings', array(), t('Add condition'));
     $this->backdropPost(NULL, array('condition' => 'node_type'), t('Add condition'));
     $this->backdropPost(NULL, array('bundles[article]' => 1), t('Add condition'));
-    $this->backdropPost(NULL, array(), t('Save layout'));
+    $this->backdropPost(NULL, array(), t('Save settings'));
 
     // Add the custom block to the layout.
     $layout = layout_load('article_layout');

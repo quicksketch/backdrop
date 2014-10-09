@@ -33,12 +33,10 @@ class LayoutInterfaceTest extends BackdropWebTestCase {
     $this->test_node1 = $this->backdropCreateNode(array(
       'type' => 'article',
       'title' => $this->randomString(),
-      'body' => array(LANGUAGE_NONE => array(array($this->randomString(40)))),
     ));
     $this->test_node2 = $this->backdropCreateNode(array(
       'type' => 'page',
       'title' => $this->randomString(),
-      'body' => array(LANGUAGE_NONE => array(array($this->randomString(40)))),
     ));
   }
 
@@ -51,7 +49,7 @@ class LayoutInterfaceTest extends BackdropWebTestCase {
 
     // Create a new layout at a new path.
     $layout_name = strtolower($this->randomName());
-    $layout_title = $this->randomName();
+    $layout_title = $this->randomString();
     $layout_url = 'layout-test-path';
     $edit = array(
       'title' => $layout_title,
@@ -90,7 +88,7 @@ class LayoutInterfaceTest extends BackdropWebTestCase {
 
     // Check that the layout is in the listing of layouts.
     $this->backdropGet('admin/structure/layouts');
-    $this->assertText($layout_title);
+    $this->assertText(check_plain($layout_title));
 
     // Go to the the layout path and confirm the block exists, has the right
     // setting, and is the right place.
@@ -112,7 +110,7 @@ class LayoutInterfaceTest extends BackdropWebTestCase {
     $this->backdropPost($block_edit_url, $edit, t('Save configuration'));
     $this->backdropPost(NULL, array(), t('Save layout'));
     $this->backdropGet($layout_url);
-    $this->assertText($block_new_title);
+    $this->assertText(check_plain($block_new_title));
 
     // Set the block title to nothing.
     $edit = array(
@@ -253,7 +251,7 @@ class LayoutInterfaceTest extends BackdropWebTestCase {
   function testBlockConditions() {
     // Create a new layout overriding node/%.
     $layout_name = strtolower($this->randomName());
-    $layout_title = $this->randomName();
+    $layout_title = $this->randomString();
     $layout_url = 'node/%';
     $edit = array(
       'title' => $layout_title,
@@ -284,10 +282,10 @@ class LayoutInterfaceTest extends BackdropWebTestCase {
     $this->backdropPost(Null, array(), t('Save layout'));
 
     $this->backdropGet('node/' . $this->test_node1->nid);
-    $this->assertText($block_title, 'Block shown on article content.');
+    $this->assertText(check_plain($block_title), 'Block shown on article content.');
 
     $this->backdropGet('node/' . $this->test_node2->nid);
-    $this->assertNoText($block_title, 'Block not shown on page content.');
+    $this->assertNoText(check_plain($block_title), 'Block not shown on page content.');
 
     // Get the block UUID.
     layout_reset_caches();
@@ -314,10 +312,10 @@ class LayoutInterfaceTest extends BackdropWebTestCase {
       'title' => $this->randomString(),
     ));
     $this->backdropGet('node/' . $this->test_node1->nid);
-    $this->assertText($block_title, 'Block shown on article content and path matches.');
+    $this->assertText(check_plain($block_title), 'Block shown on article content and path matches.');
 
     $this->backdropGet('node/' . $second_article->nid);
-    $this->assertNoText($block_title, 'Block not shown on article content when path does not match.');
+    $this->assertNoText(check_plain($block_title), 'Block not shown on article content when path does not match.');
   }
 
   /**
@@ -449,7 +447,7 @@ class LayoutInterfaceTest extends BackdropWebTestCase {
 
     // Visit the sample node page and check that the block is visible.
     $this->backdropGet('node/1');
-    $block_element = $this->xpath('//*[@id=:region]//*[contains(@class,:block)]', array(
+    $block_element = $this->xpath('//*[@id="layout-edit-main"]//*[@id=:region]//*[contains(@class,:block)]', array(
       ':region' => 'sidebar',
       ':block' => 'block-layout-test-test-node-title',
     ));
@@ -515,6 +513,117 @@ class LayoutInterfaceTest extends BackdropWebTestCase {
   }
 
   /**
+   * Check special conditions around the main content block.
+   */
+  function testMainContentBlock() {
+    // Make a new layout that overrides an existing path.
+    $layout_name = strtolower($this->randomName());
+    $layout_title = $this->randomString();
+    $layout_path = 'layout-test-path'; // Provided by layout_test.module.
+    $edit = array(
+      'title' => $layout_title,
+      'name' => $layout_name,
+      'layout' => 'two_column',
+      'path' => $layout_path,
+    );
+    // Save directly without checking contexts.
+    $this->backdropPost('admin/structure/layouts/add', $edit, t('Create layout'));
+
+    // Add the main content block to the sidebar.
+    $this->clickLink(t('Add block'), 3);
+    $this->clickLink(t('Main page content'));
+    $this->backdropPost(NULL, array(), t('Add block'));
+
+    // Record the UUID for the newly added block.
+    $last_block = $this->xpath('(//*[@id="layout-edit-main"]//*[@id=:region]//*[@data-block-id])[last()]', array(
+      ':region' => 'sidebar',
+      ':block' => 'layout-editor-block',
+    ));
+    $new_content_block_uuid = (string) $last_block[0]['data-block-id'];
+
+    // Save the layout.
+    $edit = array(
+      'title_display' => LAYOUT_TITLE_CUSTOM,
+      'title' => 'Generic node title',
+    );
+    $this->backdropPost(NULL, $edit, t('Save layout'));
+
+    // Check that the validation prevented two main content blocks.
+    $this->assertText(t('The "@block" block may only be added once to this layout.', array('@block' => t('Main page content'))));
+
+    // Delete the previous content block.
+    $old_content_block = $this->xpath('//*[@id=:region]//*[@data-block-id]', array(
+      ':region' => 'content',
+      ':block' => 'layout-editor-block',
+    ));
+    $old_content_block_uuid = (string) $old_content_block[0]['data-block-id'];
+    $remove_link = $this->xpath('//*[@id="layout-edit-main"]//*[@data-block-id=:uuid]//a[contains(@class,"remove-block")]', array(
+      ':uuid' => $old_content_block_uuid,
+    ));
+    $remove_url_parts = backdrop_parse_url($remove_link[0]['href']);
+    debug($remove_url_parts);
+    $this->backdropGet($remove_url_parts['path'], $remove_url_parts);
+
+    $this->backdropPost(NULL, array(), t('Save layout'));
+    $this->assertText(t('Layout content saved.'), 'Layout saved successfully after removing old content block.');
+
+    // Check the front-end that the content is shown in the sidebar. Note that
+    // the main content block does *not* have any wrappers, so we check directly
+    // for the content we expect at /node, which is a list of article tags.
+    $this->backdropGet($layout_path);
+    $front_end_content = $this->xpath('//*[@id=:region]/div[@class="section"]/*[@id=:page-content]', array(
+      ':region' => 'sidebar',
+      ':block' => 'layout-editor-block',
+      ':page-content' => 'layout-test-page-content',
+    ));
+    $this->assertTrue(count($front_end_content) > 1, 'Main content shown in sidebar after moving main content block.');
+
+    // Now remove the second main content block, which should be allowed even
+    // though it is potentially a bad idea.
+    $this->backdropGet('admin/structure/layouts/manage/' . $layout_name);
+    $remove_link = $this->xpath('//*[@data-block-id=:uuid]//a[contains(@class,"remove-block")]', array(
+      ':uuid' => $new_content_block_uuid,
+    ));
+    $remove_url_parts = backdrop_parse_url($remove_link[0]['href']);
+    $this->backdropGet($remove_url_parts['path'], $remove_url_parts);
+
+    $this->backdropPost(NULL, array(), t('Save layout'));
+    $this->assertText(t('Layout content saved.'));
+
+    // Check that the main content block is no longer displayed at all.
+    $this->backdropGet($layout_path);
+    $front_end_content = $this->xpath('//*[@id=:id]', array(
+      ':id' => 'layout-test-page-content',
+    ));
+    $this->assertTrue(count($front_end_content) > 1, 'Main content is no longer shown at all.');
+
+    // Edit the default layout and ensure that the main content block cannot be
+    // removed.
+    $this->backdropGet('admin/structure/layouts/manage/' . $layout_name);
+    $default_content_block = $this->xpath('//*[@id=:region]//*[@data-block-id]//a[contains(@class,"remove-block")]', array(
+      ':region' => 'content',
+      ':block' => 'layout-editor-block',
+    ));
+    $default_content_block_uuid = (string) $default_content_block[0]['data-block-uuid'];
+    $remove_link = $this->xpath('//*[@data-block-id=:uuid]', array(
+      ':uuid' => $default_content_block_uuid,
+    ));
+    $remove_url_parts = backdrop_parse_url($remove_link[0]['href']);
+    $this->backdropGet($remove_url_parts['path'], $remove_url_parts);
+
+    $this->backdropPost(NULL, array(), t('Save layout'));
+    $this->assertText(t('The "@block" block must be added to this layout.', array('@block' => t('Main page content'))));
+
+    // Cancel the changes to the default layout.
+    $this->backdropPost(NULL, array(), t('Cancel'));
+
+    // Delete the previous test layout.
+    $layout = layout_load($layout_name);
+    $layout->delete();
+
+  }
+
+  /**
    * Tests conditions and menu item navigation.
    */
   function testLayoutMenuItems() {
@@ -545,7 +654,7 @@ class LayoutInterfaceTest extends BackdropWebTestCase {
     $this->assertUrl('admin/structure/layouts/menu/' . $layout_name, array(), 'Menu settings link goes to the correct layout menu item settings.');
 
     // Set as a normal menu item.
-    $menu_title = $this->randomString();
+    $menu_title = $this->randomName();
     $edit = array(
       'menu[type]' => 'normal',
       'menu[title]' => $menu_title,
@@ -703,7 +812,7 @@ class LayoutInterfaceTest extends BackdropWebTestCase {
     $result = config_get('layout.menu_item.' . $layout_name, 'name');
     $this->assertEqual($result, $layout_name, 'Config created for new layout menu item.');
 
-    $layout_title = $this->randomName();
+    $layout_title = $this->randomString();
     $edit = array(
       'menu[type]' => 'normal',
       'menu[title]' => $layout_title,
@@ -712,7 +821,7 @@ class LayoutInterfaceTest extends BackdropWebTestCase {
     $this->backdropPost('admin/structure/layouts/menu/' . $layout_name, $edit, t('Save menu settings'));
 
     $this->backdropGet('<front>');
-    $this->assertLink($layout_title, 0, 'Menu link displayed on homepage.');
+    $this->assertLink(check_plain($layout_title), 0, 'Menu link displayed on homepage.');
 
     // Create another layout at the same path.
     $second_layout_name = strtolower($this->randomName());
@@ -744,12 +853,12 @@ class LayoutInterfaceTest extends BackdropWebTestCase {
     $this->assertEqual($menu_item->path, $layout_path, 'Menu path copied correctly.');
 
     $this->backdropGet('<front>');
-    $this->assertLink($layout_title, 0, 'Previous menu item link still displayed after deleting first layout.');
+    $this->assertLink(check_plain($layout_title), 0, 'Previous menu item link still displayed after deleting first layout.');
 
     // Delete the second layout
     $this->backdropPost('admin/structure/layouts/manage/' . $second_layout_name . '/delete', array(), t('Delete layout'));
     $this->backdropGet('<front>');
-    $this->assertNoLink($layout_title, 'Menu item no longer present after deleting last layout.');
+    $this->assertNoLink(check_plain($layout_title), 'Menu item no longer present after deleting last layout.');
 
     $result = config_get('layout.menu_item.' . $second_layout_name, 'name');
     $this->assertNull($result, 'Config for second menu item has been deleted.');

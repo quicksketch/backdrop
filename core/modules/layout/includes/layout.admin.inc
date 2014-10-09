@@ -720,6 +720,23 @@ function layout_content_form($form, &$form_state, Layout $layout, $renderer_name
  */
 function layout_content_form_validate($form, &$form_state) {
   $layout = $form_state['layout'];
+
+  // Ensure that the main page content block is only positioned once and that
+  // default layouts include the main page content.
+  $main_blocks_found = 0;
+  foreach ($layout->content as $uuid => $block) {
+    if ($block->module === 'system' && $block->delta === 'main') {
+      $main_blocks_found++;
+    }
+  }
+  if ($main_blocks_found > 1) {
+    form_error($form['content']['positions'], t('The "@block" block may only be added once to this layout.', array('@block' => t('Main page content'))));
+  }
+  elseif ($main_blocks_found === 0 && ($layout->name === 'default' || $layout->name === 'admin_default')) {
+    form_error($form['content']['positions'], t('The "@block" block must be added to this layout.', array('@block' => t('Main page content'))));
+  }
+
+  // Let the layout do any specific validations.
   $layout->formValidate($form, $form_state);
 }
 
@@ -733,23 +750,25 @@ function layout_content_form_validate($form, &$form_state) {
 function layout_content_form_submit($form, &$form_state) {
   $layout = &$form_state['layout'];
 
-  $old_content = $layout->content;
-  $layout->content = array();
-
   // Update the block positions based on the hidden position elements.
   if (!empty($form_state['values']['content']['positions'])) {
+    $new_content = array();
+    $new_positions = array();
+
     foreach ($form_state['values']['content']['positions'] as $region_id => $blocks) {
-      $layout->positions[$region_id] = array();
+      $new_positions[$region_id] = array();
       if ($blocks) {
         $uuids = array_filter(explode(',', $blocks));
         foreach ($uuids as $uuid) {
-          if (isset($old_content[$uuid])) {
-            $layout->positions[$region_id][] = $uuid;
-            $layout->content[$uuid] = $old_content[$uuid];
+          if (isset($layout->content[$uuid])) {
+            $new_content[$uuid] = $layout->content[$uuid];
+            $new_positions[$region_id][] = $uuid;
           }
         }
       }
     }
+    $layout->content = $new_content;
+    $layout->positions = $new_positions;
   }
 
   // Save title settings.
@@ -1172,10 +1191,8 @@ function layout_block_remove_page(Layout $layout, Block $block, $renderer_name) 
     return MENU_ACCESS_DENIED;
   }
 
-  if (isset($layout->content[$block->uuid])) {
-    unset($layout->content[$block->uuid]);
-    layout_set_layout_tempstore($layout);
-  }
+  $layout->removeBlock($block->uuid);
+  layout_set_layout_tempstore($layout);
 
   if (backdrop_is_ajax()) {
     $commands[] = ajax_command_remove('#layout-editor-block-' . $block->uuid);
