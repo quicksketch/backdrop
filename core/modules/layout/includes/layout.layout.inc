@@ -10,7 +10,6 @@
 function layout_layout_context_info() {
   $info['node'] = array(
     'title' => t('Node'),
-    'description' => t('A node object.'),
     // Define the class which is used to handle this context.
     'class' => 'EntityLayoutContext',
     // Define menu paths where the node ID is a "known" context.
@@ -18,30 +17,20 @@ function layout_layout_context_info() {
       'node/%node',
       'node/%node/view',
     ),
-    // Given the menu paths defined above, identify the parts of the path that
-    // are needed to generate this context. These values will be passed in as
-    // $args to the context class.
-    'menu loaders' => array(
-      '%node' => 'nid',
-    ),
-    // In situations where this context is being used at an "unknown" (user-
-    // specified) path, provide a string that be used as the loader in
-    // hook_menu().
+    // Given the menu paths defined above, identify the part of the path that
+    // is needed to generate this context.
     'path placeholder' => '%node',
+
     // Given an argument, the callback that will be responsible for loading the
     // main context data.
     'load callback' => 'node_load',
   );
   $info['user'] = array(
     'title' => t('User'),
-    'description' => t('A user object.'),
     'class' => 'EntityLayoutContext',
     'menu paths' => array(
       'user/%user',
       'user/%user/view',
-    ),
-    'menu loaders' => array(
-      '%user' => 'uid',
     ),
     'path placeholder' => '%user',
     'load callback' => 'user_load',
@@ -50,15 +39,14 @@ function layout_layout_context_info() {
     'title' => t('Overrides path'),
     'description' => t('Layout overrides existing path provided by another module.'),
     'class' => 'LayoutOverridesPathContext',
-    'menu loaders' => array(),
+    'path placeholder' => NULL,
     'menu paths' => array(),
     'hidden' => TRUE,
   );
   $info['string'] = array(
     'title' => t('String pass-through'),
-    'description' => t('A pass-through context which allows a string to be passed from the URL to a block.'),
     'class' => 'LayoutStringContext',
-    'menu loaders' => array(),
+    'path placeholder' => NULL,
     'menu paths' => array(),
   );
   return $info;

@@ -181,7 +181,7 @@ function template_process_layout(&$variables) {
 }
 
 /**
- * Clean up the layout block variables for the template.
+ * Preprocess the variables for the block.tpl.php file.
  */
 function template_preprocess_block(&$variables) {
   $content = $variables['content'];
@@ -199,8 +199,8 @@ function template_preprocess_block(&$variables) {
       $links += $content->admin_links;
     }
 
-    // Take any that may have been in the render array we were given and
-    // move them up so they appear outside the pane properly.
+    // Take and contextual links that may have been returned in the block render
+    // array and move them up into the block wrapper's contextual links.
     if (is_array($content->content) && isset($content->content['#contextual_links'])) {
       $element = array(
         '#type' => 'contextual_links',
@@ -249,7 +249,7 @@ function template_preprocess_block(&$variables) {
 }
 
 /**
- * Clean up the panel pane variables for the template.
+ * Preprocess the variables for the block-dynamic.tpl.php file.
  */
 function template_preprocess_block_dynamic(&$variables) {
   // Re-use all the preprocessing provided by the default block template.

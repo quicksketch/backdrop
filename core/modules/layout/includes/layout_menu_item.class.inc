@@ -60,25 +60,6 @@ class LayoutMenuItem {
   );
 
   /**
-   * The module that originally provided this layout (if any).
-   *
-   * @var string
-   */
-  var $module = NULL;
-
-  /**
-   * The storage state of the layout.
-   *
-   * This is the machine-version of the $type variable, which represents whether
-   * this view is has a default, user-created, or overridden configuration.
-   * Possible values for this variable include the constants
-   * LAYOUT_STORAGE_NORMAL, LAYOUT_STORAGE_OVERRIDE, or LAYOUT_STORAGE_DEFAULT.
-   *
-   * @var int
-   */
-  var $storage = LAYOUT_STORAGE_NORMAL;
-
-  /**
    * An array of all conditional rules used by this menu item.
    *
    * @var array
@@ -97,7 +78,7 @@ class LayoutMenuItem {
   var $arguments = array();
 
   /**
-   * Whether this layout is locked (being currently edited).
+   * Whether this menu item is locked (being currently edited).
    *
    * @var boolean
    */
@@ -151,8 +132,6 @@ class LayoutMenuItem {
     // Convert all properties to an array.
     $data = array(
       'name' => $this->name,
-      'module' => $this->module,
-      'storage' => $this->storage,
       'title' => $this->title,
       'path' => $this->path,
       'menu' => $this->menu,

@@ -176,6 +176,8 @@ function layout_add_page() {
 
 /**
  * Render the settings form for layout.
+ *
+ * @ingroup forms
  */
 function layout_settings_form($form, &$form_state, Layout $layout) {
   form_load_include($form_state, 'inc', 'layout', 'includes/layout.admin');
@@ -612,7 +614,6 @@ function layout_settings_form_save_submit($form, &$form_state) {
  * the ajax modals & content types.
  *
  * @ingroup forms
- * @see panels_edit_display_submit()
  */
 function layout_content_form($form, &$form_state, Layout $layout, $renderer_name = NULL) {
   if (!isset($form_state['layout'])) {
@@ -743,8 +744,8 @@ function layout_content_form_validate($form, &$form_state) {
 /**
  * Handle form submission of the display content editor.
  *
- * This reads the location of the various panes from the form, which will
- * have been modified from the ajax, rearranges them and then saves
+ * This reads the location of the various blocks from the form, which will
+ * have been modified via JavaScript, rearranges them and then saves
  * the display.
  */
 function layout_content_form_submit($form, &$form_state) {
@@ -866,6 +867,8 @@ function layout_block_configure_redirect($layout, $block_uuid) {
 
 /**
  * Form callback; Add or edit a block within a layout.
+ *
+ * @ingroup forms
  */
 function layout_block_configure_form($form, &$form_state, Layout $layout, Block $block, $renderer_name, $region_name = NULL) {
   form_load_include($form_state, 'inc', 'layout', 'includes/layout.admin');
@@ -1215,6 +1218,8 @@ function layout_block_remove_page(Layout $layout, Block $block, $renderer_name) 
  *   The layout to which a condition is being added.
  * @param Block|null $block
  *   If applying a condition to a particular block, the block instance.
+ *
+ * @ingroup forms
  */
 function layout_condition_add_form($form, &$form_state, Layout $layout = NULL, Block $block = NULL, LayoutMenuItem $menu_item = NULL) {
   form_load_include($form_state, 'inc', 'layout', 'includes/layout.admin');
@@ -1335,6 +1340,8 @@ function layout_condition_edit_title(Layout $layout = NULL, Block $block = NULL,
  *
  * This can be used to add a condition to either a layout or a block. If adding
  * to a layout, the $block parameter will be empty.
+ *
+ * @ingroup forms
  */
 function layout_condition_edit_form($form, &$form_state, Layout $layout = NULL, Block $block = NULL, LayoutMenuItem $menu_item = NULL, $handler_id) {
   form_load_include($form_state, 'inc', 'layout', 'includes/layout.admin');
@@ -1471,6 +1478,8 @@ function layout_enable_layout($status, Layout $layout) {
 
 /**
  * Reorder the order of layouts at the same path.
+ *
+ * @ingroup forms
  */
 function layout_reorder_form($form, &$form_state) {
   if (!isset($form_state['layouts'])) {
@@ -1584,18 +1593,9 @@ function layout_locked_message($item, $type = 'layout') {
 }
 
 /**
- * Form to enable a page.
- */
-function layout_enable_form($form, &$form_state) {
-  $form['markup'] = array(
-    '#markup' => t('Enabling this page will immediately make it available in your system (there is no need to wait for a save.)'),
-  );
-
-  return $form;
-}
-
-/**
  * Form callback; Copy an existing layout into a new layout.
+ *
+ * @ingroup forms
  */
 function layout_clone_form($form, &$form_state, $layout) {
   $layout = clone($layout);
@@ -1642,6 +1642,8 @@ function layout_clone_form_submit($form, &$form_state) {
 
 /**
  * Form callback; Delete a layout.
+ *
+ * @ingroup forms
  */
 function layout_delete_form($form, &$form_state, $layout) {
   $form_state['layout'] = $layout;
@@ -1679,6 +1681,8 @@ function layout_delete_form_submit(&$form, &$form_state) {
 
 /**
  * Form callback; Configure a layout menu item.
+ *
+ * @ingroup forms
  */
 function layout_menu_item_form($form, &$form_state, $menu_item) {
   form_load_include($form_state, 'inc', 'layout', 'includes/layout.admin');

@@ -1,14 +1,25 @@
 <?php
-
 /**
  * @file
- * The page manager module provides a UI and API to manage pages.
+ * The Layout module creates pages and wraps existing pages in layouts.
  *
- * It defines pages, both for system pages, overrides of system pages, and
- * custom pages using Backdrop's normal menu system. It allows complex
- * manipulations of these pages, their content, and their hierarchy within
- * the site. These pages can be exported to code for superior revision
- * control.
+ * Backdrop's primary tool for positioning content is through layouts and
+ * blocks. A "layout" is the template that defines regions in which pieces of
+ * content may be placed. Each piece of content in this case is called a
+ * "block". Blocks may be placed multiple times in a single layout, and each
+ * block maintains separate settings. Each layout created saves to a
+ * configuration file, including all the settings for the blocks contained
+ * within it.
+ *
+ * Layout module provides two distinct ways of rendering pages. It is capable of
+ * creating a stand-alone page that is created at any custom path specified by
+ * the user, and it can also "wrap" the content of any path provided by a
+ * module. In the case where a custom path is created, Layout module registers
+ * the path in the menu system through hook_menu(). For wrapping module-provided
+ * pages, Layout module declares itself as the system-wide "route handler", as
+ * checked in menu_execute_active_handler(). Layout module then becomes
+ * responsible for calling the module-provided content as a block, and positions
+ * other blocks around the existing content.
  */
 
 /**
@@ -1329,12 +1340,10 @@ function layout_context_required_by_path($path) {
       // If the path matches based on % wildcards, add this context as a
       // required context info in the correct order.
       if (strpos($path, $cleaned_path) === 0) {
-        // Get the first named argument.
-        $loader_part = key($context_info['menu loaders']);
-        // Determine the argument placement within the path
+        // Determine the argument placement within the path.
         $parts = explode('/', $context_path);
         foreach ($parts as $part_index => $part) {
-          if ($part === $loader_part) {
+          if ($part === $context_info['path placeholder']) {
             $required_context_info[$part_index] = array(
               'plugin' => $context_info['name'],
               'position' => $part_index,
