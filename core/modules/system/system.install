@@ -2251,7 +2251,6 @@ function system_update_1023() {
           ),
         );
         $block_config['data']['conditions'][] = $access_config;
-        debug($block_config);
       }
 
       // Add any role restrictions.

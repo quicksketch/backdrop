@@ -1,5 +1,4 @@
 <?php
-
 /**
  * @file
  * Administrative functions for Layout module.
@@ -1598,19 +1597,9 @@ function layout_locked_message($item, $type = 'layout') {
  * @ingroup forms
  */
 function layout_clone_form($form, &$form_state, $layout) {
-  $layout = clone($layout);
-  $layout->name = NULL;
-  $layout->is_new = TRUE;
-  $layout->module = NULL;
-  $layout->storage = LAYOUT_STORAGE_NORMAL;
+  $layout_clone = $layout->getClone();
 
-  // Position the new layout one level above the current layout, assuming that
-  // users will start with a generic layout, such as a global "node" layout,
-  // then later create a more specific layout, such as "article nodes", which
-  // should come before the more generic version.
-  $layout->weight--;
-
-  $settings_form = layout_settings_form($form, $form_state, $layout);
+  $settings_form = layout_settings_form($form, $form_state, $layout_clone);
   $form['title'] = $settings_form['title'];
   $form['name'] = $settings_form['name'];
 

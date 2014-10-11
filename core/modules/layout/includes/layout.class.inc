@@ -213,6 +213,11 @@ class Layout {
       'positions' => $this->positions,
     );
 
+    // Basic validation to prevent data corruption.
+    if (empty($this->name)) {
+      throw LayoutSaveException(t('The layout must have a name specified to save.'));
+    }
+
     // Convert all stored conditions to arrays.
     // @todo: Save per-layout contexts and relationships.
     $sub_parts = array(
@@ -328,6 +333,36 @@ class Layout {
     if ($this->menu_item->name === $this->name) {
       $this->menu_item->reassign();
     }
+  }
+
+  /**
+   * Clone a layout and return new Layout object.
+   */
+  function getClone() {
+    $clone = clone($this);
+    $clone->name = NULL;
+    $clone->is_new = TRUE;
+    $clone->module = NULL;
+    $clone->storage = LAYOUT_STORAGE_NORMAL;
+
+    // Copy over blocks with new UUIDs.
+    $clone->content = array();
+    $clone->positions = array();
+    foreach ($this->positions as $region => $block_uuids) {
+      foreach ($block_uuids as $block_uuid) {
+        $new_block = $this->content[$block_uuid]->getClone();
+        $clone->content[$new_block->uuid] = $new_block;
+        $clone->positions[$region][] = $new_block->uuid;
+      }
+    }
+
+    // Position the new layout one level above the current layout, assuming that
+    // users will start with a generic layout, such as a global "node" layout,
+    // then later create a more specific layout, such as "article nodes", which
+    // should come before the more generic version.
+    $clone->weight--;
+
+    return $clone;
   }
 
   /**

@@ -566,6 +566,8 @@ function layout_autoload_info() {
     'LayoutMenuItem' => 'includes/layout_menu_item.class.inc',
 
     // Exceptions.
+    'LayoutException' => 'includes/layout.exceptions.inc',
+    'LayoutSaveException' => 'includes/layout.exceptions.inc',
     'LayoutMissingException' => 'includes/layout.exceptions.inc',
 
     // Context handlers.
