@@ -883,6 +883,7 @@ body.maintenance-page #page {
   max-width: 770px;
   min-width: 255px;
   margin: 0 auto;
+  background: white;
 }
 body.maintenance-page #page:after {
   left: 100%; /* LTR */

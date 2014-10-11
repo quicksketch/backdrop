@@ -483,8 +483,8 @@ function _update_7000_node_get_types() {
 function node_update_dependencies() {
   // Do not drop the block tables until after System module has enabled and
   // migrated blocks into layouts.
-  $dependencies['node'][1003] = array(
-    'system' => 1023,
+  $dependencies['node'][1004] = array(
+    'system' => 1024,
   );
 
   return $dependencies;
@@ -542,11 +542,10 @@ function node_update_1002() {
   db_change_field('node', 'language', 'langcode', $spec);
 }
 
-
 /**
  * Move theme settings to global site configuration.
  */
-function node_update_1022() {
+function node_update_1003() {
   $types = db_query('SELECT type FROM {node_type}')->fetchCol();
   $theme = variable_get('theme_default', 'stark');
   $settings = variable_get('theme_' . $theme . '_settings', array());
@@ -566,7 +565,7 @@ function node_update_1022() {
 /**
  * Remove the block_node_type table, now stored in layout configuration files.
  */
-function node_update_1003() {
+function node_update_1004() {
   db_drop_table('block_node_type');
 }
 

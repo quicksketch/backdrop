@@ -210,7 +210,7 @@ function locale_schema() {
 function locale_update_dependencies() {
   // Make sure Locale module updates block tables before System module port the
   // blocks to layouts.
-  $dependencies['system'][1023] = array(
+  $dependencies['system'][1024] = array(
     'locale' => 1001,
   );
   return $dependencies;
