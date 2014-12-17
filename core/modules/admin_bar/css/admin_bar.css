@@ -205,14 +205,15 @@ body.admin-bar {
   background: transparent;
 }
 #admin-bar-icon li.admin-bar-icon > a {
-  padding: 7px 8px 11px;
+
 }
-#admin-bar-icon .admin-bar-icon img {
-  vertical-align: bottom;
-}
-/* Add a border when using the default Backdrop logo. */
-#admin-bar-icon .admin-bar-icon img[src$="core/misc/favicon.ico"] {
-  outline: 1px solid #45454A;
+#admin-bar-icon li.admin-bar-icon > a span {
+  display: inline-block;
+  background: url(../images/home.png) no-repeat;
+  background: linear-gradient(transparent, transparent), url(../images/home.svg) no-repeat;
+  width: 18px;
+  height: 15px;
+  text-indent: -1000px;
 }
 
 /* Extras menu */
@@ -232,7 +233,8 @@ body.admin-bar {
 
 /* Online users */
 #admin-bar .dropdown .admin-bar-users a {
-  background: transparent url(../images/icon_users.png) 90% center no-repeat;
+  background: url(../images/icon_users.png) 90% center no-repeat;
+  background: linear-gradient(transparent, transparent), url(../images/icon_users.svg) 90% center no-repeat;
   padding-right: 22px; /* LTR */
 }
 [dir="rtl"] #admin-bar .dropdown .admin-bar-users a {

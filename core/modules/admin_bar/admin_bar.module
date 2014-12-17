@@ -60,10 +60,6 @@ function admin_bar_theme() {
       'render element' => 'elements',
       'file' => 'admin_bar.inc',
     ),
-    'admin_bar_icon' => array(
-      'variables' => array('src' => NULL, 'alt' => NULL),
-      'file' => 'admin_bar.inc',
-    ),
   );
 }
 

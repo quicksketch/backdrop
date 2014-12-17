@@ -541,7 +541,7 @@ function admin_bar_links_icon() {
     '#weight' => -100,
   );
   $links['icon'] = array(
-    '#title' => theme('admin_bar_icon'),
+    '#title' => '<span>' . t('Home') . '</span>',
     '#attributes' => array('class' => array('admin-bar-icon')),
     '#href' => '<front>',
     '#options' => array(
@@ -850,24 +850,6 @@ function _admin_bar_flush_cache($name = NULL) {
       break;
   }
 }
-
-/**
- * Preprocesses variables for theme_admin_bar_icon().
- */
-function template_preprocess_admin_bar_icon(&$variables) {
-  $variables['src'] = $GLOBALS['base_url'] . '/' . backdrop_get_path('module', 'admin_bar') . '/images/home.png';
-  $variables['alt'] = t('Home');
-}
-
-/**
- * Renders an icon to display in the administration bar.
- *
- * @ingroup themeable
- */
-function theme_admin_bar_icon($variables) {
-  return '<img class="admin-bar-icon" src="' . $variables['src'] . '" width="14" height="12" alt="' . $variables['alt'] . '" />';
-}
-
 
 /**
  * Render a themed list of links.
