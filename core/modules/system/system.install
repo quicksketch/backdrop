@@ -2622,6 +2622,16 @@ function system_update_1043() {
 }
 
 /**
+ * Notify administrators if a non-core version of the date module is present.
+ */
+function system_update_1044() {
+  $path = backdrop_get_path('module', 'date');
+  if ($path && strpos($path, 'core/modules/date') === FALSE) {
+    backdrop_set_message(t('Backdrop core now provides a bundled date module. A different copy of Date module has been located at %path. Remove this module from your installation to use new Date module. For more information see the <a href="https://api.backdropcms.org/node/42930--{{i_can_has_date_changelog_node?}}">Date change notice</a>.', array('%path' => BACKDROP_ROOT . '/' . $path)), 'warning');
+  }
+}
+
+/**
  * @} End of "defgroup updates-7.x-to-1.x"
  * The next series of updates should start at 2000.
  */
