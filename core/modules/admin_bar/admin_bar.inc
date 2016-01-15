@@ -78,6 +78,11 @@ function admin_bar_output($complete = FALSE) {
       $content['extra']['extra'] += admin_bar_links_users();
     }
 
+    // Check for status report errors.
+    if (user_access('administer site configuration')) {
+      $content['extra']['extra'] += admin_bar_links_alert();
+    }
+
     // Allow modules to enhance the menu.
     // Uses '_output' suffix for consistency with the alter hook (see below).
     foreach (module_implements('admin_bar_output_build') as $module) {
@@ -651,6 +656,39 @@ function admin_bar_links_search() {
     ),
   );
   return $search;
+}
+
+/**
+ * Build alert indicator.
+ */
+function admin_bar_links_alert() {
+  $alert = array();
+  // Check requirements.
+  include_once BACKDROP_ROOT . '/core/includes/install.inc';
+  $requirements = system_get_requirements();
+  if (backdrop_requirements_severity($requirements) == REQUIREMENT_ERROR) {
+    // Count the errors.
+    $count = 0;
+    foreach ($requirements as $requirement) {
+      if (isset($requirement['severity']) && $requirement['severity'] == REQUIREMENT_ERROR) {
+        $count++;
+      }
+    }
+    // Add a link to the status report.
+    $alert['alert'] = array(
+      '#title' => t('Site status <span class="error-count">@count</span>', array('@count' => $count)),
+      '#weight' => -100,
+      '#attributes' => array(
+        'title' => format_plural($count, 'One problem was detected with your Backdrop installation.', 'Several problems were detected with your Backdrop installation.'),
+        'class' => array('admin-bar-alert', 'admin-bar-alert-error'),
+      ),
+      '#href' => 'admin/reports/status',
+      '#access' => user_access('administer site configuration'),
+      '#options' => array('html' => TRUE),
+    );
+  }
+
+  return $alert;
 }
 
 /**
