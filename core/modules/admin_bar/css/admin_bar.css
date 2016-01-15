@@ -245,20 +245,10 @@
   padding-right: 0;
 }
 
-#admin-bar .dropdown .admin-bar-action a {
-  border-left: 1px solid #323232;
-  border-right: none;
-}
-[dir="rtl"] #admin-bar .dropdown .admin-bar-action a {
-  border-left: none;
-  border-right: 1px solid #323232;
-}
-
 /* Search form */
 #admin-bar .admin-bar-search .form-item {
   margin: 0;
   padding: 6px;
-  width: 92%;
 }
 #admin-bar .top-level .admin-bar-search {
   width: 140px;
@@ -323,22 +313,19 @@ tr.admin-bar-tweak-permissions-processed td.module {
 }
 
 /* Alert colors */
-#admin-bar .dropdown .admin-bar-alert span.error-count {
-  border-radius: 50%;
+#admin-bar .admin-bar-alert .error-count {
   padding: 3px 6px;
-  border: 6px solid #000000;
-}
-#admin-bar .admin-bar-alert-error span.error-count {
+  margin: -3px 6px;
+  display: inline-block;
+  min-width: 9px;
+  border-radius: 50%;
+  text-align: center;
   background-color: #ee3d23;
 }
-#admin-bar .top-level a.admin-bar-alert {
-  max-width: 50px;
-  overflow: hidden;
-  padding: 9px 6px;
+#admin-bar .top-level .admin-bar-alert .error-count {
+  margin-left: 0;
+  margin-right: 0;
 }
-#admin-bar .top-level .admin-bar-alert a {
-  visibility: hidden;
-}
-#admin-bar .top-level .admin-bar-alert a span.error-count {
-  visibility: visible;
+#admin-bar .top-level .admin-bar-alert .error-label {
+  display: none;
 }

@@ -138,6 +138,12 @@ function admin_bar_preprocess_page(&$variables) {
     return;
   }
 
+  // For the status report page, generate the admin bar from scratch to refresh
+  // the site status indicator.
+  if (strpos($_GET['q'], 'admin/reports/status') === 0) {
+    cache('admin_bar')->flush();
+  }
+
   global $user, $language;
   $path = backdrop_get_path('module', 'admin_bar');
 

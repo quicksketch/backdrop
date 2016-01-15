@@ -676,8 +676,8 @@ function admin_bar_links_alert() {
     }
     // Add a link to the status report.
     $alert['alert'] = array(
-      '#title' => t('Site status <span class="error-count">@count</span>', array('@count' => $count)),
-      '#weight' => -100,
+      '#title' => '<span class="error-label">' . t('Site status') . '</span><span class="error-count">' . $count . '</span>',
+      '#weight' => 1,
       '#attributes' => array(
         'title' => format_plural($count, 'One problem was detected with your Backdrop installation.', 'Several problems were detected with your Backdrop installation.'),
         'class' => array('admin-bar-alert', 'admin-bar-alert-error'),
