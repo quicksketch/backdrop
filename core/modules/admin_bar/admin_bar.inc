@@ -64,7 +64,7 @@ function admin_bar_output($complete = FALSE) {
     }
 
     // Check for status report errors.
-    if (user_access('administer site configuration')) {
+    if (isset($content['menu']) && user_access('administer site configuration')) {
       $content['menu']['menu'] += admin_bar_links_alert();
     }
 
@@ -712,6 +712,7 @@ function admin_bar_theme_settings() {
   $form['components'] = array(
     '#type' => 'checkboxes',
     '#title' => t('Enabled components'),
+    '#required' => TRUE,
     '#options' => array(
       'admin_bar.icon' => t('Icon menu'),
       'admin_bar.menu' => t('Management menu'),
