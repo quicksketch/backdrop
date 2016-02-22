@@ -534,7 +534,7 @@ class LayoutRendererStandard {
       $output = theme($style['region theme'], array('layout' => $this->layout, 'blocks' => $blocks, 'settings' => $style_settings, 'style' => $style));
     }
     else {
-      $output = implode('', $blocks);
+      $output = implode('', $blocks); // Use theme('layout_theme'...)?
     }
 
     return $output;
