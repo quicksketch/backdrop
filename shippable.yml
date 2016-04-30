@@ -1,0 +1,57 @@
+# Configuration file for running the test suite. Results typically at http://travis-ci.org/backdrop/backdrop
+language: php
+php:
+  - '5.4'
+  - '7.0'
+services:
+  - mysql
+build:
+  ci:
+    # Add Ubuntu Trusty updates for FastCGI extension.
+    - sudo echo "deb http://gb.archive.ubuntu.com/ubuntu/ trusty multiverse" >> /etc/apt/sources.list
+    - sudo echo "deb-src http://gb.archive.ubuntu.com/ubuntu/ trusty multiverse" >> /etc/apt/sources.list
+    - sudo echo "deb http://gb.archive.ubuntu.com/ubuntu/ trusty-updates multiverse" >> /etc/apt/sources.list
+    - sudo echo "deb-src http://gb.archive.ubuntu.com/ubuntu/ trusty-updates multiverse" >> /etc/apt/sources.list
+
+    # Install Apache and FastCGI extension to connect to PHP-FPM.
+    - sudo apt-get update
+    - sudo apt-get install apache2 libapache2-mod-fastcgi
+    - sudo a2enmod rewrite actions fastcgi alias
+
+    # Symlink the HTML directory to our current directory.
+    - sudo rm -r /var/www/html
+    - ln -s `pwd` /var/www/html
+    - ls -la /var/www/html
+    - ls -la .
+    - tail /var/www/html/robots.txt
+
+    # Add our Apache config file.
+    - sudo rm -rf /etc/apache2/sites-enabled/*
+    - sudo cp -f core/misc/travis-ci/vhost.conf /etc/apache2/sites-enabled/vhost.conf
+
+    # Start Apache.
+    - sudo apachectl start
+
+    # Import the PHP configuration.
+    - cat core/misc/travis-ci/php.ini >> ~/.phpenv/versions/$(phpenv version-name)/etc/php.ini
+
+    # Start PHP-FPM. There is no process manager available to start PHP-FPM on
+    # Shippable CI currently, so we have to locate and enable it manually.
+    - sudo cp core/misc/travis-ci/php-fpm.conf ~/.phpenv/versions/$(phpenv version-name)/etc/php-fpm.conf
+    - ~/.phpenv/versions/$(phpenv version-name)/sbin/php-fpm
+
+    # Set MySQL configuration and create the database.
+    - mysql -e 'SET GLOBAL wait_timeout = 5400;'
+    - mysql -e 'create database backdrop;'
+
+    # Install Backdrop with the installation script.
+    - chmod a+w . settings.php
+    - ./core/scripts/install.sh --db-url=mysql://root:@127.0.0.1/backdrop
+    - chmod go-w . settings.php
+    - curl http://localhost/index.php
+    - curl http://localhost/robots.txt
+    - php -d display_errors="stderr" ./core/scripts/run-tests.sh --concurrency 12 --url 'http://localhost' --color --verbose --force --all
+  on_failure:
+    - echo "Failures detected. Outputing additional logs:"
+    - sudo cat /var/log/apache2/error.log
+    - sudo cat /var/log/mysql/error.log
