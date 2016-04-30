@@ -4,6 +4,7 @@ steps:
     databaseUser: backdrop
     phpMods:
       - gd
+    - subDirectory: ''
   - plugin: Script
     name: Run Backdrop Tests
     script:
