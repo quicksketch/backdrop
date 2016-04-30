@@ -13,3 +13,4 @@ steps:
       - chmod a+w . settings.php
       - ./core/scripts/install.sh --db-url=mysql://backdrop:@127.0.0.1/backdrop
       - chmod go-w . settings.php
+
