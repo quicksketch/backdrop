@@ -1,0 +1,49 @@
+# Configuration file for running the test suite. Results typically at http://travis-ci.org/backdrop/backdrop
+language: php
+php:
+  - '5.4'
+  - '7.0'
+services:
+  - mysql
+
+before_script:
+  - sudo apt-get update
+
+  # Install and start nginx.
+  - sudo apt-get install nginx
+  - sudo cp ~/.phpenv/versions/$(phpenv version-name)/etc/php-fpm.conf.default ~/.phpenv/versions/$(phpenv version-name)/etc/php-fpm.conf
+  - sudo cp -f core/misc/travis-ci/nginx-site.conf /etc/nginx/sites-enabled/nginx-site.conf
+  - sudo sed -e "s?%BUILD_DIR%?$(pwd)?g" --in-place /etc/nginx/sites-enabled/nginx-site.conf
+  - sudo service nginx start
+
+  # Import the PHP configuration.
+  - cat core/misc/travis-ci/php.ini >> ~/.phpenv/versions/$(phpenv version-name)/etc/php.ini
+
+  # Start PHP-FPM. There is no process manager available to start PHP-FPM on
+  # Shippable CI currently, so we have to locate and enable it manually.
+  - sudo cp core/misc/travis-ci/php-fpm.conf ~/.phpenv/versions/$(phpenv version-name)/etc/php-fpm.conf
+  - ~/.phpenv/versions/$(phpenv version-name)/sbin/php-fpm
+
+  # Set MySQL configuration and create the database.
+  - mysql -e 'SET GLOBAL wait_timeout = 5400;'
+  - mysql -e 'create database backdrop;'
+
+  - chmod 755 /root
+  - chmod 755 /root/src
+  - chmod 755 /root/src/github.com
+  - chmod 755 /root/src/github.com/quicksketch
+  - chmod 755 /root/src/github.com/quicksketch/backdrop
+
+build:
+  ci:
+    # Install Backdrop with the installation script.
+    - chmod a+w . settings.php
+    - ./core/scripts/install.sh --db-url=mysql://root:@127.0.0.1/backdrop
+    - chmod go-w . settings.php
+    - curl http://localhost/index.php
+    - curl http://localhost/robots.txt
+    - php -d display_errors="stderr" ./core/scripts/run-tests.sh --concurrency 12 --url 'http://localhost' --color --verbose --force --all
+  on_failure:
+    - echo "Failures detected. Outputing additional logs:"
+    - sudo cat /var/log/nginx/error.log
+    - sudo cat /var/log/mysql/error.log
