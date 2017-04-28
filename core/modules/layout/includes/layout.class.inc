@@ -259,7 +259,7 @@ class Layout {
     // Allow modules to act on layout data before saving.
     foreach (module_implements('layout_presave') as $module) {
       $function = $module . '_layout_presave';
-      $function($this->name, $data);
+      $function($this);
     }
 
     if (isset($this->original_name) && $this->original_name != $this->name) {
@@ -288,13 +288,6 @@ class Layout {
         // See https://github.com/backdrop/backdrop-issues/issues/2137.
         file_usage_add($file, 'file', 'file', $file->fid);
       }
-    }
-
-    if (!empty($this->is_new)) {
-      $this->invokeHook('insert');
-    }
-    else {
-      $this->invokeHook('update');
     }
 
     // If this layout overrides an existing module path, reassign or delete
@@ -328,6 +321,14 @@ class Layout {
       }
     }
     layout_reset_caches();
+
+    $new_this = layout_load($this->name);
+    if (!empty($this->is_new)) {
+      $new_this->invokeHook('insert');
+    }
+    else {
+      $new_this->invokeHook('update');
+    }
   }
 
   /**
