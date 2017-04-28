@@ -219,6 +219,17 @@ class Layout {
       $this->storage = LAYOUT_STORAGE_OVERRIDE;
     }
 
+    // Basic validation to prevent data corruption.
+    if (empty($this->name)) {
+      throw new LayoutSaveException(t('The layout must have a name specified to save.'));
+    }
+
+    // Allow modules to act on layout data before saving.
+    foreach (module_implements('layout_presave') as $module) {
+      $function = $module . '_layout_presave';
+      $function($this);
+    }
+
     $data = array(
       'path' => $this->path,
       'name' => $this->name,
@@ -232,11 +243,6 @@ class Layout {
       'settings' => $this->settings,
       'positions' => $this->positions,
     );
-
-    // Basic validation to prevent data corruption.
-    if (empty($this->name)) {
-      throw new LayoutSaveException(t('The layout must have a name specified to save.'));
-    }
 
     // Convert all stored conditions to arrays.
     // @todo: Save per-layout contexts and relationships.
@@ -254,12 +260,6 @@ class Layout {
           'data' => $config_type_data->toArray(),
         );
       }
-    }
-
-    // Allow modules to act on layout data before saving.
-    foreach (module_implements('layout_presave') as $module) {
-      $function = $module . '_layout_presave';
-      $function($this);
     }
 
     if (isset($this->original_name) && $this->original_name != $this->name) {
