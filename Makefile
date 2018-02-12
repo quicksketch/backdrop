@@ -1,3 +1,3 @@
 tugboat-init:
-	ln -sf $TUGBOAT_ROOT /var/www/html
+	ln -sf ${TUGBOAT_ROOT} /var/www/html
 
