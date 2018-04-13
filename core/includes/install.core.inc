@@ -1856,28 +1856,6 @@ function _install_configure_form($form, &$form_state, &$install_state) {
     '#weight' => 0,
   );
 
-  $form['server_settings'] = array(
-    '#type' => 'fieldset',
-    '#title' => st('Server settings'),
-    '#collapsible' => FALSE,
-  );
-
-  $form['server_settings']['date_default_timezone'] = array(
-    '#type' => 'select',
-    '#title' => st('Default time zone'),
-    '#default_value' => date_default_timezone_get(),
-    '#options' => system_time_zones(),
-    '#description' => st('By default, dates in this site will be displayed in the chosen time zone.'),
-    '#weight' => 5,
-    '#attributes' => array('class' => array('timezone-detect')),
-  );
-
-  $form['server_settings']['clean_url'] = array(
-    '#type' => 'hidden',
-    '#default_value' => 0,
-    '#attributes' => array('id' => 'edit-clean-url', 'class' => array('install')),
-  );
-
   $form['update_notifications'] = array(
     '#type' => 'fieldset',
     '#title' => st('Update notifications'),
@@ -1899,6 +1877,18 @@ function _install_configure_form($form, &$form_state, &$install_state) {
         'input[name="update_status_module[1]"]' => array('checked' => TRUE),
       ),
     ),
+  );
+
+  $form['date_default_timezone'] = array(
+    '#type' => 'hidden',
+    '#default_value' => date_default_timezone_get(),
+    '#attributes' => array('class' => array('timezone-detect')),
+  );
+
+  $form['clean_url'] = array(
+    '#type' => 'hidden',
+    '#default_value' => 0,
+    '#attributes' => array('id' => 'edit-clean-url', 'class' => array('install')),
   );
 
   $form['actions'] = array('#type' => 'actions');
@@ -1930,12 +1920,18 @@ function install_configure_form_validate($form, &$form_state) {
 function install_configure_form_submit($form, &$form_state) {
   global $user;
 
+  // Ensure the timezone is valid.
+  $timezone = $form_state['values']['date_default_timezone'];
+  if (!array_key_exists($timezone, system_time_zones())) {
+    $timezone = date_default_timezone_get();
+  }
+
   config('system.core')
     ->set('site_name', $form_state['values']['site_name'])
     ->save();
   config('system.date')
-    ->set('default_timezone', $form_state['values']['date_default_timezone'])
-    ->set('default_country', _install_get_timezone_country($form_state['values']['date_default_timezone']))
+    ->set('default_timezone', $timezone)
+    ->set('default_country', _install_get_timezone_country($timezone))
     ->save();
 
   // Enable checking for updates on cron.
