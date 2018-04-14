@@ -73,7 +73,9 @@ Backdrop.behaviors.passwordToggle = {
           $passwordWrapper.removeClass('password-shown').addClass('password-hidden');
           $passwordToggle.text(passwordToggleSettings.toggleShowTitle);
         }
-        e.preventDefault();
+        if (e) {
+          e.preventDefault();
+        }
       };
 
       $passwordToggle.on('click', passwordToggle);
