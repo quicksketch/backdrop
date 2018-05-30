@@ -19,3 +19,9 @@ define('BACKDROP_ROOT', getcwd());
 require_once BACKDROP_ROOT . '/core/includes/bootstrap.inc';
 backdrop_bootstrap(BACKDROP_BOOTSTRAP_FULL);
 menu_execute_active_handler();
+
+function no_doc_block($foo, $bar){
+       weirdIndent();
+       $fooBar = [];
+       $foo = array();
+}
