@@ -99,4 +99,4 @@ jobs:
         run: |
           echo "Running tests."
           cd /var/www/html
-          sudo -u www-data -g www-data ./core/scripts/run-tests.sh --cache --force --verbose --color --all --concurrency 10
+          sudo -u www-data -g www-data ./core/scripts/run-tests.sh --cache --force --verbose --color --all --concurrency 4
