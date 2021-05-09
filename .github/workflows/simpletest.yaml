@@ -9,8 +9,8 @@ env:
 jobs:
   # This job will run on the runner machine.
   simpletest:
-    runs-on: ubuntu-18.04
-    timeout-minutes: 30
+    runs-on: ubuntu-20.04
+    timeout-minutes: 60
     defaults:
       run:
         shell: bash
@@ -20,7 +20,7 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '7.2'
+          php-version: '7.4'
           extensions: gd, mbstring, pdo, pdo_mysql, zip
           coverage: none
           tools: none
@@ -53,7 +53,7 @@ jobs:
           #sudo sed -ri 's/^export ([^=]+)=(.*)$/: ${\1:=\2}\nexport \1/' /etc/apache2/envvars
           #sudo sed -i 's/Require local/#Require local/' /etc/apache2/mods-available/status.conf
           sudo a2enmod rewrite proxy_fcgi
-          sudo a2enconf php7.2-fpm
+          sudo a2enconf php7.4-fpm
           sudo a2ensite 000-default.conf
           sudo $GITHUB_WORKSPACE/.github/_scripts/define-ci-vhost.sh
           echo "new 000-default.conf file:"
