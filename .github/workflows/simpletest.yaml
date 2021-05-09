@@ -43,18 +43,18 @@ jobs:
         run: |
           # Moving MySQL's disk storage to memory can speed up things.
           # See http://serebrov.github.io/html/2012-12-17-unit-speed-mysql-to-mem.html
-#          mysql --version
-#          sudo systemctl stop mysql.service
-#
-#          # Disable AppArmor for MySQL so it can read the shared memory disk.
-#          sudo ln -s /etc/apparmor.d/usr.sbin.mysqld /etc/apparmor.d/disable/
-#          sudo apparmor_parser -R /etc/apparmor.d/usr.sbin.mysqld
-#
-#          # Move and symlink the MySQL storage directory (/var/lib/mysql).
-#          sudo mv /var/lib/mysql /dev/shm/mysql
-#          sudo chown -R mysql:mysql /dev/shm/mysql
-#          sudo ln -s /dev/shm/mysql /var/lib/mysql
-#          sudo chown -h mysql:mysql /var/lib/mysql
+          mysql --version
+          sudo systemctl stop mysql.service
+
+          # Disable AppArmor for MySQL so it can read the shared memory disk.
+          sudo ln -s /etc/apparmor.d/usr.sbin.mysqld /etc/apparmor.d/disable/
+          sudo apparmor_parser -R /etc/apparmor.d/usr.sbin.mysqld
+
+          # Move and symlink the MySQL storage directory (/var/lib/mysql).
+          sudo mv /var/lib/mysql /dev/shm/mysql
+          sudo chown -R mysql:mysql /dev/shm/mysql
+          sudo ln -s /dev/shm/mysql /var/lib/mysql
+          sudo chown -h mysql:mysql /var/lib/mysql
 
       - name: Start MySQL
         run: |
@@ -99,4 +99,4 @@ jobs:
         run: |
           echo "Running tests."
           cd /var/www/html
-          sudo -u www-data -g www-data ./core/scripts/run-tests.sh --cache --force --verbose --color --all --concurrency 10
+          sudo -u www-data -g www-data ./core/scripts/run-tests.sh --cache --force --verbose --color --all
