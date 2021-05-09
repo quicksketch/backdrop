@@ -1077,7 +1077,7 @@ function simpletest_script_prepare_profile_cache($profile){
     $test = new BackdropWebTestCaseCache();
     $test->setProfile($profile);
     if (!$test->isCached()) {
-      $test->prepareCache(TRUE);
+      $test->prepareCache();
     }
   }
   catch (Exception $e) {
