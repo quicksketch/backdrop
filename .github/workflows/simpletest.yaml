@@ -10,7 +10,7 @@ env:
 jobs:
   # This job will run on the runner machine.
   simpletest:
-    runs-on: ubuntu-20.04
+    runs-on: self-hosted
     timeout-minutes: 60
     defaults:
       run:
@@ -25,6 +25,8 @@ jobs:
           extensions: gd, mbstring, pdo, pdo_mysql, zip
           coverage: none
           tools: none
+        env:
+          runner: self-hosted
 
       # Check out the code.
       - uses: actions/checkout@v2
