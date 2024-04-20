@@ -1103,9 +1103,9 @@ function backdrop_http_request($url, array $options = array()) {
   // at least HEAD/GET requests, and Squid always requires Content-Length in
   // POST/PUT requests.
   $content_length = strlen((string) $options['data']);
-  if ($content_length > 0 || $options['method'] == 'POST' || $options['method'] == 'PUT') {
+  //if ($content_length > 0 || $options['method'] == 'POST' || $options['method'] == 'PUT') {
     $options['headers']['Content-Length'] = $content_length;
-  }
+  //}
 
   // If the server URL has a user then attempt to use basic authentication.
   if (isset($uri['user'])) {
