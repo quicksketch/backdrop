@@ -33,3 +33,15 @@ name = Link field custom form tests
 description = Tests link fields being used on custom forms.
 group = Link
 file = link.custom.test
+
+[LinkSanitizeTest]
+name = Link Sanitation Tests
+description = Tests the _link_sanitize() function by itself, without invoking the field life cycle.
+group = Link
+file = link.sanitize.test
+
+[LinkAttributeXssTestCase]
+name = Link Attribute XSS Sanitation Tests
+description = Unit tests for the Link module AttributeXss class.
+group = Link
+file = link.attribute-xss.test

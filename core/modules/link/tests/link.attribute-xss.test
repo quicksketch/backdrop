@@ -1,0 +1,48 @@
+<?php
+/**
+ * @file
+ * Contains simpletests for attribute sanitization.
+ */
+
+/**
+ * @file
+ * Tests AttributeXss.
+ */
+class LinkAttributeXssTestCase extends BackdropUnitTestCase {
+
+  /**
+   * Covers sanitizeAttributes.
+   */
+  public function testSanitizeAttributes() {
+    $data = array(
+      'safe' => array(
+        array('class' => 'foo bar', 'data-biscuit' => TRUE),
+        array('class' => 'foo bar', 'data-biscuit' => TRUE),
+      ),
+      'valueless' => array(
+        array('class' => 'foo bar', 'selected' => ''),
+        array('class' => 'foo bar', 'selected' => ''),
+      ),
+      'with a space' => array(
+        array('class' => 'foo bar', 'href' => urlencode('some file.pdf')),
+        array('class' => 'foo bar', 'href' => 'some+file.pdf'),
+      ),
+      'with an unencoded space' => array(
+        array('class' => 'foo bar', 'href' => 'some file.pdf'),
+        array('class' => 'foo bar', 'href' => 'some file.pdf'),
+      ),
+      'xss onclick' => array(
+        array('class' => 'foo bar', 'onclick' => 'alert("whoop");'),
+        array('class' => 'foo bar'),
+      ),
+      'xss protocol' => array(
+        array('class' => 'foo bar', 'src' => 'javascript:alert("whoop");'),
+        array('class' => 'foo bar'),
+      ),
+    );
+    foreach ($data as $name => $row) {
+      list($attributes, $expected) = $row;
+      $this->assertEqual($expected, filter_xss_attributes($attributes), $name);
+    }
+  }
+}
